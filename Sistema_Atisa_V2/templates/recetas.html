@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ERP Atisa</title>
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/estilos.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/all.min.css') }}">
+    
+    <script src="{{ url_for('static', filename='js/tailwind.js') }}"></script>
+</head>
+<body>
+    <div id="root">
+        <div class="flex min-h-screen bg-[#f0f3f9]" style="font-family: Inter, sans-serif;">
+            
+            <aside class="fixed left-0 top-0 h-screen w-[280px] bg-[#0f2744] flex flex-col z-50 select-none">
+                <div class="flex items-center justify-center px-6 py-8 border-b border-white/10">
+                    <img alt="Logo ERP Industrial" class="h-12 object-contain" src="{{ url_for('static', filename='img_sistema/logo.png') }}">
+                </div>
+                
+                <nav class="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+                    <a href="/dashboard" class="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer whitespace-nowrap text-white/60 hover:bg-white/8 hover:text-white/90 border-l-4 border-transparent">
+                        <div class="w-6 h-6 flex items-center justify-center"><i class="ri-dashboard-3-line text-xl"></i></div>
+                        <span class="text-[17px] font-medium">Dashboard</span>
+                    </a>
+                    <a href="/recetas" class="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer whitespace-nowrap bg-[#1e6fd9]/30 text-white border-l-4 border-[#3b9eff]">
+                        <div class="w-6 h-6 flex items-center justify-center"><i class="ri-list-check-3 text-xl"></i></div>
+                        <span class="text-[17px] font-medium">Recetas</span>
+                    </a>
+                    <a href="/empleados" class="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer whitespace-nowrap text-white/60 hover:bg-white/8 hover:text-white/90 border-l-4 border-transparent">
+                        <div class="w-6 h-6 flex items-center justify-center"><i class="ri-group-line text-xl"></i></div>
+                        <span class="text-[17px] font-medium">Empleados</span>
+                    </a>
+                    <a href="/documentos" class="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer whitespace-nowrap text-white/60 hover:bg-white/8 hover:text-white/90 border-l-4 border-transparent">
+                        <div class="w-6 h-6 flex items-center justify-center"><i class="ri-folder-open-line text-xl"></i></div>
+                        <span class="text-[17px] font-medium">Documentos</span>
+                    </a>
+                    <a href="/reportes" class="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer whitespace-nowrap text-white/60 hover:bg-white/8 hover:text-white/90 border-l-4 border-transparent">
+                        <div class="w-6 h-6 flex items-center justify-center"><i class="ri-bar-chart-2-line text-xl"></i></div>
+                        <span class="text-[17px] font-medium">Reportes</span>
+                    </a>
+                    <a href="/configuracion" class="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer whitespace-nowrap text-white/60 hover:bg-white/8 hover:text-white/90 border-l-4 border-transparent">
+                        <div class="w-6 h-6 flex items-center justify-center"><i class="ri-settings-4-line text-xl"></i></div>
+                        <span class="text-[17px] font-medium">Configuración</span>
+                    </a>
+                </nav>
+                
+                <div class="px-4 py-5 border-t border-white/10">
+                    <div class="flex items-center gap-3 px-3 py-3 rounded-xl bg-white/5">
+                        <div class="w-10 h-10 flex items-center justify-center rounded-full bg-[#1e6fd9] text-white font-bold text-sm shrink-0"><i class="ri-user-fill"></i></div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-white text-sm font-semibold truncate">{{ session.get('nombre') }}</p>
+                            <p class="text-white/50 text-xs truncate uppercase">{{ session.get('rol') }}</p>
+                        </div>
+                        <a href="/logout" class="w-8 h-8 flex items-center justify-center text-white/40 hover:text-rose-400 transition-colors cursor-pointer" title="Cerrar sesión">
+                            <i class="ri-logout-box-r-line text-lg"></i>
+                        </a>
+                    </div>
+                </div>
+            </aside>
+
+            <main class="flex-1 ml-[280px] flex flex-col min-h-screen">
+                <header class="bg-white border-b border-slate-100 px-10 h-[80px] flex items-center justify-between sticky top-0 z-40">
+                    <div>
+                        <h1 class="text-[#0f2744] text-xl font-bold leading-tight">Catálogo de Recetas</h1>
+                        <p class="text-slate-400 text-sm mt-0.5">Administración de procesos de planta</p>
+                    </div>
+                    
+                    {% if session.get('rol') == 'admin' %}
+                    <button onclick="document.getElementById('modal-crear').classList.remove('hidden')" class="flex items-center gap-2 h-11 px-5 rounded-xl bg-[#1e6fd9] text-white text-sm font-semibold hover:bg-[#1a5bba] transition-colors cursor-pointer whitespace-nowrap shadow-md">
+                        <i class="ri-add-line text-lg"></i> Nueva Receta
+                    </button>
+                    {% endif %}
+                </header>
+
+                <div class="p-10">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        
+                        {% if recetas %}
+                            {% for receta in recetas %}
+                            <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                                <div class="flex justify-between items-start mb-4">
+                                    <div class="bg-indigo-50 text-indigo-600 font-bold px-3 py-1 rounded-lg text-xs">ID: {{ receta.id }}</div>
+                                    {% if session.get('rol') == 'admin' %}
+                                    <form action="/eliminar_receta/{{ receta.id }}" method="POST" onsubmit="return confirm('¿Seguro que deseas borrar esta receta? Se borrarán también sus pasos e imágenes.');">
+                                        <button type="submit" class="text-rose-400 hover:text-rose-600"><i class="ri-delete-bin-line"></i></button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                                <h3 class="text-lg font-bold text-[#0f2744] mb-2">{{ receta.nombre }}</h3>
+                                <p class="text-sm text-slate-500 mb-6 line-clamp-3">{{ receta.descripcion }}</p>
+                                
+                                <a href="/ejecutar_receta/{{ receta.id }}" class="w-full flex items-center justify-center gap-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white transition-colors py-2 rounded-xl font-semibold">
+                                    <i class="ri-play-fill"></i> Iniciar Producción
+                                </a>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="col-span-full bg-white rounded-2xl p-10 text-center border border-dashed border-slate-300">
+                                <i class="ri-file-list-3-line text-4xl text-slate-300 mb-3"></i>
+                                <h3 class="text-lg font-bold text-slate-500">No hay recetas registradas</h3>
+                                <p class="text-sm text-slate-400">Haz clic en "Nueva Receta" para comenzar.</p>
+                            </div>
+                        {% endif %}
+
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <div id="modal-crear" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center px-4 py-10 overflow-y-auto">
+        <div class="bg-white rounded-3xl w-full max-w-4xl shadow-2xl transform transition-all my-auto">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-3xl">
+                <h3 class="text-lg font-bold text-[#0f2744]">Crear Nueva Receta de Producción</h3>
+                <button onclick="document.getElementById('modal-crear').classList.add('hidden')" class="text-slate-400 hover:text-slate-600">
+                    <i class="ri-close-line text-2xl"></i>
+                </button>
+            </div>
+            
+            <form action="/crear_receta" method="POST" enctype="multipart/form-data" class="p-6 max-h-[75vh] overflow-y-auto">
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div>
+                        <label class="block text-slate-700 text-sm font-semibold mb-2">Nombre de la Receta</label>
+                        <input type="text" name="nombre" required placeholder="Ej. Ensamble de Válvula Hidráulica V-200" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-[#1e6fd9]">
+                    </div>
+                    <div>
+                        <label class="block text-slate-700 text-sm font-semibold mb-2">Descripción General</label>
+                        <textarea name="descripcion" rows="1" required placeholder="Propósito de esta receta..." class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-[#1e6fd9] resize-none"></textarea>
+                    </div>
+                </div>
+
+                <hr class="my-6 border-slate-100">
+
+                <div class="mb-4 flex justify-between items-end">
+                    <h4 class="text-md font-bold text-[#0f2744]">Pasos de Operación</h4>
+                    <button type="button" onclick="agregarPaso()" class="text-sm bg-emerald-50 text-emerald-600 px-4 py-2 rounded-lg font-semibold hover:bg-emerald-100 transition-colors">
+                        <i class="ri-add-line"></i> Agregar Paso
+                    </button>
+                </div>
+
+                <div id="contenedor-pasos" class="space-y-4">
+                    <div class="paso-item bg-slate-50 p-4 rounded-xl border border-slate-200 relative">
+                        <span class="absolute -top-3 -left-3 bg-[#0f2744] text-white w-8 h-8 flex items-center justify-center rounded-full font-bold text-sm shadow-md paso-numero">1</span>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+                            <div class="md:col-span-6">
+                                <label class="block text-slate-600 text-xs font-semibold mb-1">Instrucción / Tarea</label>
+                                <textarea name="paso_1_instruccion" required rows="2" class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:border-[#1e6fd9] text-sm resize-none" placeholder="Verificar componentes..."></textarea>
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-slate-600 text-xs font-semibold mb-1">Tiempo (Min)</label>
+                                <input type="number" name="paso_1_minutos" placeholder="0 = Sin timer" min="0" class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:border-[#1e6fd9] text-sm">
+                            </div>
+                            <div class="md:col-span-4">
+                                <label class="block text-slate-600 text-xs font-semibold mb-1">Imagen de Referencia</label>
+                                <input type="file" name="paso_1_imagen" accept="image/*" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-[#1e6fd9] hover:file:bg-blue-100 cursor-pointer">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-8 pt-4 border-t border-slate-100 flex gap-3 justify-end">
+                    <button type="button" onclick="document.getElementById('modal-crear').classList.add('hidden')" class="px-6 py-3 rounded-xl font-semibold text-slate-500 hover:bg-slate-100 transition-colors">Cancelar</button>
+                    <button type="submit" class="px-6 py-3 rounded-xl font-semibold text-white bg-[#1e6fd9] hover:bg-[#1a5bba] transition-colors shadow-md">
+                        <i class="ri-save-3-line mr-2"></i> Guardar Receta Completa
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let contadorPasos = 1;
+
+        function agregarPaso() {
+            contadorPasos++;
+            const contenedor = document.getElementById('contenedor-pasos');
+            const nuevoPaso = document.createElement('div');
+            nuevoPaso.className = 'paso-item bg-slate-50 p-4 rounded-xl border border-slate-200 relative mt-4';
+            
+            nuevoPaso.innerHTML = `
+                <span class="absolute -top-3 -left-3 bg-[#0f2744] text-white w-8 h-8 flex items-center justify-center rounded-full font-bold text-sm shadow-md paso-numero">${contadorPasos}</span>
+                <button type="button" onclick="this.parentElement.remove(); actualizarNumeros();" class="absolute -top-3 -right-3 bg-rose-100 text-rose-500 w-8 h-8 flex items-center justify-center rounded-full hover:bg-rose-500 hover:text-white transition-colors shadow-sm">
+                    <i class="ri-delete-bin-line"></i>
+                </button>
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+                    <div class="md:col-span-6">
+                        <label class="block text-slate-600 text-xs font-semibold mb-1">Instrucción / Tarea</label>
+                        <textarea name="paso_${contadorPasos}_instruccion" required rows="2" class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:border-[#1e6fd9] text-sm resize-none"></textarea>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-slate-600 text-xs font-semibold mb-1">Tiempo (Min)</label>
+                        <input type="number" name="paso_${contadorPasos}_minutos" placeholder="0 = Sin timer" min="0" class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:border-[#1e6fd9] text-sm">
+                    </div>
+                    <div class="md:col-span-4">
+                        <label class="block text-slate-600 text-xs font-semibold mb-1">Imagen de Referencia</label>
+                        <input type="file" name="paso_${contadorPasos}_imagen" accept="image/*" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-[#1e6fd9] hover:file:bg-blue-100 cursor-pointer">
+                    </div>
+                </div>
+            `;
+            contenedor.appendChild(nuevoPaso);
+        }
+
+        function actualizarNumeros() {
+            const pasos = document.querySelectorAll('.paso-item');
+            pasos.forEach((paso, index) => {
+                const num = index + 1;
+                paso.querySelector('.paso-numero').innerText = num;
+                // Se actualizan los "name" para que Python sepa qué paso es
+                paso.querySelector('textarea').name = `paso_${num}_instruccion`;
+                paso.querySelector('input[type="number"]').name = `paso_${num}_minutos`;
+                paso.querySelector('input[type="file"]').name = `paso_${num}_imagen`;
+            });
+            contadorPasos = pasos.length;
+        }
+    </script>
+</body>
+</html>
