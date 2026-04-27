@@ -1,351 +1,145 @@
-<!DOCTYPE html>
-<html lang="es">
+{% extends "base.html" %}
 
-<head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ERP Atisa</title>
-    
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/estilos.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/all.min.css') }}">
-    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
-    
-    <script src="{{ url_for('static', filename='js/tailwind.js') }}"></script>
-</head>
-<body>
-    <div id="root">
-        <div class="flex min-h-screen bg-[#f4f6fb]" style="font-family: Inter, sans-serif;">
-            
-            <aside class="fixed left-0 top-0 h-screen w-[280px] bg-[#0f2744] flex flex-col z-50 select-none">
-                <div class="flex items-center justify-center px-6 py-8 border-b border-white/10">
-                    <img alt="Logo ERP Industrial" class="h-12 object-contain" src="{{ url_for('static', filename='img_sistema/logo.png') }}">
-                </div>
-                
-                <nav class="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-                    <a href="/dashboard" class="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer whitespace-nowrap text-white/60 hover:bg-white/8 hover:text-white/90 border-l-4 border-transparent">
-                        <div class="w-6 h-6 flex items-center justify-center"><i class="ri-dashboard-3-line text-xl"></i></div>
-                        <span class="text-[17px] font-medium">Dashboard</span>
-                    </a>
-                    <a href="/recetas" class="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer whitespace-nowrap text-white/60 hover:bg-white/8 hover:text-white/90 border-l-4 border-transparent">
-                        <div class="w-6 h-6 flex items-center justify-center"><i class="ri-list-check-3 text-xl"></i></div>
-                        <span class="text-[17px] font-medium">Recetas</span>
-                    </a>
-                    <a href="/empleados" class="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer whitespace-nowrap text-white/60 hover:bg-white/8 hover:text-white/90 border-l-4 border-transparent">
-                        <div class="w-6 h-6 flex items-center justify-center"><i class="ri-group-line text-xl"></i></div>
-                        <span class="text-[17px] font-medium">Empleados</span>
-                    </a>
-                    <a href="/documentos" class="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer whitespace-nowrap text-white/60 hover:bg-white/8 hover:text-white/90 border-l-4 border-transparent">
-                        <div class="w-6 h-6 flex items-center justify-center"><i class="ri-folder-open-line text-xl"></i></div>
-                        <span class="text-[17px] font-medium">Documentos</span>
-                    </a>
-                    <a href="/reportes" class="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer whitespace-nowrap text-white/60 hover:bg-white/8 hover:text-white/90 border-l-4 border-transparent">
-                        <div class="w-6 h-6 flex items-center justify-center"><i class="ri-bar-chart-2-line text-xl"></i></div>
-                        <span class="text-[17px] font-medium">Reportes</span>
-                    </a>
-                    <a href="/activos" class="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer whitespace-nowrap text-white/60 hover:bg-white/8 hover:text-white/90 border-l-4 border-transparent">
-                        <div class="w-6 h-6 flex items-center justify-center"><i class="ri-shield-check-line text-xl"></i></div>
-                        <span class="text-[17px] font-medium">Activos y EPP</span>
-                    </a>
-                    <a href="/gasolina" class="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer whitespace-nowrap text-white/60 hover:bg-white/8 hover:text-white/90 border-l-4 border-transparent">
-                        <div class="w-6 h-6 flex items-center justify-center"><i class="ri-gas-station-fill text-xl"></i></div>
-                        <span class="text-[17px] font-medium">Tarjeta Gasolina</span>
-                    </a>
-                    <a href="/configuracion" class="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer whitespace-nowrap bg-[#1e6fd9]/30 text-white border-l-4 border-[#3b9eff]">
-                        <div class="w-6 h-6 flex items-center justify-center"><i class="ri-settings-4-line text-xl"></i></div>
-                        <span class="text-[17px] font-medium">Configuración</span>
-                    </a>
-                </nav>
-                
-                <div class="px-4 py-5 border-t border-white/10">
-                    <div class="flex items-center gap-3 px-3 py-3 rounded-xl bg-white/5">
-                        <div class="w-10 h-10 flex items-center justify-center rounded-full bg-[#1e6fd9] text-white font-bold text-sm shrink-0">CM</div>
-                        <div class="flex-1 min-w-0">
-                            <p class="text-white text-sm font-semibold truncate">Carlos Mendoza</p>
-                            <p class="text-white/50 text-xs truncate">Supervisor de Planta</p>
-                        </div>
-                        <a href="/" class="w-8 h-8 flex items-center justify-center text-white/40 hover:text-rose-400 transition-colors cursor-pointer" title="Cerrar sesión">
-                            <i class="ri-logout-box-r-line text-lg"></i>
-                        </a>
-                    </div>
-                </div>
-            </aside>
+{% block title %}Configuración | ERP Atisa{% endblock %}
 
-            <main class="flex-1 ml-[280px] flex flex-col min-h-screen">
-                <header class="bg-white border-b border-slate-100 px-10 h-[88px] flex items-center justify-between sticky top-0 z-40">
+{% block page_title %}Configuración del Sistema{% endblock %}
+{% block page_subtitle %}Gestión de usuarios y ajustes del sistema{% endblock %}
+
+{% block header_actions %}
+<div class="flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-semibold px-4 py-2 rounded-xl">
+    <div class="w-2 h-2 rounded-full bg-emerald-500"></div>v2.4.1 — Estable
+</div>
+{% endblock %}
+
+{% block body_content %}
+<div class="flex flex-1 overflow-hidden">
+    <!-- Inner sidebar for configuracion sections -->
+    <aside class="w-[280px] shrink-0 bg-white border-r border-slate-100 flex flex-col py-6 px-4 gap-1">
+        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider px-3 mb-3">Secciones</p>
+        <button class="w-full flex items-center gap-4 px-4 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer group bg-[#0f2744] text-white">
+            <div class="w-10 h-10 flex items-center justify-center rounded-xl shrink-0 bg-white/15">
+                <i class="ri-group-2-line text-xl text-white"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+                <p class="text-sm font-semibold leading-tight text-white">Gestión de Usuarios</p>
+                <p class="text-xs mt-0.5 truncate text-white/60">Operadores, roles y permisos</p>
+            </div>
+            <i class="ri-arrow-right-s-line text-white/70 text-lg"></i>
+        </button>
+        <button class="w-full flex items-center gap-4 px-4 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer group text-slate-500 hover:bg-slate-50 hover:text-[#0f2744]">
+            <div class="w-10 h-10 flex items-center justify-center rounded-xl shrink-0 bg-slate-100 group-hover:bg-[#0f2744]/8">
+                <i class="ri-settings-4-line text-xl text-[#0f2744]/60 group-hover:text-[#0f2744]"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+                <p class="text-sm font-semibold leading-tight text-[#0f2744]">Ajustes del Sistema</p>
+                <p class="text-xs mt-0.5 truncate text-slate-400">Funciones y módulos activos</p>
+            </div>
+        </button>
+        <button class="w-full flex items-center gap-4 px-4 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer group text-slate-500 hover:bg-slate-50 hover:text-[#0f2744]">
+            <div class="w-10 h-10 flex items-center justify-center rounded-xl shrink-0 bg-slate-100 group-hover:bg-[#0f2744]/8">
+                <i class="ri-building-2-line text-xl text-[#0f2744]/60 group-hover:text-[#0f2744]"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+                <p class="text-sm font-semibold leading-tight text-[#0f2744]">Configuración de Planta</p>
+                <p class="text-xs mt-0.5 truncate text-slate-400">Líneas, turnos y áreas</p>
+            </div>
+        </button>
+        <button class="w-full flex items-center gap-4 px-4 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer group text-slate-500 hover:bg-slate-50 hover:text-[#0f2744]">
+            <div class="w-10 h-10 flex items-center justify-center rounded-xl shrink-0 bg-slate-100 group-hover:bg-[#0f2744]/8">
+                <i class="ri-plug-line text-xl text-[#0f2744]/60 group-hover:text-[#0f2744]"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+                <p class="text-sm font-semibold leading-tight text-[#0f2744]">Integraciones</p>
+                <p class="text-xs mt-0.5 truncate text-slate-400">APIs y sistemas externos</p>
+            </div>
+        </button>
+        <button class="w-full flex items-center gap-4 px-4 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer group text-slate-500 hover:bg-slate-50 hover:text-[#0f2744]">
+            <div class="w-10 h-10 flex items-center justify-center rounded-xl shrink-0 bg-slate-100 group-hover:bg-[#0f2744]/8">
+                <i class="ri-database-2-line text-xl text-[#0f2744]/60 group-hover:text-[#0f2744]"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+                <p class="text-sm font-semibold leading-tight text-[#0f2744]">Respaldo y Datos</p>
+                <p class="text-xs mt-0.5 truncate text-slate-400">Exportar y restaurar datos</p>
+            </div>
+        </button>
+        <button class="w-full flex items-center gap-4 px-4 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer group text-slate-500 hover:bg-slate-50 hover:text-[#0f2744]">
+            <div class="w-10 h-10 flex items-center justify-center rounded-xl shrink-0 bg-slate-100 group-hover:bg-[#0f2744]/8">
+                <i class="ri-file-list-3-line text-xl text-[#0f2744]/60 group-hover:text-[#0f2744]"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+                <p class="text-sm font-semibold leading-tight text-[#0f2744]">Auditoría</p>
+                <p class="text-xs mt-0.5 truncate text-slate-400">Historial de actividad</p>
+            </div>
+        </button>
+        <div class="mt-auto pt-6 border-t border-slate-100 px-3 space-y-3">
+            <div class="flex items-center justify-between text-xs text-slate-400"><span>Servidor</span><span class="font-semibold text-emerald-600">En línea</span></div>
+            <div class="flex items-center justify-between text-xs text-slate-400"><span>Última sincronización</span><span class="font-semibold text-[#0f2744]">Hace 2 min</span></div>
+            <div class="flex items-center justify-between text-xs text-slate-400"><span>Licencia</span><span class="font-semibold text-[#0f2744]">Enterprise</span></div>
+        </div>
+    </aside>
+
+    <div class="flex-1 overflow-y-auto">
+        <div class="flex items-center gap-2 px-10 pt-7 pb-1 text-sm text-slate-400">
+            <span>Configuración</span><i class="ri-arrow-right-s-line"></i><span class="text-[#0f2744] font-semibold">Gestión de Usuarios</span>
+        </div>
+        <div class="px-10 py-6">
+            <div class="space-y-6">
+                <div class="flex items-center justify-between">
                     <div>
-                        <h1 class="text-[#0f2744] text-2xl font-bold">Configuración del Sistema</h1>
-                        <p class="text-slate-400 text-sm capitalize mt-0.5">lunes, 6 de abril de 2026</p>
+                        <h3 class="text-[#0f2744] text-xl font-bold">Gestión de Usuarios</h3>
+                        <p class="text-slate-400 text-sm mt-0.5">Usuarios registrados en el sistema</p>
                     </div>
-                    <div class="flex items-center gap-3">
-                        <div class="flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-semibold px-4 py-2 rounded-xl">
-                            <div class="w-2 h-2 rounded-full bg-emerald-500"></div>v2.4.1 — Estable
-                        </div>
-                    </div>
-                </header>
-
-                <div class="flex flex-1 overflow-hidden">
-                    <aside class="w-[280px] shrink-0 bg-white border-r border-slate-100 flex flex-col py-6 px-4 gap-1">
-                        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider px-3 mb-3">Secciones</p>
-                        <button class="w-full flex items-center gap-4 px-4 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer group bg-[#0f2744] text-white">
-                            <div class="w-10 h-10 flex items-center justify-center rounded-xl shrink-0 transition-colors bg-white/15">
-                                <i class="ri-group-2-line text-xl text-white"></i>
-                            </div>
-                            <div class="flex-1 min-w-0">
-                                <p class="text-sm font-semibold leading-tight text-white">Gestión de Usuarios</p>
-                                <p class="text-xs mt-0.5 truncate text-white/60">Operadores, roles y permisos</p>
-                            </div>
-                            <div class="w-4 h-4 flex items-center justify-center shrink-0">
-                                <i class="ri-arrow-right-s-line text-white/70 text-lg"></i>
-                            </div>
-                        </button>
-                        <button class="w-full flex items-center gap-4 px-4 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer group text-slate-500 hover:bg-slate-50 hover:text-[#0f2744]">
-                            <div class="w-10 h-10 flex items-center justify-center rounded-xl shrink-0 transition-colors bg-slate-100 group-hover:bg-[#0f2744]/8">
-                                <i class="ri-settings-4-line text-xl text-[#0f2744]/60 group-hover:text-[#0f2744]"></i>
-                            </div>
-                            <div class="flex-1 min-w-0">
-                                <p class="text-sm font-semibold leading-tight text-[#0f2744]">Ajustes del Sistema</p>
-                                <p class="text-xs mt-0.5 truncate text-slate-400">Funciones y módulos activos</p>
-                            </div>
-                        </button>
-                        <button class="w-full flex items-center gap-4 px-4 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer group text-slate-500 hover:bg-slate-50 hover:text-[#0f2744]">
-                            <div class="w-10 h-10 flex items-center justify-center rounded-xl shrink-0 transition-colors bg-slate-100 group-hover:bg-[#0f2744]/8">
-                                <i class="ri-building-2-line text-xl text-[#0f2744]/60 group-hover:text-[#0f2744]"></i>
-                            </div>
-                            <div class="flex-1 min-w-0">
-                                <p class="text-sm font-semibold leading-tight text-[#0f2744]">Configuración de Planta</p>
-                                <p class="text-xs mt-0.5 truncate text-slate-400">Líneas, turnos y áreas</p>
-                            </div>
-                        </button>
-                        <button class="w-full flex items-center gap-4 px-4 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer group text-slate-500 hover:bg-slate-50 hover:text-[#0f2744]">
-                            <div class="w-10 h-10 flex items-center justify-center rounded-xl shrink-0 transition-colors bg-slate-100 group-hover:bg-[#0f2744]/8">
-                                <i class="ri-plug-line text-xl text-[#0f2744]/60 group-hover:text-[#0f2744]"></i>
-                            </div>
-                            <div class="flex-1 min-w-0">
-                                <p class="text-sm font-semibold leading-tight text-[#0f2744]">Integraciones</p>
-                                <p class="text-xs mt-0.5 truncate text-slate-400">APIs y sistemas externos</p>
-                            </div>
-                        </button>
-                        <button class="w-full flex items-center gap-4 px-4 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer group text-slate-500 hover:bg-slate-50 hover:text-[#0f2744]">
-                            <div class="w-10 h-10 flex items-center justify-center rounded-xl shrink-0 transition-colors bg-slate-100 group-hover:bg-[#0f2744]/8">
-                                <i class="ri-database-2-line text-xl text-[#0f2744]/60 group-hover:text-[#0f2744]"></i>
-                            </div>
-                            <div class="flex-1 min-w-0">
-                                <p class="text-sm font-semibold leading-tight text-[#0f2744]">Respaldo y Datos</p>
-                                <p class="text-xs mt-0.5 truncate text-slate-400">Exportar y restaurar datos</p>
-                            </div>
-                        </button>
-                        <button class="w-full flex items-center gap-4 px-4 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer group text-slate-500 hover:bg-slate-50 hover:text-[#0f2744]">
-                            <div class="w-10 h-10 flex items-center justify-center rounded-xl shrink-0 transition-colors bg-slate-100 group-hover:bg-[#0f2744]/8">
-                                <i class="ri-file-list-3-line text-xl text-[#0f2744]/60 group-hover:text-[#0f2744]"></i>
-                            </div>
-                            <div class="flex-1 min-w-0">
-                                <p class="text-sm font-semibold leading-tight text-[#0f2744]">Auditoría</p>
-                                <p class="text-xs mt-0.5 truncate text-slate-400">Historial de actividad</p>
-                            </div>
-                        </button>
-                        
-                        <div class="mt-auto pt-6 border-t border-slate-100 px-3 space-y-3">
-                            <div class="flex items-center justify-between text-xs text-slate-400"><span>Servidor</span><span class="font-semibold text-emerald-600">En línea</span></div>
-                            <div class="flex items-center justify-between text-xs text-slate-400"><span>Última sincronización</span><span class="font-semibold text-[#0f2744]">Hace 2 min</span></div>
-                            <div class="flex items-center justify-between text-xs text-slate-400"><span>Licencia</span><span class="font-semibold text-[#0f2744]">Enterprise</span></div>
-                        </div>
-                    </aside>
-
-                    <div class="flex-1 overflow-y-auto">
-                        <div class="flex items-center gap-2 px-10 pt-7 pb-1 text-sm text-slate-400">
-                            <span>Configuración</span><i class="ri-arrow-right-s-line"></i><span class="text-[#0f2744] font-semibold">Gestión de Usuarios</span>
-                        </div>
-                        <div class="px-10 py-6">
-                            <div class="space-y-6">
-                                <div class="flex items-center justify-between">
-                                    <div>
-                                        <h3 class="text-[#0f2744] text-xl font-bold">Gestión de Usuarios</h3>
-                                        <p class="text-slate-400 text-sm mt-0.5">8 usuarios registrados en el sistema</p>
-                                    </div>
-                                    <button class="flex items-center gap-2 h-14 px-6 rounded-xl bg-[#0f2744] text-white text-base font-semibold hover:bg-[#1a3a6b] transition-colors cursor-pointer whitespace-nowrap">
-                                        <div class="w-5 h-5 flex items-center justify-center"><i class="ri-user-add-line text-lg"></i></div>
-                                        Añadir Nuevo Operador
-                                    </button>
-                                </div>
-                                <div class="relative">
-                                    <div class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center text-slate-400"><i class="ri-search-line text-lg"></i></div>
-                                    <input placeholder="Buscar por nombre, ID o rol..." class="w-full h-12 pl-11 pr-4 rounded-xl border border-slate-200 text-sm text-[#0f2744] focus:outline-none focus:border-[#1e6fd9] transition-colors bg-white" type="text" value="">
-                                </div>
-                                <div class="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-                                    <table class="w-full">
-                                        <thead>
-                                            <tr class="bg-slate-50 border-b border-slate-100">
-                                                <th class="text-left px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Nombre</th>
-                                                <th class="text-left px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">ID</th>
-                                                <th class="text-left px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Rol</th>
-                                                <th class="text-left px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Departamento</th>
-                                                <th class="text-left px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Último Acceso</th>
-                                                <th class="text-left px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Estatus</th>
-                                                <th class="px-6 py-4"></th>
-                                            </tr>
-                                        </thead>
-                                        <tbody class="divide-y divide-slate-50">
-                                            <tr class="hover:bg-slate-50/60 transition-colors">
-                                                <td class="px-6 py-4">
-                                                    <div class="flex items-center gap-3">
-                                                        <div class="w-9 h-9 flex items-center justify-center rounded-full bg-[#0f2744]/10 text-[#0f2744] font-bold text-sm shrink-0">CM</div>
-                                                        <span class="text-[#0f2744] font-semibold text-sm">Carlos Mendoza</span>
-                                                    </div>
-                                                </td>
-                                                <td class="px-6 py-4"><span class="text-slate-500 text-sm font-mono">EMP-001</span></td>
-                                                <td class="px-6 py-4"><span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#0f2744] text-white">Administrador</span></td>
-                                                <td class="px-6 py-4"><span class="text-slate-500 text-sm">Dirección</span></td>
-                                                <td class="px-6 py-4"><span class="text-slate-400 text-sm">Hoy, 07:42</span></td>
-                                                <td class="px-6 py-4"><span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700"><span class="w-1.5 h-1.5 rounded-full mr-1.5 bg-emerald-500"></span>Activo</span></td>
-                                                <td class="px-6 py-4">
-                                                    <div class="flex items-center gap-1 justify-end">
-                                                        <button class="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-[#0f2744] transition-colors cursor-pointer" title="Desactivar"><i class="ri-toggle-fill text-emerald-500 text-xl"></i></button>
-                                                        <button class="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-[#0f2744] transition-colors cursor-pointer" title="Editar usuario"><i class="ri-edit-line text-base"></i></button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <tr class="hover:bg-slate-50/60 transition-colors">
-                                                <td class="px-6 py-4">
-                                                    <div class="flex items-center gap-3">
-                                                        <div class="w-9 h-9 flex items-center justify-center rounded-full bg-[#0f2744]/10 text-[#0f2744] font-bold text-sm shrink-0">LJ</div>
-                                                        <span class="text-[#0f2744] font-semibold text-sm">Laura Jiménez</span>
-                                                    </div>
-                                                </td>
-                                                <td class="px-6 py-4"><span class="text-slate-500 text-sm font-mono">EMP-002</span></td>
-                                                <td class="px-6 py-4"><span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#1e6fd9]/15 text-[#1e6fd9]">Supervisor</span></td>
-                                                <td class="px-6 py-4"><span class="text-slate-500 text-sm">Línea A</span></td>
-                                                <td class="px-6 py-4"><span class="text-slate-400 text-sm">Hoy, 08:15</span></td>
-                                                <td class="px-6 py-4"><span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700"><span class="w-1.5 h-1.5 rounded-full mr-1.5 bg-emerald-500"></span>Activo</span></td>
-                                                <td class="px-6 py-4">
-                                                    <div class="flex items-center gap-1 justify-end">
-                                                        <button class="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-[#0f2744] transition-colors cursor-pointer" title="Desactivar"><i class="ri-toggle-fill text-emerald-500 text-xl"></i></button>
-                                                        <button class="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-[#0f2744] transition-colors cursor-pointer" title="Editar usuario"><i class="ri-edit-line text-base"></i></button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <tr class="hover:bg-slate-50/60 transition-colors">
-                                                <td class="px-6 py-4">
-                                                    <div class="flex items-center gap-3">
-                                                        <div class="w-9 h-9 flex items-center justify-center rounded-full bg-[#0f2744]/10 text-[#0f2744] font-bold text-sm shrink-0">RS</div>
-                                                        <span class="text-[#0f2744] font-semibold text-sm">Roberto Sánchez</span>
-                                                    </div>
-                                                </td>
-                                                <td class="px-6 py-4"><span class="text-slate-500 text-sm font-mono">EMP-003</span></td>
-                                                <td class="px-6 py-4"><span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">Operador</span></td>
-                                                <td class="px-6 py-4"><span class="text-slate-500 text-sm">Línea B</span></td>
-                                                <td class="px-6 py-4"><span class="text-slate-400 text-sm">Hoy, 06:58</span></td>
-                                                <td class="px-6 py-4"><span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700"><span class="w-1.5 h-1.5 rounded-full mr-1.5 bg-emerald-500"></span>Activo</span></td>
-                                                <td class="px-6 py-4">
-                                                    <div class="flex items-center gap-1 justify-end">
-                                                        <button class="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-[#0f2744] transition-colors cursor-pointer" title="Desactivar"><i class="ri-toggle-fill text-emerald-500 text-xl"></i></button>
-                                                        <button class="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-[#0f2744] transition-colors cursor-pointer" title="Editar usuario"><i class="ri-edit-line text-base"></i></button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <tr class="hover:bg-slate-50/60 transition-colors">
-                                                <td class="px-6 py-4">
-                                                    <div class="flex items-center gap-3">
-                                                        <div class="w-9 h-9 flex items-center justify-center rounded-full bg-[#0f2744]/10 text-[#0f2744] font-bold text-sm shrink-0">MT</div>
-                                                        <span class="text-[#0f2744] font-semibold text-sm">María Torres</span>
-                                                    </div>
-                                                </td>
-                                                <td class="px-6 py-4"><span class="text-slate-500 text-sm font-mono">EMP-004</span></td>
-                                                <td class="px-6 py-4"><span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700">Técnico</span></td>
-                                                <td class="px-6 py-4"><span class="text-slate-500 text-sm">Mantenimiento</span></td>
-                                                <td class="px-6 py-4"><span class="text-slate-400 text-sm">Ayer, 18:30</span></td>
-                                                <td class="px-6 py-4"><span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700"><span class="w-1.5 h-1.5 rounded-full mr-1.5 bg-emerald-500"></span>Activo</span></td>
-                                                <td class="px-6 py-4">
-                                                    <div class="flex items-center gap-1 justify-end">
-                                                        <button class="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-[#0f2744] transition-colors cursor-pointer" title="Desactivar"><i class="ri-toggle-fill text-emerald-500 text-xl"></i></button>
-                                                        <button class="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-[#0f2744] transition-colors cursor-pointer" title="Editar usuario"><i class="ri-edit-line text-base"></i></button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <tr class="hover:bg-slate-50/60 transition-colors">
-                                                <td class="px-6 py-4">
-                                                    <div class="flex items-center gap-3">
-                                                        <div class="w-9 h-9 flex items-center justify-center rounded-full bg-[#0f2744]/10 text-[#0f2744] font-bold text-sm shrink-0">JR</div>
-                                                        <span class="text-[#0f2744] font-semibold text-sm">Jorge Ramírez</span>
-                                                    </div>
-                                                </td>
-                                                <td class="px-6 py-4"><span class="text-slate-500 text-sm font-mono">EMP-005</span></td>
-                                                <td class="px-6 py-4"><span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">Operador</span></td>
-                                                <td class="px-6 py-4"><span class="text-slate-500 text-sm">Línea A</span></td>
-                                                <td class="px-6 py-4"><span class="text-slate-400 text-sm">Hace 3 días</span></td>
-                                                <td class="px-6 py-4"><span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-400"><span class="w-1.5 h-1.5 rounded-full mr-1.5 bg-slate-300"></span>Inactivo</span></td>
-                                                <td class="px-6 py-4">
-                                                    <div class="flex items-center gap-1 justify-end">
-                                                        <button class="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-[#0f2744] transition-colors cursor-pointer" title="Activar"><i class="ri-toggle-line text-xl"></i></button>
-                                                        <button class="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-[#0f2744] transition-colors cursor-pointer" title="Editar usuario"><i class="ri-edit-line text-base"></i></button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <tr class="hover:bg-slate-50/60 transition-colors">
-                                                <td class="px-6 py-4">
-                                                    <div class="flex items-center gap-3">
-                                                        <div class="w-9 h-9 flex items-center justify-center rounded-full bg-[#0f2744]/10 text-[#0f2744] font-bold text-sm shrink-0">AG</div>
-                                                        <span class="text-[#0f2744] font-semibold text-sm">Ana Gutiérrez</span>
-                                                    </div>
-                                                </td>
-                                                <td class="px-6 py-4"><span class="text-slate-500 text-sm font-mono">EMP-006</span></td>
-                                                <td class="px-6 py-4"><span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#1e6fd9]/15 text-[#1e6fd9]">Supervisor</span></td>
-                                                <td class="px-6 py-4"><span class="text-slate-500 text-sm">Calidad</span></td>
-                                                <td class="px-6 py-4"><span class="text-slate-400 text-sm">Hoy, 09:05</span></td>
-                                                <td class="px-6 py-4"><span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700"><span class="w-1.5 h-1.5 rounded-full mr-1.5 bg-emerald-500"></span>Activo</span></td>
-                                                <td class="px-6 py-4">
-                                                    <div class="flex items-center gap-1 justify-end">
-                                                        <button class="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-[#0f2744] transition-colors cursor-pointer" title="Desactivar"><i class="ri-toggle-fill text-emerald-500 text-xl"></i></button>
-                                                        <button class="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-[#0f2744] transition-colors cursor-pointer" title="Editar usuario"><i class="ri-edit-line text-base"></i></button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <tr class="hover:bg-slate-50/60 transition-colors">
-                                                <td class="px-6 py-4">
-                                                    <div class="flex items-center gap-3">
-                                                        <div class="w-9 h-9 flex items-center justify-center rounded-full bg-[#0f2744]/10 text-[#0f2744] font-bold text-sm shrink-0">PF</div>
-                                                        <span class="text-[#0f2744] font-semibold text-sm">Pedro Flores</span>
-                                                    </div>
-                                                </td>
-                                                <td class="px-6 py-4"><span class="text-slate-500 text-sm font-mono">EMP-007</span></td>
-                                                <td class="px-6 py-4"><span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">Operador</span></td>
-                                                <td class="px-6 py-4"><span class="text-slate-500 text-sm">Línea C</span></td>
-                                                <td class="px-6 py-4"><span class="text-slate-400 text-sm">Hoy, 07:20</span></td>
-                                                <td class="px-6 py-4"><span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700"><span class="w-1.5 h-1.5 rounded-full mr-1.5 bg-emerald-500"></span>Activo</span></td>
-                                                <td class="px-6 py-4">
-                                                    <div class="flex items-center gap-1 justify-end">
-                                                        <button class="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-[#0f2744] transition-colors cursor-pointer" title="Desactivar"><i class="ri-toggle-fill text-emerald-500 text-xl"></i></button>
-                                                        <button class="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-[#0f2744] transition-colors cursor-pointer" title="Editar usuario"><i class="ri-edit-line text-base"></i></button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <tr class="hover:bg-slate-50/60 transition-colors">
-                                                <td class="px-6 py-4">
-                                                    <div class="flex items-center gap-3">
-                                                        <div class="w-9 h-9 flex items-center justify-center rounded-full bg-[#0f2744]/10 text-[#0f2744] font-bold text-sm shrink-0">SH</div>
-                                                        <span class="text-[#0f2744] font-semibold text-sm">Sofía Herrera</span>
-                                                    </div>
-                                                </td>
-                                                <td class="px-6 py-4"><span class="text-slate-500 text-sm font-mono">EMP-008</span></td>
-                                                <td class="px-6 py-4"><span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700">Técnico</span></td>
-                                                <td class="px-6 py-4"><span class="text-slate-500 text-sm">Mantenimiento</span></td>
-                                                <td class="px-6 py-4"><span class="text-slate-400 text-sm">Hace 1 semana</span></td>
-                                                <td class="px-6 py-4"><span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-400"><span class="w-1.5 h-1.5 rounded-full mr-1.5 bg-slate-300"></span>Inactivo</span></td>
-                                                <td class="px-6 py-4">
-                                                    <div class="flex items-center gap-1 justify-end">
-                                                        <button class="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-[#0f2744] transition-colors cursor-pointer" title="Activar"><i class="ri-toggle-line text-xl"></i></button>
-                                                        <button class="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-[#0f2744] transition-colors cursor-pointer" title="Editar usuario"><i class="ri-edit-line text-base"></i></button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <button class="flex items-center gap-2 h-14 px-6 rounded-xl bg-[#0f2744] text-white text-base font-semibold hover:bg-[#1a3a6b] transition-colors cursor-pointer whitespace-nowrap">
+                        <i class="ri-user-add-line text-lg"></i>Añadir Nuevo Operador
+                    </button>
                 </div>
-            </main>
+                <div class="relative">
+                    <div class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center text-slate-400"><i class="ri-search-line text-lg"></i></div>
+                    <input placeholder="Buscar por nombre, ID o rol..." class="w-full h-12 pl-11 pr-4 rounded-xl border border-slate-200 text-sm text-[#0f2744] focus:outline-none focus:border-[#1e6fd9] transition-colors bg-white" type="text" value="">
+                </div>
+                <div class="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="bg-slate-50 border-b border-slate-100">
+                                <th class="text-left px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Nombre</th>
+                                <th class="text-left px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">ID</th>
+                                <th class="text-left px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Rol</th>
+                                <th class="text-left px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Departamento</th>
+                                <th class="text-left px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Último Acceso</th>
+                                <th class="text-left px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Estatus</th>
+                                <th class="px-6 py-4"></th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-50">
+                            {% for u in usuarios %}
+                            {% set words = u.nombre_completo.split() %}
+                            {% set ini = (words[0][0] ~ (words[1][0] if words|length > 1 else ''))|upper %}
+                            <tr class="hover:bg-slate-50/60 transition-colors">
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-9 h-9 flex items-center justify-center rounded-full bg-[#0f2744]/10 text-[#0f2744] font-bold text-sm shrink-0">{{ ini }}</div>
+                                        <span class="text-[#0f2744] font-semibold text-sm">{{ u.nombre_completo }}</span>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4"><span class="text-slate-500 text-sm font-mono">{{ u.numero_empleado }}</span></td>
+                                <td class="px-6 py-4"><span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold {% if u.rol == 'admin' %}bg-[#0f2744] text-white{% elif u.rol == 'rh' %}bg-[#1e6fd9]/15 text-[#1e6fd9]{% else %}bg-emerald-50 text-emerald-700{% endif %}">{{ u.rol|capitalize }}</span></td>
+                                <td class="px-6 py-4"><span class="text-slate-500 text-sm">—</span></td>
+                                <td class="px-6 py-4"><span class="text-slate-400 text-sm">—</span></td>
+                                <td class="px-6 py-4"><span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold {% if u.estatus %}bg-emerald-50 text-emerald-700{% else %}bg-slate-100 text-slate-400{% endif %}"><span class="w-1.5 h-1.5 rounded-full mr-1.5 {% if u.estatus %}bg-emerald-500{% else %}bg-slate-300{% endif %}"></span>{% if u.estatus %}Activo{% else %}Inactivo{% endif %}</span></td>
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center gap-1 justify-end">
+                                        <button class="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-[#0f2744] transition-colors cursor-pointer" title="Editar usuario"><i class="ri-edit-line text-base"></i></button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="7" class="px-6 py-10 text-center text-slate-400 font-medium">No hay usuarios registrados.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
-</body>
-</html>
+</div>
+{% endblock %}

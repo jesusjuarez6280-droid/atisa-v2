@@ -1,316 +1,138 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Documentos | ERP Atisa</title>
-    
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/estilos.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/all.min.css') }}">
-    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
-    
-    <script src="{{ url_for('static', filename='js/tailwind.js') }}"></script>
-</head>
-<body>
-    <div id="root">
-        <div class="flex min-h-screen bg-[#f4f6fb]" style="font-family: Inter, sans-serif;">
-            
-            <aside class="fixed left-0 top-0 h-screen w-[280px] bg-[#0f2744] flex flex-col z-50 select-none">
-                <div class="flex items-center justify-center px-6 py-8 border-b border-white/10">
-                    <img alt="Logo ERP Industrial" class="h-12 object-contain" src="{{ url_for('static', filename='img_sistema/logo.png') }}">
-                </div>
-                
-                <nav class="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-                    <a href="/dashboard" class="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer whitespace-nowrap text-white/60 hover:bg-white/8 hover:text-white/90 border-l-4 border-transparent">
-                        <div class="w-6 h-6 flex items-center justify-center"><i class="ri-dashboard-3-line text-xl"></i></div>
-                        <span class="text-[17px] font-medium">Dashboard</span>
-                    </a>
-                    <a href="/recetas" class="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer whitespace-nowrap text-white/60 hover:bg-white/8 hover:text-white/90 border-l-4 border-transparent">
-                        <div class="w-6 h-6 flex items-center justify-center"><i class="ri-list-check-3 text-xl"></i></div>
-                        <span class="text-[17px] font-medium">Recetas</span>
-                    </a>
-                    <a href="/empleados" class="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer whitespace-nowrap text-white/60 hover:bg-white/8 hover:text-white/90 border-l-4 border-transparent">
-                        <div class="w-6 h-6 flex items-center justify-center"><i class="ri-group-line text-xl"></i></div>
-                        <span class="text-[17px] font-medium">Empleados</span>
-                    </a>
-                    <a href="/documentos" class="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer whitespace-nowrap bg-[#1e6fd9]/30 text-white border-l-4 border-[#3b9eff]">
-                        <div class="w-6 h-6 flex items-center justify-center"><i class="ri-folder-open-line text-xl"></i></div>
-                        <span class="text-[17px] font-medium">Documentos</span>
-                    </a>
-                    <a href="/reportes" class="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer whitespace-nowrap text-white/60 hover:bg-white/8 hover:text-white/90 border-l-4 border-transparent">
-                        <div class="w-6 h-6 flex items-center justify-center"><i class="ri-bar-chart-2-line text-xl"></i></div>
-                        <span class="text-[17px] font-medium">Reportes</span>
-                    </a>
-                    <a href="/activos" class="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer whitespace-nowrap text-white/60 hover:bg-white/8 hover:text-white/90 border-l-4 border-transparent">
-                        <div class="w-6 h-6 flex items-center justify-center"><i class="ri-shield-check-line text-xl"></i></div>
-                        <span class="text-[17px] font-medium">Activos y EPP</span>
-                    </a>
-                    <a href="/gasolina" class="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer whitespace-nowrap text-white/60 hover:bg-white/8 hover:text-white/90 border-l-4 border-transparent">
-                        <div class="w-6 h-6 flex items-center justify-center"><i class="ri-gas-station-fill text-xl"></i></div>
-                        <span class="text-[17px] font-medium">Tarjeta Gasolina</span>
-                    </a>
-                    <a href="/configuracion" class="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer whitespace-nowrap text-white/60 hover:bg-white/8 hover:text-white/90 border-l-4 border-transparent">
-                        <div class="w-6 h-6 flex items-center justify-center"><i class="ri-settings-4-line text-xl"></i></div>
-                        <span class="text-[17px] font-medium">Configuración</span>
-                    </a>
-                </nav>
-                
-                <div class="px-4 py-5 border-t border-white/10">
-                    <div class="flex items-center gap-3 px-3 py-3 rounded-xl bg-white/5">
-                        <div class="w-10 h-10 flex items-center justify-center rounded-full bg-[#1e6fd9] text-white font-bold text-sm shrink-0">
-                            {{ session.get('nombre', 'C')[0] | upper }}
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <p class="text-white text-sm font-semibold truncate">{{ session.get('nombre') }}</p>
-                            <p class="text-white/50 text-xs truncate uppercase">{{ session.get('rol') }}</p>
-                        </div>
-                        <a href="/logout" class="w-8 h-8 flex items-center justify-center text-white/40 hover:text-rose-400 transition-colors cursor-pointer" title="Cerrar sesión">
-                            <i class="ri-logout-box-r-line text-lg"></i>
-                        </a>
-                    </div>
-                </div>
-            </aside>
+{% extends "base.html" %}
 
-            <main class="flex-1 ml-[280px] flex flex-col min-h-screen">
-                <header class="bg-white border-b border-slate-100 px-10 h-[88px] flex items-center justify-between sticky top-0 z-40">
-                    <div>
-                        <h1 class="text-[#0f2744] text-2xl font-bold">Repositorio de Documentos</h1>
-                        <p class="text-slate-400 text-sm capitalize mt-0.5">lunes, 6 de abril de 2026</p>
-                    </div>
-                    <div class="flex items-center gap-4">
-                        <div class="relative">
-                            <div class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center text-slate-400"><i class="ri-search-line text-lg"></i></div>
-                            <input placeholder="Buscar documentos..." class="w-64 h-12 pl-11 pr-4 rounded-xl border border-slate-200 text-sm text-[#0f2744] focus:outline-none focus:border-[#1e6fd9] transition-colors bg-white" type="text" value="">
-                        </div>
-                        <div class="flex items-center gap-2 bg-slate-100 rounded-xl px-4 py-2">
-                            <div class="w-5 h-5 flex items-center justify-center text-slate-500"><i class="ri-file-pdf-line text-base"></i></div>
-                            <span class="text-sm font-semibold text-[#0f2744]">8 documentos</span>
-                        </div>
-                    </div>
-                </header>
-                
-                <div class="flex-1 px-10 py-8 space-y-8">
-                    <section>
-                        <h2 class="text-[#0f2744] text-lg font-semibold mb-5">Subir Nuevo Documento</h2>
-                        <div class="relative w-full rounded-2xl border-2 border-dashed transition-all duration-300 border-slate-300 bg-slate-50 hover:border-slate-400 hover:bg-slate-100 ">
-                            <input accept=".pdf,application/pdf" multiple="" class="hidden" type="file">
-                            <div class="flex flex-col items-center justify-center py-14 px-6 text-center">
-                                <div class="w-20 h-20 flex items-center justify-center rounded-2xl mb-5 transition-all duration-300 bg-white shadow-sm">
-                                    <i class="ri-upload-cloud-2-line text-4xl transition-colors duration-300 text-slate-400"></i>
-                                </div>
-                                <h3 class="text-[#0f2744] text-xl font-bold mb-2">Arrastra y suelta archivos PDF</h3>
-                                <p class="text-slate-400 text-sm mb-6 max-w-md">Suelta tus documentos en esta zona o haz clic en el botón de abajo para seleccionar archivos desde tu equipo.</p>
-                                <button class="flex items-center gap-2 h-14 px-8 rounded-xl bg-[#0f2744] text-white text-base font-semibold hover:bg-[#1a3a6b] transition-colors cursor-pointer whitespace-nowrap disabled:opacity-50">
-                                    <div class="w-5 h-5 flex items-center justify-center"><i class="ri-folder-open-line text-lg"></i></div>Examinar equipo
-                                </button>
-                                <p class="text-slate-400 text-xs mt-4">Solo archivos PDF • Máximo 50 MB por archivo</p>
-                            </div>
-                        </div>
-                    </section>
-                    
-                    <section>
-                        <div class="flex items-center justify-between mb-5">
-                            <h2 class="text-[#0f2744] text-lg font-semibold">Documentos Subidos</h2>
-                            <div class="flex items-center gap-1 bg-slate-100 rounded-xl p-1">
-                                <button class="px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer whitespace-nowrap bg-white text-[#0f2744] shadow-sm">Todos</button>
-                                <button class="px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer whitespace-nowrap text-slate-400 hover:text-slate-600">Manual</button>
-                                <button class="px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer whitespace-nowrap text-slate-400 hover:text-slate-600">Procedimiento</button>
-                                <button class="px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer whitespace-nowrap text-slate-400 hover:text-slate-600">Seguridad</button>
-                                <button class="px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer whitespace-nowrap text-slate-400 hover:text-slate-600">Calidad</button>
-                                <button class="px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer whitespace-nowrap text-slate-400 hover:text-slate-600">Mantenimiento</button>
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                            
-                            <div class="group bg-white rounded-2xl border border-slate-100 overflow-hidden hover:shadow-lg hover:border-slate-200 transition-all duration-300">
-                                <div class="relative bg-rose-50 p-6 flex items-center justify-center">
-                                    <div class="w-20 h-24 flex flex-col items-center justify-center bg-white rounded-lg shadow-sm border border-rose-100">
-                                        <div class="w-full h-5 bg-rose-500 rounded-t-lg flex items-center justify-center"><span class="text-white text-[10px] font-bold tracking-wider">PDF</span></div>
-                                        <div class="flex-1 flex items-center justify-center"><i class="ri-file-pdf-2-line text-4xl text-rose-500"></i></div>
-                                    </div>
-                                    <span class="absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-semibold bg-[#0f2744] text-white">Manual</span>
-                                    <div class="absolute inset-0 bg-[#0f2744]/0 group-hover:bg-[#0f2744]/5 transition-colors duration-300"></div>
-                                </div>
-                                <div class="p-5">
-                                    <h4 class="text-[#0f2744] font-bold text-base leading-tight line-clamp-2 mb-3" title="Manual de Operación - Línea A">Manual de Operación - Línea A</h4>
-                                    <div class="space-y-2 mb-4">
-                                        <div class="flex items-center gap-2 text-slate-400 text-sm"><div class="w-4 h-4 flex items-center justify-center"><i class="ri-calendar-line text-sm"></i></div><span>14 mar 2026</span></div>
-                                        <div class="flex items-center gap-2 text-slate-400 text-sm"><div class="w-4 h-4 flex items-center justify-center"><i class="ri-hard-drive-2-line text-sm"></i></div><span>4.2 MB</span></div>
-                                        <div class="flex items-center gap-2 text-slate-400 text-sm"><div class="w-4 h-4 flex items-center justify-center"><i class="ri-download-line text-sm"></i></div><span>47 descargas</span></div>
-                                    </div>
-                                    <div class="flex items-center gap-2 pt-4 border-t border-slate-100">
-                                        <button class="flex-1 flex items-center justify-center gap-2 h-11 rounded-xl bg-[#0f2744] text-white text-sm font-semibold hover:bg-[#1a3a6b] transition-colors cursor-pointer whitespace-nowrap"><div class="w-4 h-4 flex items-center justify-center"><i class="ri-eye-line text-base"></i></div>Ver Documento</button>
-                                        <button class="w-11 h-11 flex items-center justify-center rounded-xl border border-rose-200 text-rose-500 hover:bg-rose-50 hover:border-rose-300 transition-colors cursor-pointer shrink-0" title="Eliminar documento"><i class="ri-delete-bin-line text-lg"></i></button>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="group bg-white rounded-2xl border border-slate-100 overflow-hidden hover:shadow-lg hover:border-slate-200 transition-all duration-300">
-                                <div class="relative bg-rose-50 p-6 flex items-center justify-center">
-                                    <div class="w-20 h-24 flex flex-col items-center justify-center bg-white rounded-lg shadow-sm border border-rose-100">
-                                        <div class="w-full h-5 bg-rose-500 rounded-t-lg flex items-center justify-center"><span class="text-white text-[10px] font-bold tracking-wider">PDF</span></div>
-                                        <div class="flex-1 flex items-center justify-center"><i class="ri-file-pdf-2-line text-4xl text-rose-500"></i></div>
-                                    </div>
-                                    <span class="absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-semibold bg-[#1e6fd9]/15 text-[#1e6fd9]">Procedimiento</span>
-                                    <div class="absolute inset-0 bg-[#0f2744]/0 group-hover:bg-[#0f2744]/5 transition-colors duration-300"></div>
-                                </div>
-                                <div class="p-5">
-                                    <h4 class="text-[#0f2744] font-bold text-base leading-tight line-clamp-2 mb-3" title="Procedimiento de Limpieza CIP">Procedimiento de Limpieza CIP</h4>
-                                    <div class="space-y-2 mb-4">
-                                        <div class="flex items-center gap-2 text-slate-400 text-sm"><div class="w-4 h-4 flex items-center justify-center"><i class="ri-calendar-line text-sm"></i></div><span>19 mar 2026</span></div>
-                                        <div class="flex items-center gap-2 text-slate-400 text-sm"><div class="w-4 h-4 flex items-center justify-center"><i class="ri-hard-drive-2-line text-sm"></i></div><span>2.8 MB</span></div>
-                                        <div class="flex items-center gap-2 text-slate-400 text-sm"><div class="w-4 h-4 flex items-center justify-center"><i class="ri-download-line text-sm"></i></div><span>23 descargas</span></div>
-                                    </div>
-                                    <div class="flex items-center gap-2 pt-4 border-t border-slate-100">
-                                        <button class="flex-1 flex items-center justify-center gap-2 h-11 rounded-xl bg-[#0f2744] text-white text-sm font-semibold hover:bg-[#1a3a6b] transition-colors cursor-pointer whitespace-nowrap"><div class="w-4 h-4 flex items-center justify-center"><i class="ri-eye-line text-base"></i></div>Ver Documento</button>
-                                        <button class="w-11 h-11 flex items-center justify-center rounded-xl border border-rose-200 text-rose-500 hover:bg-rose-50 hover:border-rose-300 transition-colors cursor-pointer shrink-0" title="Eliminar documento"><i class="ri-delete-bin-line text-lg"></i></button>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="group bg-white rounded-2xl border border-slate-100 overflow-hidden hover:shadow-lg hover:border-slate-200 transition-all duration-300">
-                                <div class="relative bg-rose-50 p-6 flex items-center justify-center">
-                                    <div class="w-20 h-24 flex flex-col items-center justify-center bg-white rounded-lg shadow-sm border border-rose-100">
-                                        <div class="w-full h-5 bg-rose-500 rounded-t-lg flex items-center justify-center"><span class="text-white text-[10px] font-bold tracking-wider">PDF</span></div>
-                                        <div class="flex-1 flex items-center justify-center"><i class="ri-file-pdf-2-line text-4xl text-rose-500"></i></div>
-                                    </div>
-                                    <span class="absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-600">Seguridad</span>
-                                    <div class="absolute inset-0 bg-[#0f2744]/0 group-hover:bg-[#0f2744]/5 transition-colors duration-300"></div>
-                                </div>
-                                <div class="p-5">
-                                    <h4 class="text-[#0f2744] font-bold text-base leading-tight line-clamp-2 mb-3" title="Protocolo de Seguridad - Químicos">Protocolo de Seguridad - Químicos</h4>
-                                    <div class="space-y-2 mb-4">
-                                        <div class="flex items-center gap-2 text-slate-400 text-sm"><div class="w-4 h-4 flex items-center justify-center"><i class="ri-calendar-line text-sm"></i></div><span>27 feb 2026</span></div>
-                                        <div class="flex items-center gap-2 text-slate-400 text-sm"><div class="w-4 h-4 flex items-center justify-center"><i class="ri-hard-drive-2-line text-sm"></i></div><span>5.1 MB</span></div>
-                                        <div class="flex items-center gap-2 text-slate-400 text-sm"><div class="w-4 h-4 flex items-center justify-center"><i class="ri-download-line text-sm"></i></div><span>89 descargas</span></div>
-                                    </div>
-                                    <div class="flex items-center gap-2 pt-4 border-t border-slate-100">
-                                        <button class="flex-1 flex items-center justify-center gap-2 h-11 rounded-xl bg-[#0f2744] text-white text-sm font-semibold hover:bg-[#1a3a6b] transition-colors cursor-pointer whitespace-nowrap"><div class="w-4 h-4 flex items-center justify-center"><i class="ri-eye-line text-base"></i></div>Ver Documento</button>
-                                        <button class="w-11 h-11 flex items-center justify-center rounded-xl border border-rose-200 text-rose-500 hover:bg-rose-50 hover:border-rose-300 transition-colors cursor-pointer shrink-0" title="Eliminar documento"><i class="ri-delete-bin-line text-lg"></i></button>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="group bg-white rounded-2xl border border-slate-100 overflow-hidden hover:shadow-lg hover:border-slate-200 transition-all duration-300">
-                                <div class="relative bg-rose-50 p-6 flex items-center justify-center">
-                                    <div class="w-20 h-24 flex flex-col items-center justify-center bg-white rounded-lg shadow-sm border border-rose-100">
-                                        <div class="w-full h-5 bg-rose-500 rounded-t-lg flex items-center justify-center"><span class="text-white text-[10px] font-bold tracking-wider">PDF</span></div>
-                                        <div class="flex-1 flex items-center justify-center"><i class="ri-file-pdf-2-line text-4xl text-rose-500"></i></div>
-                                    </div>
-                                    <span class="absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">Calidad</span>
-                                    <div class="absolute inset-0 bg-[#0f2744]/0 group-hover:bg-[#0f2744]/5 transition-colors duration-300"></div>
-                                </div>
-                                <div class="p-5">
-                                    <h4 class="text-[#0f2744] font-bold text-base leading-tight line-clamp-2 mb-3" title="Checklist de Calidad - Turno Matutino">Checklist de Calidad - Turno Matutino</h4>
-                                    <div class="space-y-2 mb-4">
-                                        <div class="flex items-center gap-2 text-slate-400 text-sm"><div class="w-4 h-4 flex items-center justify-center"><i class="ri-calendar-line text-sm"></i></div><span>31 mar 2026</span></div>
-                                        <div class="flex items-center gap-2 text-slate-400 text-sm"><div class="w-4 h-4 flex items-center justify-center"><i class="ri-hard-drive-2-line text-sm"></i></div><span>1.5 MB</span></div>
-                                        <div class="flex items-center gap-2 text-slate-400 text-sm"><div class="w-4 h-4 flex items-center justify-center"><i class="ri-download-line text-sm"></i></div><span>12 descargas</span></div>
-                                    </div>
-                                    <div class="flex items-center gap-2 pt-4 border-t border-slate-100">
-                                        <button class="flex-1 flex items-center justify-center gap-2 h-11 rounded-xl bg-[#0f2744] text-white text-sm font-semibold hover:bg-[#1a3a6b] transition-colors cursor-pointer whitespace-nowrap"><div class="w-4 h-4 flex items-center justify-center"><i class="ri-eye-line text-base"></i></div>Ver Documento</button>
-                                        <button class="w-11 h-11 flex items-center justify-center rounded-xl border border-rose-200 text-rose-500 hover:bg-rose-50 hover:border-rose-300 transition-colors cursor-pointer shrink-0" title="Eliminar documento"><i class="ri-delete-bin-line text-lg"></i></button>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="group bg-white rounded-2xl border border-slate-100 overflow-hidden hover:shadow-lg hover:border-slate-200 transition-all duration-300">
-                                <div class="relative bg-rose-50 p-6 flex items-center justify-center">
-                                    <div class="w-20 h-24 flex flex-col items-center justify-center bg-white rounded-lg shadow-sm border border-rose-100">
-                                        <div class="w-full h-5 bg-rose-500 rounded-t-lg flex items-center justify-center"><span class="text-white text-[10px] font-bold tracking-wider">PDF</span></div>
-                                        <div class="flex-1 flex items-center justify-center"><i class="ri-file-pdf-2-line text-4xl text-rose-500"></i></div>
-                                    </div>
-                                    <span class="absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700">Mantenimiento</span>
-                                    <div class="absolute inset-0 bg-[#0f2744]/0 group-hover:bg-[#0f2744]/5 transition-colors duration-300"></div>
-                                </div>
-                                <div class="p-5">
-                                    <h4 class="text-[#0f2744] font-bold text-base leading-tight line-clamp-2 mb-3" title="Manual de Mantenimiento - Compresor">Manual de Mantenimiento - Compresor</h4>
-                                    <div class="space-y-2 mb-4">
-                                        <div class="flex items-center gap-2 text-slate-400 text-sm"><div class="w-4 h-4 flex items-center justify-center"><i class="ri-calendar-line text-sm"></i></div><span>9 mar 2026</span></div>
-                                        <div class="flex items-center gap-2 text-slate-400 text-sm"><div class="w-4 h-4 flex items-center justify-center"><i class="ri-hard-drive-2-line text-sm"></i></div><span>8.7 MB</span></div>
-                                        <div class="flex items-center gap-2 text-slate-400 text-sm"><div class="w-4 h-4 flex items-center justify-center"><i class="ri-download-line text-sm"></i></div><span>34 descargas</span></div>
-                                    </div>
-                                    <div class="flex items-center gap-2 pt-4 border-t border-slate-100">
-                                        <button class="flex-1 flex items-center justify-center gap-2 h-11 rounded-xl bg-[#0f2744] text-white text-sm font-semibold hover:bg-[#1a3a6b] transition-colors cursor-pointer whitespace-nowrap"><div class="w-4 h-4 flex items-center justify-center"><i class="ri-eye-line text-base"></i></div>Ver Documento</button>
-                                        <button class="w-11 h-11 flex items-center justify-center rounded-xl border border-rose-200 text-rose-500 hover:bg-rose-50 hover:border-rose-300 transition-colors cursor-pointer shrink-0" title="Eliminar documento"><i class="ri-delete-bin-line text-lg"></i></button>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="group bg-white rounded-2xl border border-slate-100 overflow-hidden hover:shadow-lg hover:border-slate-200 transition-all duration-300">
-                                <div class="relative bg-rose-50 p-6 flex items-center justify-center">
-                                    <div class="w-20 h-24 flex flex-col items-center justify-center bg-white rounded-lg shadow-sm border border-rose-100">
-                                        <div class="w-full h-5 bg-rose-500 rounded-t-lg flex items-center justify-center"><span class="text-white text-[10px] font-bold tracking-wider">PDF</span></div>
-                                        <div class="flex-1 flex items-center justify-center"><i class="ri-file-pdf-2-line text-4xl text-rose-500"></i></div>
-                                    </div>
-                                    <span class="absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-semibold bg-[#1e6fd9]/15 text-[#1e6fd9]">Procedimiento</span>
-                                    <div class="absolute inset-0 bg-[#0f2744]/0 group-hover:bg-[#0f2744]/5 transition-colors duration-300"></div>
-                                </div>
-                                <div class="p-5">
-                                    <h4 class="text-[#0f2744] font-bold text-base leading-tight line-clamp-2 mb-3" title="Procedimiento de Arranque - Línea B">Procedimiento de Arranque - Línea B</h4>
-                                    <div class="space-y-2 mb-4">
-                                        <div class="flex items-center gap-2 text-slate-400 text-sm"><div class="w-4 h-4 flex items-center justify-center"><i class="ri-calendar-line text-sm"></i></div><span>24 mar 2026</span></div>
-                                        <div class="flex items-center gap-2 text-slate-400 text-sm"><div class="w-4 h-4 flex items-center justify-center"><i class="ri-hard-drive-2-line text-sm"></i></div><span>3.3 MB</span></div>
-                                        <div class="flex items-center gap-2 text-slate-400 text-sm"><div class="w-4 h-4 flex items-center justify-center"><i class="ri-download-line text-sm"></i></div><span>56 descargas</span></div>
-                                    </div>
-                                    <div class="flex items-center gap-2 pt-4 border-t border-slate-100">
-                                        <button class="flex-1 flex items-center justify-center gap-2 h-11 rounded-xl bg-[#0f2744] text-white text-sm font-semibold hover:bg-[#1a3a6b] transition-colors cursor-pointer whitespace-nowrap"><div class="w-4 h-4 flex items-center justify-center"><i class="ri-eye-line text-base"></i></div>Ver Documento</button>
-                                        <button class="w-11 h-11 flex items-center justify-center rounded-xl border border-rose-200 text-rose-500 hover:bg-rose-50 hover:border-rose-300 transition-colors cursor-pointer shrink-0" title="Eliminar documento"><i class="ri-delete-bin-line text-lg"></i></button>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="group bg-white rounded-2xl border border-slate-100 overflow-hidden hover:shadow-lg hover:border-slate-200 transition-all duration-300">
-                                <div class="relative bg-rose-50 p-6 flex items-center justify-center">
-                                    <div class="w-20 h-24 flex flex-col items-center justify-center bg-white rounded-lg shadow-sm border border-rose-100">
-                                        <div class="w-full h-5 bg-rose-500 rounded-t-lg flex items-center justify-center"><span class="text-white text-[10px] font-bold tracking-wider">PDF</span></div>
-                                        <div class="flex-1 flex items-center justify-center"><i class="ri-file-pdf-2-line text-4xl text-rose-500"></i></div>
-                                    </div>
-                                    <span class="absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-semibold bg-[#0f2744] text-white">Manual</span>
-                                    <div class="absolute inset-0 bg-[#0f2744]/0 group-hover:bg-[#0f2744]/5 transition-colors duration-300"></div>
-                                </div>
-                                <div class="p-5">
-                                    <h4 class="text-[#0f2744] font-bold text-base leading-tight line-clamp-2 mb-3" title="Ficha Técnica - Producto XYZ-100">Ficha Técnica - Producto XYZ-100</h4>
-                                    <div class="space-y-2 mb-4">
-                                        <div class="flex items-center gap-2 text-slate-400 text-sm"><div class="w-4 h-4 flex items-center justify-center"><i class="ri-calendar-line text-sm"></i></div><span>1 abr 2026</span></div>
-                                        <div class="flex items-center gap-2 text-slate-400 text-sm"><div class="w-4 h-4 flex items-center justify-center"><i class="ri-hard-drive-2-line text-sm"></i></div><span>2.1 MB</span></div>
-                                        <div class="flex items-center gap-2 text-slate-400 text-sm"><div class="w-4 h-4 flex items-center justify-center"><i class="ri-download-line text-sm"></i></div><span>18 descargas</span></div>
-                                    </div>
-                                    <div class="flex items-center gap-2 pt-4 border-t border-slate-100">
-                                        <button class="flex-1 flex items-center justify-center gap-2 h-11 rounded-xl bg-[#0f2744] text-white text-sm font-semibold hover:bg-[#1a3a6b] transition-colors cursor-pointer whitespace-nowrap"><div class="w-4 h-4 flex items-center justify-center"><i class="ri-eye-line text-base"></i></div>Ver Documento</button>
-                                        <button class="w-11 h-11 flex items-center justify-center rounded-xl border border-rose-200 text-rose-500 hover:bg-rose-50 hover:border-rose-300 transition-colors cursor-pointer shrink-0" title="Eliminar documento"><i class="ri-delete-bin-line text-lg"></i></button>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="group bg-white rounded-2xl border border-slate-100 overflow-hidden hover:shadow-lg hover:border-slate-200 transition-all duration-300">
-                                <div class="relative bg-rose-50 p-6 flex items-center justify-center">
-                                    <div class="w-20 h-24 flex flex-col items-center justify-center bg-white rounded-lg shadow-sm border border-rose-100">
-                                        <div class="w-full h-5 bg-rose-500 rounded-t-lg flex items-center justify-center"><span class="text-white text-[10px] font-bold tracking-wider">PDF</span></div>
-                                        <div class="flex-1 flex items-center justify-center"><i class="ri-file-pdf-2-line text-4xl text-rose-500"></i></div>
-                                    </div>
-                                    <span class="absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-600">Seguridad</span>
-                                    <div class="absolute inset-0 bg-[#0f2744]/0 group-hover:bg-[#0f2744]/5 transition-colors duration-300"></div>
-                                </div>
-                                <div class="p-5">
-                                    <h4 class="text-[#0f2744] font-bold text-base leading-tight line-clamp-2 mb-3" title="Plan de Emergencias - Planta Norte">Plan de Emergencias - Planta Norte</h4>
-                                    <div class="space-y-2 mb-4">
-                                        <div class="flex items-center gap-2 text-slate-400 text-sm"><div class="w-4 h-4 flex items-center justify-center"><i class="ri-calendar-line text-sm"></i></div><span>14 ene 2026</span></div>
-                                        <div class="flex items-center gap-2 text-slate-400 text-sm"><div class="w-4 h-4 flex items-center justify-center"><i class="ri-hard-drive-2-line text-sm"></i></div><span>6.4 MB</span></div>
-                                        <div class="flex items-center gap-2 text-slate-400 text-sm"><div class="w-4 h-4 flex items-center justify-center"><i class="ri-download-line text-sm"></i></div><span>112 descargas</span></div>
-                                    </div>
-                                    <div class="flex items-center gap-2 pt-4 border-t border-slate-100">
-                                        <button class="flex-1 flex items-center justify-center gap-2 h-11 rounded-xl bg-[#0f2744] text-white text-sm font-semibold hover:bg-[#1a3a6b] transition-colors cursor-pointer whitespace-nowrap"><div class="w-4 h-4 flex items-center justify-center"><i class="ri-eye-line text-base"></i></div>Ver Documento</button>
-                                        <button class="w-11 h-11 flex items-center justify-center rounded-xl border border-rose-200 text-rose-500 hover:bg-rose-50 hover:border-rose-300 transition-colors cursor-pointer shrink-0" title="Eliminar documento"><i class="ri-delete-bin-line text-lg"></i></button>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                        </div>
-                    </section>
-                </div>
-            </main>
+{% block title %}Documentos | ERP Atisa{% endblock %}
+
+{% block page_title %}Repositorio de Documentos{% endblock %}
+{% block page_subtitle %}Archivos y manuales de planta{% endblock %}
+
+{% block header_actions %}
+<div class="relative">
+    <div class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center text-slate-400"><i class="ri-search-line text-lg"></i></div>
+    <input placeholder="Buscar documentos..." class="w-64 h-12 pl-11 pr-4 rounded-xl border border-slate-200 text-sm text-[#0f2744] focus:outline-none focus:border-[#1e6fd9] transition-colors bg-white" type="text" value="">
+</div>
+<div class="flex items-center gap-2 bg-slate-100 rounded-xl px-4 py-2">
+    <div class="w-5 h-5 flex items-center justify-center text-slate-500"><i class="ri-file-pdf-line text-base"></i></div>
+    <span class="text-sm font-semibold text-[#0f2744]">8 documentos</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<section>
+    <h2 class="text-[#0f2744] text-lg font-semibold mb-5">Subir Nuevo Documento</h2>
+    <div class="relative w-full rounded-2xl border-2 border-dashed transition-all duration-300 border-slate-300 bg-slate-50 hover:border-slate-400 hover:bg-slate-100">
+        <input accept=".pdf,application/pdf" multiple="" class="hidden" type="file">
+        <div class="flex flex-col items-center justify-center py-14 px-6 text-center">
+            <div class="w-20 h-20 flex items-center justify-center rounded-2xl mb-5 bg-white shadow-sm">
+                <i class="ri-upload-cloud-2-line text-4xl text-slate-400"></i>
+            </div>
+            <h3 class="text-[#0f2744] text-xl font-bold mb-2">Arrastra y suelta archivos PDF</h3>
+            <p class="text-slate-400 text-sm mb-6 max-w-md">Suelta tus documentos en esta zona o haz clic en el botón de abajo para seleccionar archivos desde tu equipo.</p>
+            <button class="flex items-center gap-2 h-14 px-8 rounded-xl bg-[#0f2744] text-white text-base font-semibold hover:bg-[#1a3a6b] transition-colors cursor-pointer whitespace-nowrap">
+                <div class="w-5 h-5 flex items-center justify-center"><i class="ri-folder-open-line text-lg"></i></div>Examinar equipo
+            </button>
+            <p class="text-slate-400 text-xs mt-4">Solo archivos PDF • Máximo 50 MB por archivo</p>
         </div>
     </div>
-</body>
-</html>
+</section>
+
+<section>
+    <div class="flex items-center justify-between mb-5">
+        <h2 class="text-[#0f2744] text-lg font-semibold">Documentos Subidos</h2>
+        <div class="flex items-center gap-1 bg-slate-100 rounded-xl p-1">
+            <button class="px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer whitespace-nowrap bg-white text-[#0f2744] shadow-sm">Todos</button>
+            <button class="px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer whitespace-nowrap text-slate-400 hover:text-slate-600">Manual</button>
+            <button class="px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer whitespace-nowrap text-slate-400 hover:text-slate-600">Procedimiento</button>
+            <button class="px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer whitespace-nowrap text-slate-400 hover:text-slate-600">Seguridad</button>
+            <button class="px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer whitespace-nowrap text-slate-400 hover:text-slate-600">Calidad</button>
+            <button class="px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer whitespace-nowrap text-slate-400 hover:text-slate-600">Mantenimiento</button>
+        </div>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+
+        <div class="group bg-white rounded-2xl border border-slate-100 overflow-hidden hover:shadow-lg hover:border-slate-200 transition-all duration-300">
+            <div class="relative bg-rose-50 p-6 flex items-center justify-center">
+                <div class="w-20 h-24 flex flex-col items-center justify-center bg-white rounded-lg shadow-sm border border-rose-100">
+                    <div class="w-full h-5 bg-rose-500 rounded-t-lg flex items-center justify-center"><span class="text-white text-[10px] font-bold tracking-wider">PDF</span></div>
+                    <div class="flex-1 flex items-center justify-center"><i class="ri-file-pdf-2-line text-4xl text-rose-500"></i></div>
+                </div>
+                <span class="absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-semibold bg-[#0f2744] text-white">Manual</span>
+            </div>
+            <div class="p-5">
+                <h4 class="text-[#0f2744] font-bold text-base leading-tight line-clamp-2 mb-3">Manual de Operación - Línea A</h4>
+                <div class="space-y-2 mb-4">
+                    <div class="flex items-center gap-2 text-slate-400 text-sm"><i class="ri-calendar-line text-sm"></i><span>14 mar 2026</span></div>
+                    <div class="flex items-center gap-2 text-slate-400 text-sm"><i class="ri-hard-drive-2-line text-sm"></i><span>4.2 MB</span></div>
+                </div>
+                <div class="flex items-center gap-2 pt-4 border-t border-slate-100">
+                    <button class="flex-1 flex items-center justify-center gap-2 h-11 rounded-xl bg-[#0f2744] text-white text-sm font-semibold hover:bg-[#1a3a6b] transition-colors cursor-pointer whitespace-nowrap"><i class="ri-eye-line text-base"></i>Ver Documento</button>
+                    <button class="w-11 h-11 flex items-center justify-center rounded-xl border border-rose-200 text-rose-500 hover:bg-rose-50 hover:border-rose-300 transition-colors cursor-pointer shrink-0"><i class="ri-delete-bin-line text-lg"></i></button>
+                </div>
+            </div>
+        </div>
+
+        <div class="group bg-white rounded-2xl border border-slate-100 overflow-hidden hover:shadow-lg hover:border-slate-200 transition-all duration-300">
+            <div class="relative bg-rose-50 p-6 flex items-center justify-center">
+                <div class="w-20 h-24 flex flex-col items-center justify-center bg-white rounded-lg shadow-sm border border-rose-100">
+                    <div class="w-full h-5 bg-rose-500 rounded-t-lg flex items-center justify-center"><span class="text-white text-[10px] font-bold tracking-wider">PDF</span></div>
+                    <div class="flex-1 flex items-center justify-center"><i class="ri-file-pdf-2-line text-4xl text-rose-500"></i></div>
+                </div>
+                <span class="absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-semibold bg-[#1e6fd9]/15 text-[#1e6fd9]">Procedimiento</span>
+            </div>
+            <div class="p-5">
+                <h4 class="text-[#0f2744] font-bold text-base leading-tight line-clamp-2 mb-3">Procedimiento de Limpieza CIP</h4>
+                <div class="space-y-2 mb-4">
+                    <div class="flex items-center gap-2 text-slate-400 text-sm"><i class="ri-calendar-line text-sm"></i><span>19 mar 2026</span></div>
+                    <div class="flex items-center gap-2 text-slate-400 text-sm"><i class="ri-hard-drive-2-line text-sm"></i><span>2.8 MB</span></div>
+                </div>
+                <div class="flex items-center gap-2 pt-4 border-t border-slate-100">
+                    <button class="flex-1 flex items-center justify-center gap-2 h-11 rounded-xl bg-[#0f2744] text-white text-sm font-semibold hover:bg-[#1a3a6b] transition-colors cursor-pointer whitespace-nowrap"><i class="ri-eye-line text-base"></i>Ver Documento</button>
+                    <button class="w-11 h-11 flex items-center justify-center rounded-xl border border-rose-200 text-rose-500 hover:bg-rose-50 hover:border-rose-300 transition-colors cursor-pointer shrink-0"><i class="ri-delete-bin-line text-lg"></i></button>
+                </div>
+            </div>
+        </div>
+
+        <div class="group bg-white rounded-2xl border border-slate-100 overflow-hidden hover:shadow-lg hover:border-slate-200 transition-all duration-300">
+            <div class="relative bg-rose-50 p-6 flex items-center justify-center">
+                <div class="w-20 h-24 flex flex-col items-center justify-center bg-white rounded-lg shadow-sm border border-rose-100">
+                    <div class="w-full h-5 bg-rose-500 rounded-t-lg flex items-center justify-center"><span class="text-white text-[10px] font-bold tracking-wider">PDF</span></div>
+                    <div class="flex-1 flex items-center justify-center"><i class="ri-file-pdf-2-line text-4xl text-rose-500"></i></div>
+                </div>
+                <span class="absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-600">Seguridad</span>
+            </div>
+            <div class="p-5">
+                <h4 class="text-[#0f2744] font-bold text-base leading-tight line-clamp-2 mb-3">Protocolo de Seguridad - Químicos</h4>
+                <div class="space-y-2 mb-4">
+                    <div class="flex items-center gap-2 text-slate-400 text-sm"><i class="ri-calendar-line text-sm"></i><span>27 feb 2026</span></div>
+                    <div class="flex items-center gap-2 text-slate-400 text-sm"><i class="ri-hard-drive-2-line text-sm"></i><span>5.1 MB</span></div>
+                </div>
+                <div class="flex items-center gap-2 pt-4 border-t border-slate-100">
+                    <button class="flex-1 flex items-center justify-center gap-2 h-11 rounded-xl bg-[#0f2744] text-white text-sm font-semibold hover:bg-[#1a3a6b] transition-colors cursor-pointer whitespace-nowrap"><i class="ri-eye-line text-base"></i>Ver Documento</button>
+                    <button class="w-11 h-11 flex items-center justify-center rounded-xl border border-rose-200 text-rose-500 hover:bg-rose-50 hover:border-rose-300 transition-colors cursor-pointer shrink-0"><i class="ri-delete-bin-line text-lg"></i></button>
+                </div>
+            </div>
+        </div>
+
+        <div class="group bg-white rounded-2xl border border-slate-100 overflow-hidden hover:shadow-lg hover:border-slate-200 transition-all duration-300">
+            <div class="relative bg-rose-50 p-6 flex items-center justify-center">
+                <div class="w-20 h-24 flex flex-col items-center justify-center bg-white rounded-lg shadow-sm border border-rose-100">
+                    <div class="w-full h-5 bg-rose-500 rounded-t-lg flex items-center justify-center"><span class="text-white text-[10px] font-bold tracking-wider">PDF</span></div>
+                    <div class="flex-1 flex items-center justify-center"><i class="ri-file-pdf-2-line text-4xl text-rose-500"></i></div>
+                </div>
+                <span class="absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">Calidad</span>
+            </div>
+            <div class="p-5">
+                <h4 class="text-[#0f2744] font-bold text-base leading-tight line-clamp-2 mb-3">Checklist de Calidad - Turno Matutino</h4>
+                <div class="space-y-2 mb-4">
+                    <div class="flex items-center gap-2 text-slate-400 text-sm"><i class="ri-calendar-line text-sm"></i><span>31 mar 2026</span></div>
+                    <div class="flex items-center gap-2 text-slate-400 text-sm"><i class="ri-hard-drive-2-line text-sm"></i><span>1.5 MB</span></div>
+                </div>
+                <div class="flex items-center gap-2 pt-4 border-t border-slate-100">
+                    <button class="flex-1 flex items-center justify-center gap-2 h-11 rounded-xl bg-[#0f2744] text-white text-sm font-semibold hover:bg-[#1a3a6b] transition-colors cursor-pointer whitespace-nowrap"><i class="ri-eye-line text-base"></i>Ver Documento</button>
+                    <button class="w-11 h-11 flex items-center justify-center rounded-xl border border-rose-200 text-rose-500 hover:bg-rose-50 hover:border-rose-300 transition-colors cursor-pointer shrink-0"><i class="ri-delete-bin-line text-lg"></i></button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</section>
+{% endblock %}
