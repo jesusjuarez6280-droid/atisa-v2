@@ -1,373 +1,119 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ERP Atisa</title>
-    
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/estilos.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/all.min.css') }}">
-    
-    <script src="{{ url_for('static', filename='js/tailwind.js') }}"></script>
-</head>
-<body>
-    <div id="root">
-        <div class="flex min-h-screen bg-[#f4f6fb]" style="font-family: Inter, sans-serif;">
-            
-            <aside class="fixed left-0 top-0 h-screen w-[280px] bg-[#0f2744] flex flex-col z-50 select-none">
-                <div class="flex items-center justify-center px-6 py-8 border-b border-white/10">
-                    <img alt="Logo ERP Industrial" class="h-12 object-contain" src="{{ url_for('static', filename='img_sistema/logo.png') }}">
-                </div>
-                
-                <nav class="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-                    <a href="/dashboard" class="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer whitespace-nowrap text-white/60 hover:bg-white/8 hover:text-white/90 border-l-4 border-transparent">
-                        <div class="w-6 h-6 flex items-center justify-center"><i class="ri-dashboard-3-line text-xl"></i></div>
-                        <span class="text-[17px] font-medium">Dashboard</span>
-                    </a>
-                    <a href="/recetas" class="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer whitespace-nowrap text-white/60 hover:bg-white/8 hover:text-white/90 border-l-4 border-transparent">
-                        <div class="w-6 h-6 flex items-center justify-center"><i class="ri-list-check-3 text-xl"></i></div>
-                        <span class="text-[17px] font-medium">Recetas</span>
-                    </a>
-                    <a href="/empleados" class="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer whitespace-nowrap bg-[#1e6fd9]/30 text-white border-l-4 border-[#3b9eff]">
-                        <div class="w-6 h-6 flex items-center justify-center"><i class="ri-group-line text-xl"></i></div>
-                        <span class="text-[17px] font-medium">Empleados</span>
-                    </a>
-                    <a href="/documentos" class="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer whitespace-nowrap text-white/60 hover:bg-white/8 hover:text-white/90 border-l-4 border-transparent">
-                        <div class="w-6 h-6 flex items-center justify-center"><i class="ri-folder-open-line text-xl"></i></div>
-                        <span class="text-[17px] font-medium">Documentos</span>
-                    </a>
-                    <a href="/reportes" class="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer whitespace-nowrap text-white/60 hover:bg-white/8 hover:text-white/90 border-l-4 border-transparent">
-                        <div class="w-6 h-6 flex items-center justify-center"><i class="ri-bar-chart-2-line text-xl"></i></div>
-                        <span class="text-[17px] font-medium">Reportes</span>
-                    </a>
-                    <a href="/configuracion" class="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer whitespace-nowrap text-white/60 hover:bg-white/8 hover:text-white/90 border-l-4 border-transparent">
-                        <div class="w-6 h-6 flex items-center justify-center"><i class="ri-settings-4-line text-xl"></i></div>
-                        <span class="text-[17px] font-medium">Configuración</span>
-                    </a>
-                </nav>
-                
-                <div class="px-4 py-5 border-t border-white/10">
-                    <div class="flex items-center gap-3 px-3 py-3 rounded-xl bg-white/5">
-                        <div class="w-10 h-10 flex items-center justify-center rounded-full bg-[#1e6fd9] text-white font-bold text-sm shrink-0">CM</div>
-                        <div class="flex-1 min-w-0">
-                            <p class="text-white text-sm font-semibold truncate">Carlos Mendoza</p>
-                            <p class="text-white/50 text-xs truncate">Supervisor de Planta</p>
-                        </div>
-                        <a href="/" class="w-8 h-8 flex items-center justify-center text-white/40 hover:text-rose-400 transition-colors cursor-pointer" title="Cerrar sesión">
-                            <i class="ri-logout-box-r-line text-lg"></i>
-                        </a>
-                    </div>
-                </div>
-            </aside>
+{% extends "base.html" %}
 
-            <main class="flex-1 ml-[280px] flex flex-col min-h-screen">
-                <header class="bg-white border-b border-slate-100 px-10 h-[88px] flex items-center justify-between sticky top-0 z-40">
-                    <div>
-                        <h1 class="text-[#0f2744] text-2xl font-bold">Directorio de Empleados</h1>
-                        <p class="text-slate-400 text-sm capitalize mt-0.5">lunes, 6 de abril de 2026</p>
-                    </div>
-                    <div class="flex items-center gap-4">
-                        <div class="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2">
-                            <div class="w-2 h-2 rounded-full bg-emerald-500"></div><span class="text-sm font-semibold text-emerald-700">9 Activos</span>
-                        </div>
-                        <div class="flex items-center gap-2 bg-slate-100 rounded-xl px-4 py-2">
-                            <span class="text-sm font-semibold text-slate-600">Total: 12</span>
-                        </div>
-                    </div>
-                </header>
-                
-                <div class="flex-1 px-10 py-8 space-y-6">
-                    <div class="flex flex-col lg:flex-row gap-4">
-                        <div class="flex-1 relative">
-                            <div class="absolute left-5 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-slate-400"><i class="ri-search-line text-xl"></i></div>
-                            <input placeholder="Buscar por nombre, ID ZKTeco, correo..." class="w-full h-16 pl-14 pr-5 rounded-2xl border border-slate-200 text-[#0f2744] text-base focus:outline-none focus:border-[#1e6fd9] transition-colors bg-white" type="text" value="">
-                        </div>
-                        <button class="h-16 px-8 rounded-2xl bg-[#0f2744] text-white text-base font-bold flex items-center justify-center gap-3 hover:bg-[#1a3a6b] transition-colors cursor-pointer whitespace-nowrap">
-                            <div class="w-6 h-6 flex items-center justify-center"><i class="ri-user-add-line text-xl"></i></div>Registrar Nuevo Empleado
-                        </button>
-                    </div>
-                    
-                    <div class="flex flex-wrap items-center gap-3">
-                        <div class="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1">
-                            <button class="px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer whitespace-nowrap bg-[#0f2744] text-white">Todos</button>
-                            <button class="px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer whitespace-nowrap text-slate-500 hover:text-[#0f2744] hover:bg-slate-50">Producción</button>
-                            <button class="px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer whitespace-nowrap text-slate-500 hover:text-[#0f2744] hover:bg-slate-50">Calidad</button>
-                            <button class="px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer whitespace-nowrap text-slate-500 hover:text-[#0f2744] hover:bg-slate-50">Mantenimiento</button>
-                            <button class="px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer whitespace-nowrap text-slate-500 hover:text-[#0f2744] hover:bg-slate-50">Logística</button>
-                            <button class="px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer whitespace-nowrap text-slate-500 hover:text-[#0f2744] hover:bg-slate-50">Seguridad</button>
-                            <button class="px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer whitespace-nowrap text-slate-500 hover:text-[#0f2744] hover:bg-slate-50">Ingeniería</button>
-                            <button class="px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer whitespace-nowrap text-slate-500 hover:text-[#0f2744] hover:bg-slate-50">Administración</button>
-                        </div>
-                        <div class="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1">
-                            <button class="px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer whitespace-nowrap bg-[#1e6fd9] text-white">Todos</button>
-                            <button class="px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer whitespace-nowrap text-slate-500 hover:text-[#0f2744] hover:bg-slate-50">Matutino</button>
-                            <button class="px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer whitespace-nowrap text-slate-500 hover:text-[#0f2744] hover:bg-slate-50">Vespertino</button>
-                            <button class="px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer whitespace-nowrap text-slate-500 hover:text-[#0f2744] hover:bg-slate-50">Nocturno</button>
-                            <button class="px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer whitespace-nowrap text-slate-500 hover:text-[#0f2744] hover:bg-slate-50">Mixto</button>
-                        </div>
-                        <div class="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1">
-                            <button class="px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer whitespace-nowrap bg-emerald-500 text-white">Todos</button>
-                            <button class="px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer whitespace-nowrap text-slate-500 hover:text-[#0f2744] hover:bg-slate-50">Activo</button>
-                            <button class="px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer whitespace-nowrap text-slate-500 hover:text-[#0f2744] hover:bg-slate-50">Inactivo</button>
-                            <button class="px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer whitespace-nowrap text-slate-500 hover:text-[#0f2744] hover:bg-slate-50">Vacaciones</button>
-                            <button class="px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer whitespace-nowrap text-slate-500 hover:text-[#0f2744] hover:bg-slate-50">Incapacidad</button>
-                        </div>
-                    </div>
-                    
-                    <div class="flex items-center justify-between">
-                        <p class="text-slate-400 text-sm">Mostrando <span class="text-[#0f2744] font-bold">12</span> empleados</p>
-                    </div>
-                    
-                    <div class="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-                        <div class="overflow-x-auto">
-                            <table class="w-full">
-                                <thead>
-                                    <tr class="bg-slate-50 border-b border-slate-100">
-                                        <th class="text-left px-6 py-5 text-xs font-bold text-slate-400 uppercase tracking-wider">Empleado</th>
-                                        <th class="text-left px-6 py-5 text-xs font-bold text-slate-400 uppercase tracking-wider">ID ZKTeco</th>
-                                        <th class="text-left px-6 py-5 text-xs font-bold text-slate-400 uppercase tracking-wider">Departamento</th>
-                                        <th class="text-left px-6 py-5 text-xs font-bold text-slate-400 uppercase tracking-wider">Turno</th>
-                                        <th class="text-left px-6 py-5 text-xs font-bold text-slate-400 uppercase tracking-wider">Estatus</th>
-                                        <th class="px-6 py-5 text-right"><span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Acciones</span></th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-slate-50">
-                                    
-                                    <tr class="transition-colors duration-200 ">
-                                        <td class="px-6 py-5">
-                                            <div class="flex items-center gap-4">
-                                                <div class="w-12 h-12 flex items-center justify-center rounded-full text-white font-bold text-sm shrink-0 bg-[#0f2744]">CM</div>
-                                                <div class="min-w-0"><p class="text-[#0f2744] font-bold text-base truncate">Carlos Mendoza López</p><p class="text-slate-400 text-sm truncate">Supervisor de Línea</p></div>
-                                            </div>
-                                        </td>
-                                        <td class="px-6 py-5"><div class="flex items-center gap-2"><div class="w-5 h-5 flex items-center justify-center text-slate-400"><i class="ri-fingerprint-line text-base"></i></div><span class="text-[#0f2744] font-mono font-semibold text-sm">ZK-2042</span></div></td>
-                                        <td class="px-6 py-5"><span class="inline-flex items-center px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#0f2744] text-white">Producción</span></td>
-                                        <td class="px-6 py-5"><div class="flex items-center gap-2"><div class="w-5 h-5 flex items-center justify-center text-amber-500"><i class="ri-sun-line text-base"></i></div><span class="text-[#0f2744] font-medium text-sm">Matutino</span></div></td>
-                                        <td class="px-6 py-5"><span class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700"><span class="w-2 h-2 rounded-full bg-emerald-500"></span><i class="ri-checkbox-circle-line text-sm"></i>Activo</span></td>
-                                        <td class="px-6 py-5">
-                                            <div class="flex items-center justify-end gap-2">
-                                                <button class="w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:bg-[#0f2744] hover:text-white transition-all duration-200 cursor-pointer" title="Editar Perfil"><i class="ri-edit-line text-lg"></i></button>
-                                                <button class="w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:bg-[#0f2744] hover:text-white transition-all duration-200 cursor-pointer" title="Ver Asistencias"><i class="ri-calendar-check-line text-lg"></i></button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    
-                                    <tr class="transition-colors duration-200 ">
-                                        <td class="px-6 py-5">
-                                            <div class="flex items-center gap-4">
-                                                <div class="w-12 h-12 flex items-center justify-center rounded-full text-white font-bold text-sm shrink-0 bg-[#1e6fd9]">LJ</div>
-                                                <div class="min-w-0"><p class="text-[#0f2744] font-bold text-base truncate">Laura Jiménez Herrera</p><p class="text-slate-400 text-sm truncate">Inspector de Calidad</p></div>
-                                            </div>
-                                        </td>
-                                        <td class="px-6 py-5"><div class="flex items-center gap-2"><div class="w-5 h-5 flex items-center justify-center text-slate-400"><i class="ri-fingerprint-line text-base"></i></div><span class="text-[#0f2744] font-mono font-semibold text-sm">ZK-1847</span></div></td>
-                                        <td class="px-6 py-5"><span class="inline-flex items-center px-3.5 py-1.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700">Calidad</span></td>
-                                        <td class="px-6 py-5"><div class="flex items-center gap-2"><div class="w-5 h-5 flex items-center justify-center text-amber-500"><i class="ri-sun-line text-base"></i></div><span class="text-[#0f2744] font-medium text-sm">Matutino</span></div></td>
-                                        <td class="px-6 py-5"><span class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700"><span class="w-2 h-2 rounded-full bg-emerald-500"></span><i class="ri-checkbox-circle-line text-sm"></i>Activo</span></td>
-                                        <td class="px-6 py-5">
-                                            <div class="flex items-center justify-end gap-2">
-                                                <button class="w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:bg-[#0f2744] hover:text-white transition-all duration-200 cursor-pointer" title="Editar Perfil"><i class="ri-edit-line text-lg"></i></button>
-                                                <button class="w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:bg-[#0f2744] hover:text-white transition-all duration-200 cursor-pointer" title="Ver Asistencias"><i class="ri-calendar-check-line text-lg"></i></button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    
-                                    <tr class="transition-colors duration-200 ">
-                                        <td class="px-6 py-5">
-                                            <div class="flex items-center gap-4">
-                                                <div class="w-12 h-12 flex items-center justify-center rounded-full text-white font-bold text-sm shrink-0 bg-emerald-600">RS</div>
-                                                <div class="min-w-0"><p class="text-[#0f2744] font-bold text-base truncate">Roberto Sánchez Torres</p><p class="text-slate-400 text-sm truncate">Técnico Mecánico</p></div>
-                                            </div>
-                                        </td>
-                                        <td class="px-6 py-5"><div class="flex items-center gap-2"><div class="w-5 h-5 flex items-center justify-center text-slate-400"><i class="ri-fingerprint-line text-base"></i></div><span class="text-[#0f2744] font-mono font-semibold text-sm">ZK-3156</span></div></td>
-                                        <td class="px-6 py-5"><span class="inline-flex items-center px-3.5 py-1.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700">Mantenimiento</span></td>
-                                        <td class="px-6 py-5"><div class="flex items-center gap-2"><div class="w-5 h-5 flex items-center justify-center text-orange-500"><i class="ri-sun-foggy-line text-base"></i></div><span class="text-[#0f2744] font-medium text-sm">Vespertino</span></div></td>
-                                        <td class="px-6 py-5"><span class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700"><span class="w-2 h-2 rounded-full bg-emerald-500"></span><i class="ri-checkbox-circle-line text-sm"></i>Activo</span></td>
-                                        <td class="px-6 py-5">
-                                            <div class="flex items-center justify-end gap-2">
-                                                <button class="w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:bg-[#0f2744] hover:text-white transition-all duration-200 cursor-pointer" title="Editar Perfil"><i class="ri-edit-line text-lg"></i></button>
-                                                <button class="w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:bg-[#0f2744] hover:text-white transition-all duration-200 cursor-pointer" title="Ver Asistencias"><i class="ri-calendar-check-line text-lg"></i></button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    
-                                    <tr class="transition-colors duration-200 ">
-                                        <td class="px-6 py-5">
-                                            <div class="flex items-center gap-4">
-                                                <div class="w-12 h-12 flex items-center justify-center rounded-full text-white font-bold text-sm shrink-0 bg-amber-600">AT</div>
-                                                <div class="min-w-0"><p class="text-[#0f2744] font-bold text-base truncate">Ana Torres García</p><p class="text-slate-400 text-sm truncate">Operador de Línea</p></div>
-                                            </div>
-                                        </td>
-                                        <td class="px-6 py-5"><div class="flex items-center gap-2"><div class="w-5 h-5 flex items-center justify-center text-slate-400"><i class="ri-fingerprint-line text-base"></i></div><span class="text-[#0f2744] font-mono font-semibold text-sm">ZK-2983</span></div></td>
-                                        <td class="px-6 py-5"><span class="inline-flex items-center px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#0f2744] text-white">Producción</span></td>
-                                        <td class="px-6 py-5"><div class="flex items-center gap-2"><div class="w-5 h-5 flex items-center justify-center text-indigo-500"><i class="ri-moon-line text-base"></i></div><span class="text-[#0f2744] font-medium text-sm">Nocturno</span></div></td>
-                                        <td class="px-6 py-5"><span class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700"><span class="w-2 h-2 rounded-full bg-amber-500"></span><i class="ri-sun-line text-sm"></i>Vacaciones</span></td>
-                                        <td class="px-6 py-5">
-                                            <div class="flex items-center justify-end gap-2">
-                                                <button class="w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:bg-[#0f2744] hover:text-white transition-all duration-200 cursor-pointer" title="Editar Perfil"><i class="ri-edit-line text-lg"></i></button>
-                                                <button class="w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:bg-[#0f2744] hover:text-white transition-all duration-200 cursor-pointer" title="Ver Asistencias"><i class="ri-calendar-check-line text-lg"></i></button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    
-                                    <tr class="transition-colors duration-200 ">
-                                        <td class="px-6 py-5">
-                                            <div class="flex items-center gap-4">
-                                                <div class="w-12 h-12 flex items-center justify-center rounded-full text-white font-bold text-sm shrink-0 bg-rose-600">MR</div>
-                                                <div class="min-w-0"><p class="text-[#0f2744] font-bold text-base truncate">Miguel Ángel Ruiz Castillo</p><p class="text-slate-400 text-sm truncate">Coordinador de Almacén</p></div>
-                                            </div>
-                                        </td>
-                                        <td class="px-6 py-5"><div class="flex items-center gap-2"><div class="w-5 h-5 flex items-center justify-center text-slate-400"><i class="ri-fingerprint-line text-base"></i></div><span class="text-[#0f2744] font-mono font-semibold text-sm">ZK-4521</span></div></td>
-                                        <td class="px-6 py-5"><span class="inline-flex items-center px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#1e6fd9]/15 text-[#1e6fd9]">Logística</span></td>
-                                        <td class="px-6 py-5"><div class="flex items-center gap-2"><div class="w-5 h-5 flex items-center justify-center text-amber-500"><i class="ri-sun-line text-base"></i></div><span class="text-[#0f2744] font-medium text-sm">Matutino</span></div></td>
-                                        <td class="px-6 py-5"><span class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700"><span class="w-2 h-2 rounded-full bg-emerald-500"></span><i class="ri-checkbox-circle-line text-sm"></i>Activo</span></td>
-                                        <td class="px-6 py-5">
-                                            <div class="flex items-center justify-end gap-2">
-                                                <button class="w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:bg-[#0f2744] hover:text-white transition-all duration-200 cursor-pointer" title="Editar Perfil"><i class="ri-edit-line text-lg"></i></button>
-                                                <button class="w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:bg-[#0f2744] hover:text-white transition-all duration-200 cursor-pointer" title="Ver Asistencias"><i class="ri-calendar-check-line text-lg"></i></button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    
-                                    <tr class="transition-colors duration-200 ">
-                                        <td class="px-6 py-5">
-                                            <div class="flex items-center gap-4">
-                                                <div class="w-12 h-12 flex items-center justify-center rounded-full text-white font-bold text-sm shrink-0 bg-violet-600">PF</div>
-                                                <div class="min-w-0"><p class="text-[#0f2744] font-bold text-base truncate">Patricia Flores Martínez</p><p class="text-slate-400 text-sm truncate">Analista de Laboratorio</p></div>
-                                            </div>
-                                        </td>
-                                        <td class="px-6 py-5"><div class="flex items-center gap-2"><div class="w-5 h-5 flex items-center justify-center text-slate-400"><i class="ri-fingerprint-line text-base"></i></div><span class="text-[#0f2744] font-mono font-semibold text-sm">ZK-3892</span></div></td>
-                                        <td class="px-6 py-5"><span class="inline-flex items-center px-3.5 py-1.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700">Calidad</span></td>
-                                        <td class="px-6 py-5"><div class="flex items-center gap-2"><div class="w-5 h-5 flex items-center justify-center text-orange-500"><i class="ri-sun-foggy-line text-base"></i></div><span class="text-[#0f2744] font-medium text-sm">Vespertino</span></div></td>
-                                        <td class="px-6 py-5"><span class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-rose-50 text-rose-600"><span class="w-2 h-2 rounded-full bg-rose-500"></span><i class="ri-close-circle-line text-sm"></i>Inactivo</span></td>
-                                        <td class="px-6 py-5">
-                                            <div class="flex items-center justify-end gap-2">
-                                                <button class="w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:bg-[#0f2744] hover:text-white transition-all duration-200 cursor-pointer" title="Editar Perfil"><i class="ri-edit-line text-lg"></i></button>
-                                                <button class="w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:bg-[#0f2744] hover:text-white transition-all duration-200 cursor-pointer" title="Ver Asistencias"><i class="ri-calendar-check-line text-lg"></i></button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    
-                                    <tr class="transition-colors duration-200 ">
-                                        <td class="px-6 py-5">
-                                            <div class="flex items-center gap-4">
-                                                <div class="w-12 h-12 flex items-center justify-center rounded-full text-white font-bold text-sm shrink-0 bg-cyan-600">JH</div>
-                                                <div class="min-w-0"><p class="text-[#0f2744] font-bold text-base truncate">Jorge Hernández Díaz</p><p class="text-slate-400 text-sm truncate">Operador Senior</p></div>
-                                            </div>
-                                        </td>
-                                        <td class="px-6 py-5"><div class="flex items-center gap-2"><div class="w-5 h-5 flex items-center justify-center text-slate-400"><i class="ri-fingerprint-line text-base"></i></div><span class="text-[#0f2744] font-mono font-semibold text-sm">ZK-5234</span></div></td>
-                                        <td class="px-6 py-5"><span class="inline-flex items-center px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#0f2744] text-white">Producción</span></td>
-                                        <td class="px-6 py-5"><div class="flex items-center gap-2"><div class="w-5 h-5 flex items-center justify-center text-amber-500"><i class="ri-sun-line text-base"></i></div><span class="text-[#0f2744] font-medium text-sm">Matutino</span></div></td>
-                                        <td class="px-6 py-5"><span class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700"><span class="w-2 h-2 rounded-full bg-emerald-500"></span><i class="ri-checkbox-circle-line text-sm"></i>Activo</span></td>
-                                        <td class="px-6 py-5">
-                                            <div class="flex items-center justify-end gap-2">
-                                                <button class="w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:bg-[#0f2744] hover:text-white transition-all duration-200 cursor-pointer" title="Editar Perfil"><i class="ri-edit-line text-lg"></i></button>
-                                                <button class="w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:bg-[#0f2744] hover:text-white transition-all duration-200 cursor-pointer" title="Ver Asistencias"><i class="ri-calendar-check-line text-lg"></i></button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    
-                                    <tr class="transition-colors duration-200 ">
-                                        <td class="px-6 py-5">
-                                            <div class="flex items-center gap-4">
-                                                <div class="w-12 h-12 flex items-center justify-center rounded-full text-white font-bold text-sm shrink-0 bg-indigo-600">SR</div>
-                                                <div class="min-w-0"><p class="text-[#0f2744] font-bold text-base truncate">Sofía Ramírez Vega</p><p class="text-slate-400 text-sm truncate">Oficial de Seguridad</p></div>
-                                            </div>
-                                        </td>
-                                        <td class="px-6 py-5"><div class="flex items-center gap-2"><div class="w-5 h-5 flex items-center justify-center text-slate-400"><i class="ri-fingerprint-line text-base"></i></div><span class="text-[#0f2744] font-mono font-semibold text-sm">ZK-1678</span></div></td>
-                                        <td class="px-6 py-5"><span class="inline-flex items-center px-3.5 py-1.5 rounded-full text-xs font-bold bg-rose-50 text-rose-600">Seguridad</span></td>
-                                        <td class="px-6 py-5"><div class="flex items-center gap-2"><div class="w-5 h-5 flex items-center justify-center text-cyan-500"><i class="ri-time-line text-base"></i></div><span class="text-[#0f2744] font-medium text-sm">Mixto</span></div></td>
-                                        <td class="px-6 py-5"><span class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700"><span class="w-2 h-2 rounded-full bg-emerald-500"></span><i class="ri-checkbox-circle-line text-sm"></i>Activo</span></td>
-                                        <td class="px-6 py-5">
-                                            <div class="flex items-center justify-end gap-2">
-                                                <button class="w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:bg-[#0f2744] hover:text-white transition-all duration-200 cursor-pointer" title="Editar Perfil"><i class="ri-edit-line text-lg"></i></button>
-                                                <button class="w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:bg-[#0f2744] hover:text-white transition-all duration-200 cursor-pointer" title="Ver Asistencias"><i class="ri-calendar-check-line text-lg"></i></button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    
-                                    <tr class="transition-colors duration-200 ">
-                                        <td class="px-6 py-5">
-                                            <div class="flex items-center gap-4">
-                                                <div class="w-12 h-12 flex items-center justify-center rounded-full text-white font-bold text-sm shrink-0 bg-[#0f2744]">FL</div>
-                                                <div class="min-w-0"><p class="text-[#0f2744] font-bold text-base truncate">Fernando López Ortiz</p><p class="text-slate-400 text-sm truncate">Ingeniero de Procesos</p></div>
-                                            </div>
-                                        </td>
-                                        <td class="px-6 py-5"><div class="flex items-center gap-2"><div class="w-5 h-5 flex items-center justify-center text-slate-400"><i class="ri-fingerprint-line text-base"></i></div><span class="text-[#0f2744] font-mono font-semibold text-sm">ZK-7834</span></div></td>
-                                        <td class="px-6 py-5"><span class="inline-flex items-center px-3.5 py-1.5 rounded-full text-xs font-bold bg-violet-50 text-violet-700">Ingeniería</span></td>
-                                        <td class="px-6 py-5"><div class="flex items-center gap-2"><div class="w-5 h-5 flex items-center justify-center text-amber-500"><i class="ri-sun-line text-base"></i></div><span class="text-[#0f2744] font-medium text-sm">Matutino</span></div></td>
-                                        <td class="px-6 py-5"><span class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700"><span class="w-2 h-2 rounded-full bg-emerald-500"></span><i class="ri-checkbox-circle-line text-sm"></i>Activo</span></td>
-                                        <td class="px-6 py-5">
-                                            <div class="flex items-center justify-end gap-2">
-                                                <button class="w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:bg-[#0f2744] hover:text-white transition-all duration-200 cursor-pointer" title="Editar Perfil"><i class="ri-edit-line text-lg"></i></button>
-                                                <button class="w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:bg-[#0f2744] hover:text-white transition-all duration-200 cursor-pointer" title="Ver Asistencias"><i class="ri-calendar-check-line text-lg"></i></button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    
-                                    <tr class="transition-colors duration-200 ">
-                                        <td class="px-6 py-5">
-                                            <div class="flex items-center gap-4">
-                                                <div class="w-12 h-12 flex items-center justify-center rounded-full text-white font-bold text-sm shrink-0 bg-[#0f2744]">MG</div>
-                                                <div class="min-w-0"><p class="text-[#0f2744] font-bold text-base truncate">María Elena Gutiérrez Silva</p><p class="text-slate-400 text-sm truncate">Coordinadora de RH</p></div>
-                                            </div>
-                                        </td>
-                                        <td class="px-6 py-5"><div class="flex items-center gap-2"><div class="w-5 h-5 flex items-center justify-center text-slate-400"><i class="ri-fingerprint-line text-base"></i></div><span class="text-[#0f2744] font-mono font-semibold text-sm">ZK-9456</span></div></td>
-                                        <td class="px-6 py-5"><span class="inline-flex items-center px-3.5 py-1.5 rounded-full text-xs font-bold bg-slate-100 text-slate-600">Administración</span></td>
-                                        <td class="px-6 py-5"><div class="flex items-center gap-2"><div class="w-5 h-5 flex items-center justify-center text-amber-500"><i class="ri-sun-line text-base"></i></div><span class="text-[#0f2744] font-medium text-sm">Matutino</span></div></td>
-                                        <td class="px-6 py-5"><span class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-slate-100 text-slate-500"><span class="w-2 h-2 rounded-full bg-slate-400"></span><i class="ri-hospital-line text-sm"></i>Incapacidad</span></td>
-                                        <td class="px-6 py-5">
-                                            <div class="flex items-center justify-end gap-2">
-                                                <button class="w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:bg-[#0f2744] hover:text-white transition-all duration-200 cursor-pointer" title="Editar Perfil"><i class="ri-edit-line text-lg"></i></button>
-                                                <button class="w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:bg-[#0f2744] hover:text-white transition-all duration-200 cursor-pointer" title="Ver Asistencias"><i class="ri-calendar-check-line text-lg"></i></button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    
-                                    <tr class="transition-colors duration-200 ">
-                                        <td class="px-6 py-5">
-                                            <div class="flex items-center gap-4">
-                                                <div class="w-12 h-12 flex items-center justify-center rounded-full text-white font-bold text-sm shrink-0 bg-[#1e6fd9]">AC</div>
-                                                <div class="min-w-0"><p class="text-[#0f2744] font-bold text-base truncate">Alejandro Castro Mendoza</p><p class="text-slate-400 text-sm truncate">Operador de Línea</p></div>
-                                            </div>
-                                        </td>
-                                        <td class="px-6 py-5"><div class="flex items-center gap-2"><div class="w-5 h-5 flex items-center justify-center text-slate-400"><i class="ri-fingerprint-line text-base"></i></div><span class="text-[#0f2744] font-mono font-semibold text-sm">ZK-3421</span></div></td>
-                                        <td class="px-6 py-5"><span class="inline-flex items-center px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#0f2744] text-white">Producción</span></td>
-                                        <td class="px-6 py-5"><div class="flex items-center gap-2"><div class="w-5 h-5 flex items-center justify-center text-indigo-500"><i class="ri-moon-line text-base"></i></div><span class="text-[#0f2744] font-medium text-sm">Nocturno</span></div></td>
-                                        <td class="px-6 py-5"><span class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700"><span class="w-2 h-2 rounded-full bg-emerald-500"></span><i class="ri-checkbox-circle-line text-sm"></i>Activo</span></td>
-                                        <td class="px-6 py-5">
-                                            <div class="flex items-center justify-end gap-2">
-                                                <button class="w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:bg-[#0f2744] hover:text-white transition-all duration-200 cursor-pointer" title="Editar Perfil"><i class="ri-edit-line text-lg"></i></button>
-                                                <button class="w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:bg-[#0f2744] hover:text-white transition-all duration-200 cursor-pointer" title="Ver Asistencias"><i class="ri-calendar-check-line text-lg"></i></button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    
-                                    <tr class="transition-colors duration-200 ">
-                                        <td class="px-6 py-5">
-                                            <div class="flex items-center gap-4">
-                                                <div class="w-12 h-12 flex items-center justify-center rounded-full text-white font-bold text-sm shrink-0 bg-emerald-600">DN</div>
-                                                <div class="min-w-0"><p class="text-[#0f2744] font-bold text-base truncate">Diana Navarro Reyes</p><p class="text-slate-400 text-sm truncate">Técnica Electricista</p></div>
-                                            </div>
-                                        </td>
-                                        <td class="px-6 py-5"><div class="flex items-center gap-2"><div class="w-5 h-5 flex items-center justify-center text-slate-400"><i class="ri-fingerprint-line text-base"></i></div><span class="text-[#0f2744] font-mono font-semibold text-sm">ZK-6789</span></div></td>
-                                        <td class="px-6 py-5"><span class="inline-flex items-center px-3.5 py-1.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700">Mantenimiento</span></td>
-                                        <td class="px-6 py-5"><div class="flex items-center gap-2"><div class="w-5 h-5 flex items-center justify-center text-orange-500"><i class="ri-sun-foggy-line text-base"></i></div><span class="text-[#0f2744] font-medium text-sm">Vespertino</span></div></td>
-                                        <td class="px-6 py-5"><span class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700"><span class="w-2 h-2 rounded-full bg-emerald-500"></span><i class="ri-checkbox-circle-line text-sm"></i>Activo</span></td>
-                                        <td class="px-6 py-5">
-                                            <div class="flex items-center justify-end gap-2">
-                                                <button class="w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:bg-[#0f2744] hover:text-white transition-all duration-200 cursor-pointer" title="Editar Perfil"><i class="ri-edit-line text-lg"></i></button>
-                                                <button class="w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:bg-[#0f2744] hover:text-white transition-all duration-200 cursor-pointer" title="Ver Asistencias"><i class="ri-calendar-check-line text-lg"></i></button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </main>
-        </div>
+{% block title %}Empleados | ERP Atisa{% endblock %}
+
+{% block page_title %}Directorio de Empleados{% endblock %}
+{% block page_subtitle %}Gestión de personal y plantilla activa{% endblock %}
+
+{% block header_actions %}
+<div class="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2">
+    <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+    <span class="text-sm font-semibold text-emerald-700">{{ empleados|length }} Activos</span>
+</div>
+<div class="flex items-center gap-2 bg-slate-100 rounded-xl px-4 py-2">
+    <span class="text-sm font-semibold text-slate-600">Total: {{ empleados|length }}</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col lg:flex-row gap-4">
+    <div class="flex-1 relative">
+        <div class="absolute left-5 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-slate-400"><i class="ri-search-line text-xl"></i></div>
+        <input placeholder="Buscar por nombre, ID, correo..." class="w-full h-16 pl-14 pr-5 rounded-2xl border border-slate-200 text-[#0f2744] text-base focus:outline-none focus:border-[#1e6fd9] transition-colors bg-white" type="text" value="">
     </div>
-</body>
-</html>
+    {% if session.get('rol') == 'admin' %}
+    <button onclick="document.getElementById('modal-crear-empleado').classList.remove('hidden')" class="h-16 px-8 rounded-2xl bg-[#0f2744] text-white text-base font-bold flex items-center justify-center gap-3 hover:bg-[#1a3a6b] transition-colors cursor-pointer whitespace-nowrap">
+        <div class="w-6 h-6 flex items-center justify-center"><i class="ri-user-add-line text-xl"></i></div>Registrar Nuevo Empleado
+    </button>
+    {% endif %}
+</div>
+
+<div class="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="w-full">
+            <thead>
+                <tr class="bg-slate-50 border-b border-slate-100">
+                    <th class="text-left px-6 py-5 text-xs font-bold text-slate-400 uppercase tracking-wider">Empleado</th>
+                    <th class="text-left px-6 py-5 text-xs font-bold text-slate-400 uppercase tracking-wider">No. Empleado</th>
+                    <th class="text-left px-6 py-5 text-xs font-bold text-slate-400 uppercase tracking-wider">Rol</th>
+                    <th class="text-left px-6 py-5 text-xs font-bold text-slate-400 uppercase tracking-wider">Estatus</th>
+                    <th class="px-6 py-5 text-right"><span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Acciones</span></th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-50">
+                {% for emp in empleados %}
+                {% set words = emp.nombre_completo.split() %}
+                {% set ini = (words[0][0] ~ (words[1][0] if words|length > 1 else ''))|upper %}
+                <tr class="transition-colors duration-200 hover:bg-slate-50/60">
+                    <td class="px-6 py-5">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 flex items-center justify-center rounded-full text-white font-bold text-sm shrink-0 bg-[#0f2744]">{{ ini }}</div>
+                            <div class="min-w-0">
+                                <p class="text-[#0f2744] font-bold text-base truncate">{{ emp.nombre_completo }}</p>
+                                <p class="text-slate-400 text-sm truncate">{{ emp.username }}</p>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-5"><span class="text-[#0f2744] font-mono font-semibold text-sm">{{ emp.numero_empleado }}</span></td>
+                    <td class="px-6 py-5"><span class="inline-flex items-center px-3.5 py-1.5 rounded-full text-xs font-bold {% if emp.rol == 'admin' %}bg-[#0f2744] text-white{% elif emp.rol == 'rh' %}bg-[#1e6fd9]/15 text-[#1e6fd9]{% else %}bg-emerald-50 text-emerald-700{% endif %}">{{ emp.rol|capitalize }}</span></td>
+                    <td class="px-6 py-5"><span class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold {% if emp.estatus %}bg-emerald-50 text-emerald-700{% else %}bg-slate-100 text-slate-400{% endif %}"><span class="w-2 h-2 rounded-full {% if emp.estatus %}bg-emerald-500{% else %}bg-slate-300{% endif %}"></span>{% if emp.estatus %}Activo{% else %}Inactivo{% endif %}</span></td>
+                    <td class="px-6 py-5">
+                        <div class="flex items-center justify-end gap-2">
+                            <button class="w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:bg-[#0f2744] hover:text-white transition-all duration-200 cursor-pointer" title="Ver Perfil"><i class="ri-eye-line text-lg"></i></button>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" class="px-6 py-10 text-center text-slate-400 font-medium">No hay empleados registrados.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if session.get('rol') == 'admin' %}
+<!-- Modal Crear Empleado -->
+<div id="modal-crear-empleado" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center px-4 py-10 overflow-y-auto">
+    <div class="bg-white rounded-3xl w-full max-w-lg shadow-2xl">
+        <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-3xl">
+            <h3 class="text-lg font-bold text-[#0f2744]">Registrar Nuevo Empleado</h3>
+            <button onclick="document.getElementById('modal-crear-empleado').classList.add('hidden')" class="text-slate-400 hover:text-slate-600">
+                <i class="ri-close-line text-2xl"></i>
+            </button>
+        </div>
+        <form action="{{ url_for('crear_empleado') }}" method="POST" class="p-6 space-y-4">
+            <div>
+                <label class="block text-slate-700 text-sm font-semibold mb-2">Número de Empleado</label>
+                <input type="text" name="numero_empleado" required placeholder="Ej. 0042" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-[#1e6fd9]">
+            </div>
+            <div>
+                <label class="block text-slate-700 text-sm font-semibold mb-2">Nombre Completo</label>
+                <input type="text" name="nombre_completo" required placeholder="Ej. Juan Pérez García" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-[#1e6fd9]">
+            </div>
+            <div>
+                <label class="block text-slate-700 text-sm font-semibold mb-2">Usuario</label>
+                <input type="text" name="username" required placeholder="Ej. jperez" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-[#1e6fd9]">
+            </div>
+            <div>
+                <label class="block text-slate-700 text-sm font-semibold mb-2">Contraseña</label>
+                <input type="password" name="password" required placeholder="Mínimo 6 caracteres" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-[#1e6fd9]">
+            </div>
+            <div>
+                <label class="block text-slate-700 text-sm font-semibold mb-2">Rol</label>
+                <select name="rol" required class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-[#1e6fd9]">
+                    <option value="operador">Operador</option>
+                    <option value="rh">RH / Supervisor</option>
+                    <option value="admin">Administrador</option>
+                </select>
+            </div>
+            <div class="flex gap-3 pt-2">
+                <button type="button" onclick="document.getElementById('modal-crear-empleado').classList.add('hidden')" class="flex-1 px-6 py-3 rounded-xl font-semibold text-slate-500 hover:bg-slate-100 transition-colors">Cancelar</button>
+                <button type="submit" class="flex-1 px-6 py-3 rounded-xl font-semibold text-white bg-[#1e6fd9] hover:bg-[#1a5bba] transition-colors shadow-md">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

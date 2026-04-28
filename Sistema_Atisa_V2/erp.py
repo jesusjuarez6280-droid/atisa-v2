@@ -306,7 +306,10 @@ def documentos():
 @login_required
 @requiere_rol('admin')
 def configuracion():
-    return render_template('configuracion.html')
+    conn = get_db_connection()
+    usuarios = conn.execute('SELECT * FROM usuarios ORDER BY numero_empleado ASC').fetchall()
+    conn.close()
+    return render_template('configuracion.html', usuarios=usuarios)
 
 if __name__ == '__main__':
     inicializar_bd()
