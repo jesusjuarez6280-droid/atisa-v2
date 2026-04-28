@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CARTA RESPONSIVA DE ASIGNACIÓN - ATISA</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="{{ url_for('static', filename='js/tailwind.js') }}"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        .hoja-impresion {
+            background: white; width: 21cm; min-height: 29.7cm;
+            margin: 2rem auto; padding: 3cm; box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        @media print {
+            body { background: white; margin: 0; padding: 0; }
+            .hoja-impresion { box-shadow: none; margin: 0; padding: 2cm; width: 100%; min-height: auto; }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body class="text-slate-800">
+
+    <div class="fixed top-5 right-5 flex gap-3 no-print">
+        <button onclick="window.close()" class="px-4 py-2 bg-slate-200 font-semibold rounded-lg hover:bg-slate-300">Cerrar</button>
+        <button onclick="window.print()" class="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 shadow-md">
+            🖨️ Imprimir Responsiva
+        </button>
+    </div>
+
+    <div class="hoja-impresion">
+        <div class="border-b-2 border-slate-800 pb-4 mb-8 flex justify-between items-end">
+            <div>
+                <h1 class="text-3xl font-extrabold uppercase tracking-tight text-slate-900">ATISA</h1>
+                <p class="text-xs font-semibold text-slate-500 tracking-widest mt-1">CARTA RESPONSIVA DE ASIGNACIÓN</p>
+            </div>
+            <div class="text-right">
+                <p class="text-sm font-bold text-slate-700">Folio de Asignación: #{{ datos.numero_empleado }}-{{ datos.fecha_prestamo[-8:] }}</p>
+                <p class="text-sm mt-1">Fecha: {{ datos.fecha_prestamo }}</p>
+            </div>
+        </div>
+
+        <div class="text-sm leading-relaxed space-y-6 text-justify">
+            <p>
+                Por medio de la presente, el (la) que suscribe, <strong>{{ datos.nombre_completo }}</strong>, con número de empleado <strong>{{ datos.numero_empleado }}</strong>, certifico que el día de hoy recibo de la empresa ATISA el siguiente activo, equipo y/o herramienta de trabajo para el desempeño de mis labores dentro de la planta:
+            </p>
+
+            <div class="bg-slate-50 border border-slate-300 p-4 rounded-lg my-6">
+                <p><strong>Categoría:</strong> <span class="uppercase">{{ datos.categoria }}</span></p>
+                <p class="mt-2"><strong>Descripción del Activo:</strong> {{ datos.descripcion }}</p>
+            </div>
+
+            <p>
+                Acepto y reconozco que el equipo descrito es propiedad exclusiva de la empresa y me es proporcionado únicamente para fines laborales. Asimismo, me comprometo a cumplir con los siguientes lineamientos:
+            </p>
+
+            <ul class="list-disc pl-6 space-y-2">
+                <li>Hacer uso adecuado y responsable del equipo, manteniéndolo en buenas condiciones de operación.</li>
+                <li>Reportar inmediatamente cualquier falla, avería o pérdida al departamento correspondiente.</li>
+                <li>No realizar modificaciones, alteraciones o reparaciones no autorizadas por la empresa.</li>
+                <li>Devolver el equipo íntegro en caso de término de la relación laboral, cambio de puesto o cuando la empresa lo requiera.</li>
+            </ul>
+
+            <p>
+                Estoy consciente de que, en caso de pérdida, robo por negligencia o daño intencional, la empresa se reserva el derecho de tomar las medidas administrativas correspondientes para el resarcimiento del daño, de acuerdo a las políticas internas vigentes.
+            </p>
+        </div>
+
+        <div class="mt-32 pt-8 flex justify-center">
+            <div class="w-80 border-t border-slate-800 pt-2 text-center">
+                <p class="font-bold text-slate-900 text-sm">{{ datos.nombre_completo }}</p>
+                <p class="text-xs text-slate-500 mt-1">Firma de Conformidad del Empleado</p>
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>

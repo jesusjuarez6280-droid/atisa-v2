@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ERP Atisa</title>
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/estilos.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/all.min.css') }}">
+    
+    <script src="{{ url_for('static', filename='js/tailwind.js') }}"></script>
+</head>
+<body>
+    <div class="flex min-h-screen bg-[#f0f3f9]" style="font-family: Inter, sans-serif;">
+        
+        <aside class="fixed left-0 top-0 h-screen w-[80px] lg:w-[280px] bg-[#0f2744] flex flex-col z-50 select-none transition-all">
+            <div class="flex items-center justify-center px-6 py-8 border-b border-white/10">
+                <img alt="Logo ERP" class="h-10 object-contain hidden lg:block" src="{{ url_for('static', filename='img_sistema/logo.png') }}">
+                <i class="ri-settings-4-fill text-white text-3xl lg:hidden"></i>
+            </div>
+            
+            <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+                <a href="/recetas" class="w-full flex items-center justify-center lg:justify-start gap-4 px-3 lg:px-5 py-4 rounded-xl text-left bg-rose-500/20 text-rose-400 hover:bg-rose-500 hover:text-white transition-colors cursor-pointer">
+                    <i class="ri-stop-circle-line text-2xl"></i>
+                    <span class="text-[17px] font-medium hidden lg:block">Abortar / Salir</span>
+                </a>
+            </nav>
+        </aside>
+
+        <main class="flex-1 ml-[80px] lg:ml-[280px] flex flex-col min-h-screen">
+            <header class="bg-white border-b border-slate-100 px-6 lg:px-10 h-[80px] flex items-center justify-between sticky top-0 z-40">
+                <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-2 bg-[#0f2744]/10 rounded-xl px-4 py-2 hidden sm:flex">
+                        <i class="ri-list-check-3 text-[#0f2744] text-base"></i>
+                        <span class="text-[#0f2744] text-sm font-bold">REC-0{{ receta.id }}</span>
+                    </div>
+                    <div>
+                        <h1 class="text-[#0f2744] text-lg font-bold leading-tight truncate max-w-[300px] lg:max-w-[480px]">{{ receta.nombre }}</h1>
+                        <p class="text-slate-400 text-xs mt-0.5">Operador: {{ session.get('nombre') }}</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button class="flex items-center gap-2 h-11 px-5 rounded-xl border-2 border-rose-200 text-rose-500 text-sm font-semibold hover:bg-rose-50 transition-colors whitespace-nowrap">
+                        <i class="ri-alarm-warning-line text-base"></i> <span class="hidden sm:inline">Reportar Problema</span>
+                    </button>
+                </div>
+            </header>
+
+            <div class="bg-white border-b border-slate-100 px-10 py-3">
+                <div class="flex items-center gap-4 mb-2.5">
+                    <span id="txt-progreso" class="text-xs font-semibold text-slate-400 whitespace-nowrap">Paso 1 / {{ total_pasos }}</span>
+                    <div class="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                        <div id="barra-progreso" class="h-full bg-[#0f2744] rounded-full transition-all duration-500" style="width: 0%;"></div>
+                    </div>
+                    <span id="txt-porcentaje" class="text-xs font-semibold text-[#0f2744] whitespace-nowrap">0%</span>
+                </div>
+            </div>
+
+            <div class="flex-1 flex items-start justify-center px-4 py-8 lg:px-8 lg:py-8">
+                <div class="w-full max-w-[900px] bg-white rounded-3xl overflow-hidden border border-slate-100 shadow-sm">
+                    
+                    <div class="relative w-full h-[250px] sm:h-[340px] bg-slate-900 overflow-hidden">
+                        <img id="paso-imagen" class="w-full h-full object-cover object-center opacity-80" src="">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+                        
+                        <div class="absolute top-5 left-5 flex items-center gap-2 bg-white/20 backdrop-blur-md border border-white/30 text-white text-sm font-bold px-4 py-2 rounded-xl">
+                            <i class="ri-footprint-line"></i> <span id="badge-paso">Paso 1</span>
+                        </div>
+                        <div class="absolute top-5 right-5 bg-emerald-500/90 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1">
+                            <div class="w-2 h-2 bg-white rounded-full animate-pulse"></div> En ejecución
+                        </div>
+                        
+                        <div class="absolute bottom-0 left-0 right-0 px-8 pb-6 pt-10">
+                            <h2 id="paso-instruccion" class="text-white text-2xl sm:text-3xl font-extrabold leading-tight drop-shadow-md">Cargando instrucción...</h2>
+                        </div>
+                    </div>
+
+                    <div class="px-6 py-8 sm:px-8">
+                        <div class="flex flex-col lg:flex-row items-center lg:items-start gap-8 mb-8">
+                            
+                            <div id="contenedor-timer" class="flex-shrink-0 bg-slate-50 rounded-2xl px-8 py-6 flex flex-col items-center border border-slate-100 hidden">
+                                <div class="flex flex-col items-center gap-5">
+                                    <p class="text-slate-400 text-xs font-semibold uppercase tracking-widest">Temporizador Requerido</p>
+                                    <div class="relative w-[140px] h-[140px]">
+                                        <svg class="w-full h-full -rotate-90" viewBox="0 0 130 130">
+                                            <circle cx="65" cy="65" r="54" fill="none" stroke="#e2e8f0" stroke-width="10"></circle>
+                                            <circle id="timer-circle" cx="65" cy="65" r="54" fill="none" stroke="#1e6fd9" stroke-width="10" stroke-linecap="round" stroke-dasharray="339.29" stroke-dashoffset="0" style="transition: stroke-dashoffset 1s linear, stroke 0.4s;"></circle>
+                                        </svg>
+                                        <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                            <span id="timer-text" class="text-[28px] font-bold leading-none tabular-nums text-[#1e6fd9]">00:00</span>
+                                            <span id="timer-status" class="text-slate-400 text-[11px] mt-1 font-medium uppercase">Listo</span>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-3">
+                                        <button onclick="resetTimer()" class="w-12 h-12 flex items-center justify-center rounded-xl border-2 border-slate-200 text-slate-400 hover:border-slate-300 hover:text-slate-600 transition-colors cursor-pointer" title="Reiniciar">
+                                            <i class="ri-restart-line text-xl"></i>
+                                        </button>
+                                        <button id="btn-toggle-timer" onclick="toggleTimer()" class="flex items-center gap-2 h-12 px-6 rounded-xl font-semibold text-sm transition-all cursor-pointer whitespace-nowrap bg-[#0f2744] text-white hover:bg-[#1a3a6b]">
+                                            <i class="ri-play-fill text-base"></i> <span>Iniciar</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div id="contenedor-no-timer" class="flex-shrink-0 bg-slate-50 rounded-2xl px-8 py-6 flex flex-col items-center border border-slate-100 justify-center w-full lg:w-auto h-[240px]">
+                                <i class="ri-checkbox-circle-fill text-emerald-500 text-5xl mb-3"></i>
+                                <h3 class="text-slate-700 font-bold text-lg">Paso de Ejecución Libre</h3>
+                                <p class="text-slate-400 text-sm text-center mt-1">Completa la tarea y avanza al siguiente paso cuando estés listo.</p>
+                            </div>
+
+                            <div class="flex-1 flex flex-col justify-center gap-3 w-full">
+                                <div class="flex items-center gap-3 bg-slate-50 border border-slate-100 rounded-xl px-5 py-4">
+                                    <div class="w-9 h-9 flex items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 shrink-0"><i class="ri-shield-check-line text-lg"></i></div>
+                                    <div><p class="text-xs text-slate-400 font-medium">Calidad</p><p class="text-[#0f2744] font-bold text-sm">Validación visual requerida</p></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3">
+                            <button id="btn-siguiente" onclick="siguientePaso()" class="w-full h-[88px] rounded-2xl text-white text-2xl font-extrabold flex items-center justify-center gap-4 transition-all duration-200 active:scale-[0.98] cursor-pointer whitespace-nowrap bg-[#1e6fd9] hover:bg-[#1558b3] shadow-lg shadow-blue-500/30">
+                                <span id="txt-btn-siguiente">Siguiente Paso</span>
+                                <div class="w-10 h-10 flex items-center justify-center rounded-xl bg-white/20"><i class="ri-arrow-right-line text-3xl"></i></div>
+                            </button>
+                            <div class="flex gap-3">
+                                <button id="btn-anterior" onclick="anteriorPaso()" disabled class="flex-1 h-16 flex items-center justify-center gap-2 rounded-xl border-2 border-slate-200 text-slate-500 text-base font-semibold hover:border-slate-300 hover:text-[#0f2744] transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
+                                    <i class="ri-arrow-left-line text-xl"></i> Paso Anterior
+                                </button>
+                            </div>
+                        </div>
+                        
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // AQUÍ ESTÁ LA LÍNEA CORREGIDA PARA QUE NO MARQUE ERROR EL EDITOR
+        const pasos = {{ pasos_json | safe }};
+        const totalPasos = {{ total_pasos }};
+        let pasoActual = 0; 
+
+        let timerInterval;
+        let tiempoRestante = 0;
+        let tiempoTotal = 0;
+        let isRunning = false;
+        const circle = document.getElementById('timer-circle');
+        const circumference = 54 * 2 * Math.PI;
+
+        window.onload = () => {
+            if(pasos.length > 0) {
+                cargarPaso(0);
+            }
+        };
+
+        function cargarPaso(index) {
+            pasoActual = index;
+            const pasoData = pasos[index];
+
+            document.getElementById('badge-paso').innerText = `Paso ${pasoData.numero_paso} de ${totalPasos}`;
+            document.getElementById('paso-instruccion').innerText = pasoData.instruccion;
+            document.getElementById('paso-imagen').src = pasoData.imagen_ruta;
+
+            const porcentaje = Math.round(((index + 1) / totalPasos) * 100);
+            document.getElementById('txt-progreso').innerText = `Paso ${index + 1} / ${totalPasos}`;
+            document.getElementById('barra-progreso').style.width = `${porcentaje}%`;
+            document.getElementById('txt-porcentaje').innerText = `${porcentaje}%`;
+
+            resetTimer(); 
+            if (pasoData.tiene_tiempo === 1 && pasoData.minutos > 0) {
+                document.getElementById('contenedor-timer').classList.remove('hidden');
+                document.getElementById('contenedor-no-timer').classList.add('hidden');
+                
+                tiempoTotal = pasoData.minutos * 60;
+                tiempoRestante = tiempoTotal;
+                actualizarVistaTimer();
+            } else {
+                document.getElementById('contenedor-timer').classList.add('hidden');
+                document.getElementById('contenedor-no-timer').classList.remove('hidden');
+            }
+
+            document.getElementById('btn-anterior').disabled = (index === 0);
+            
+            const btnSiguiente = document.getElementById('btn-siguiente');
+            if (index === totalPasos - 1) {
+                document.getElementById('txt-btn-siguiente').innerText = "Finalizar Producción";
+                btnSiguiente.classList.replace('bg-[#1e6fd9]', 'bg-emerald-500');
+                btnSiguiente.classList.replace('hover:bg-[#1558b3]', 'hover:bg-emerald-600');
+                btnSiguiente.classList.replace('shadow-blue-500/30', 'shadow-emerald-500/30');
+                btnSiguiente.querySelector('i').classList.replace('ri-arrow-right-line', 'ri-check-double-line');
+            } else {
+                document.getElementById('txt-btn-siguiente').innerText = "Siguiente Paso";
+                btnSiguiente.classList.replace('bg-emerald-500', 'bg-[#1e6fd9]');
+                btnSiguiente.classList.replace('hover:bg-emerald-600', 'hover:bg-[#1558b3]');
+                btnSiguiente.classList.replace('shadow-emerald-500/30', 'shadow-blue-500/30');
+                btnSiguiente.querySelector('i').classList.replace('ri-check-double-line', 'ri-arrow-right-line');
+            }
+        }
+
+        function siguientePaso() {
+            if (pasoActual < totalPasos - 1) {
+                cargarPaso(pasoActual + 1);
+            } else {
+                alert("¡Producción Finalizada con Éxito!");
+                window.location.href = "/recetas";
+            }
+        }
+
+        function anteriorPaso() {
+            if (pasoActual > 0) {
+                cargarPaso(pasoActual - 1);
+            }
+        }
+
+        function actualizarVistaTimer() {
+            const min = Math.floor(tiempoRestante / 60).toString().padStart(2, '0');
+            const sec = (tiempoRestante % 60).toString().padStart(2, '0');
+            document.getElementById('timer-text').innerText = `${min}:${sec}`;
+
+            const offset = circumference - (tiempoRestante / tiempoTotal) * circumference;
+            circle.style.strokeDashoffset = offset;
+            
+            if(tiempoRestante < (tiempoTotal * 0.2) && tiempoRestante > 0) {
+                circle.style.stroke = "#f43f5e"; 
+                document.getElementById('timer-text').style.color = "#f43f5e";
+            } else {
+                circle.style.stroke = "#1e6fd9"; 
+                document.getElementById('timer-text').style.color = "#1e6fd9";
+            }
+        }
+
+        function toggleTimer() {
+            const btn = document.getElementById('btn-toggle-timer');
+            const status = document.getElementById('timer-status');
+            
+            if (isRunning) {
+                clearInterval(timerInterval);
+                isRunning = false;
+                btn.innerHTML = '<i class="ri-play-fill text-base"></i> <span>Reanudar</span>';
+                btn.classList.replace('bg-amber-500', 'bg-[#0f2744]');
+                status.innerText = "Pausado";
+            } else {
+                if(tiempoRestante === 0) return; 
+                
+                isRunning = true;
+                btn.innerHTML = '<i class="ri-pause-fill text-base"></i> <span>Pausar</span>';
+                btn.classList.replace('bg-[#0f2744]', 'bg-amber-500');
+                status.innerText = "Corriendo";
+
+                timerInterval = setInterval(() => {
+                    tiempoRestante--;
+                    actualizarVistaTimer();
+
+                    if (tiempoRestante <= 0) {
+                        clearInterval(timerInterval);
+                        isRunning = false;
+                        btn.innerHTML = '<i class="ri-check-line text-base"></i> <span>Completado</span>';
+                        btn.classList.replace('bg-amber-500', 'bg-emerald-500');
+                        status.innerText = "¡Tiempo terminado!";
+                    }
+                }, 1000);
+            }
+        }
+
+        function resetTimer() {
+            clearInterval(timerInterval);
+            isRunning = false;
+            
+            const btn = document.getElementById('btn-toggle-timer');
+            btn.innerHTML = '<i class="ri-play-fill text-base"></i> <span>Iniciar</span>';
+            btn.className = 'flex items-center gap-2 h-12 px-6 rounded-xl font-semibold text-sm transition-all cursor-pointer whitespace-nowrap bg-[#0f2744] text-white hover:bg-[#1a3a6b]';
+            document.getElementById('timer-status').innerText = "Listo";
+            
+            if(pasos[pasoActual] && pasos[pasoActual].tiene_tiempo === 1) {
+                tiempoTotal = pasos[pasoActual].minutos * 60;
+                tiempoRestante = tiempoTotal;
+                actualizarVistaTimer();
+            }
+        }
+    </script>
+</body>
+</html>

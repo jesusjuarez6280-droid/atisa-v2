@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reportes | ERP Atisa</title>
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/estilos.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/all.min.css') }}">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
+    <script src="{{ url_for('static', filename='js/tailwind.js') }}"></script>
+</head>
+<body>
+    <div id="root">
+        <div class="flex min-h-screen bg-[#f4f6fb]" style="font-family: Inter, sans-serif;">
+            
+            <aside class="fixed left-0 top-0 h-screen w-[280px] bg-[#0f2744] flex flex-col z-50 select-none">
+                <div class="flex items-center justify-center px-6 py-8 border-b border-white/10">
+                    <img alt="Logo ERP Industrial" class="h-12 object-contain" src="{{ url_for('static', filename='img_sistema/logo.png') }}">
+                </div>
+                
+                <nav class="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+                    <a href="/dashboard" class="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer whitespace-nowrap text-white/60 hover:bg-white/8 hover:text-white/90 border-l-4 border-transparent">
+                        <div class="w-6 h-6 flex items-center justify-center"><i class="ri-dashboard-3-line text-xl"></i></div>
+                        <span class="text-[17px] font-medium">Dashboard</span>
+                    </a>
+                    <a href="/recetas" class="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer whitespace-nowrap text-white/60 hover:bg-white/8 hover:text-white/90 border-l-4 border-transparent">
+                        <div class="w-6 h-6 flex items-center justify-center"><i class="ri-list-check-3 text-xl"></i></div>
+                        <span class="text-[17px] font-medium">Recetas</span>
+                    </a>
+                    <a href="/empleados" class="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer whitespace-nowrap text-white/60 hover:bg-white/8 hover:text-white/90 border-l-4 border-transparent">
+                        <div class="w-6 h-6 flex items-center justify-center"><i class="ri-group-line text-xl"></i></div>
+                        <span class="text-[17px] font-medium">Empleados</span>
+                    </a>
+                    <a href="/documentos" class="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer whitespace-nowrap text-white/60 hover:bg-white/8 hover:text-white/90 border-l-4 border-transparent">
+                        <div class="w-6 h-6 flex items-center justify-center"><i class="ri-folder-open-line text-xl"></i></div>
+                        <span class="text-[17px] font-medium">Documentos</span>
+                    </a>
+                    <a href="/reportes" class="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer whitespace-nowrap bg-[#1e6fd9]/30 text-white border-l-4 border-[#3b9eff]">
+                        <div class="w-6 h-6 flex items-center justify-center"><i class="ri-bar-chart-2-line text-xl"></i></div>
+                        <span class="text-[17px] font-medium">Reportes</span>
+                    </a>
+                    <a href="/activos" class="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer whitespace-nowrap text-white/60 hover:bg-white/8 hover:text-white/90 border-l-4 border-transparent">
+                        <div class="w-6 h-6 flex items-center justify-center"><i class="ri-shield-check-line text-xl"></i></div>
+                        <span class="text-[17px] font-medium">Activos y EPP</span>
+                    </a>
+                    <a href="/gasolina" class="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer whitespace-nowrap text-white/60 hover:bg-white/8 hover:text-white/90 border-l-4 border-transparent">
+                        <div class="w-6 h-6 flex items-center justify-center"><i class="ri-gas-station-fill text-xl"></i></div>
+                        <span class="text-[17px] font-medium">Tarjeta Gasolina</span>
+                    </a>
+                    <a href="/configuracion" class="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer whitespace-nowrap text-white/60 hover:bg-white/8 hover:text-white/90 border-l-4 border-transparent">
+                        <div class="w-6 h-6 flex items-center justify-center"><i class="ri-settings-4-line text-xl"></i></div>
+                        <span class="text-[17px] font-medium">Configuración</span>
+                    </a>
+                </nav>
+                
+                <div class="px-4 py-5 border-t border-white/10">
+                    <div class="flex items-center gap-3 px-3 py-3 rounded-xl bg-white/5">
+                        <div class="w-10 h-10 flex items-center justify-center rounded-full bg-[#1e6fd9] text-white font-bold text-sm shrink-0"><i class="ri-user-fill"></i></div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-white text-sm font-semibold truncate">{{ session.get('nombre') }}</p>
+                            <p class="text-white/50 text-xs truncate uppercase">{{ session.get('rol') }}</p>
+                        </div>
+                        <a href="/logout" class="w-8 h-8 flex items-center justify-center text-white/40 hover:text-rose-400 transition-colors cursor-pointer" title="Cerrar sesión">
+                            <i class="ri-logout-box-r-line text-lg"></i>
+                        </a>
+                    </div>
+                </div>
+            </aside>
+
+            <main class="flex-1 ml-[280px] flex flex-col min-h-screen">
+                <header class="bg-white border-b border-slate-100 px-10 h-[88px] flex items-center justify-between sticky top-0 z-40">
+                    <div>
+                        <h1 class="text-[#0f2744] text-2xl font-bold">Reportes y Asistencias</h1>
+                        <p class="text-slate-400 text-sm mt-0.5">Indicadores de planta y control de personal</p>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center bg-slate-100 rounded-xl p-1">
+                            <button class="px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer whitespace-nowrap text-slate-400 hover:text-slate-600">Hoy</button>
+                            <button class="px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer whitespace-nowrap bg-white text-[#0f2744] shadow-sm">Esta semana</button>
+                            <button class="px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer whitespace-nowrap text-slate-400 hover:text-slate-600">Este mes</button>
+                        </div>
+                        <button class="flex items-center gap-2 h-11 px-5 rounded-xl bg-[#0f2744] text-white text-sm font-semibold hover:bg-[#1a3a6b] transition-colors cursor-pointer whitespace-nowrap">
+                            <i class="ri-download-2-line text-base"></i> Exportar PDF
+                        </button>
+                    </div>
+                </header>
+
+                <div class="flex-1 px-10 py-8 space-y-8">
+                    <section>
+                        <h2 class="text-[#0f2744] text-lg font-semibold mb-5">Indicadores Clave — Esta semana</h2>
+                        <div class="grid grid-cols-2 xl:grid-cols-4 gap-5">
+                            <div class="bg-white rounded-2xl p-6 border border-slate-100 flex items-start gap-4 shadow-sm">
+                                <div class="w-12 h-12 flex items-center justify-center rounded-xl shrink-0 text-emerald-600 bg-emerald-50"><i class="ri-speed-up-line text-xl"></i></div>
+                                <div class="flex-1 min-w-0"><p class="text-slate-400 text-sm font-medium">Eficiencia Global</p><p class="text-[#0f2744] text-2xl font-bold mt-0.5">93.2%</p><div class="flex items-center gap-1 mt-1"><i class="ri-arrow-up-s-line text-emerald-500 text-base"></i><span class="text-xs font-medium text-emerald-600">+1.4%</span></div></div>
+                            </div>
+                            <div class="bg-white rounded-2xl p-6 border border-slate-100 flex items-start gap-4 shadow-sm">
+                                <div class="w-12 h-12 flex items-center justify-center rounded-xl shrink-0 text-cyan-600 bg-cyan-50"><i class="ri-box-3-line text-xl"></i></div>
+                                <div class="flex-1 min-w-0"><p class="text-slate-400 text-sm font-medium">Unidades Producidas</p><p class="text-[#0f2744] text-2xl font-bold mt-0.5">6,625</p><div class="flex items-center gap-1 mt-1"><i class="ri-arrow-up-s-line text-emerald-500 text-base"></i><span class="text-xs font-medium text-emerald-600">+8.3%</span></div></div>
+                            </div>
+                            <div class="bg-white rounded-2xl p-6 border border-slate-100 flex items-start gap-4 shadow-sm">
+                                <div class="w-12 h-12 flex items-center justify-center rounded-xl shrink-0 text-amber-600 bg-amber-50"><i class="ri-time-line text-xl"></i></div>
+                                <div class="flex-1 min-w-0"><p class="text-slate-400 text-sm font-medium">Tiempo de Paro</p><p class="text-[#0f2744] text-2xl font-bold mt-0.5">2h 18m</p><div class="flex items-center gap-1 mt-1"><i class="ri-arrow-down-s-line text-rose-500 text-base"></i><span class="text-xs font-medium text-rose-600">-22%</span></div></div>
+                            </div>
+                            <div class="bg-white rounded-2xl p-6 border border-slate-100 flex items-start gap-4 shadow-sm">
+                                <div class="w-12 h-12 flex items-center justify-center rounded-xl shrink-0 text-slate-600 bg-slate-100"><i class="ri-shield-check-line text-xl"></i></div>
+                                <div class="flex-1 min-w-0"><p class="text-slate-400 text-sm font-medium">Alertas Resueltas</p><p class="text-[#0f2744] text-2xl font-bold mt-0.5">11/14</p><div class="flex items-center gap-1 mt-1"><i class="ri-arrow-up-s-line text-emerald-500 text-base"></i><span class="text-xs font-medium text-emerald-600">78% res.</span></div></div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                        <div class="xl:col-span-2">
+                            <div class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
+                                <div class="flex items-center justify-between mb-6">
+                                    <div><h3 class="text-[#0f2744] text-base font-semibold">Producción Semanal</h3><p class="text-slate-400 text-sm mt-0.5">Unidades producidas vs meta diaria</p></div>
+                                    <div class="flex items-center gap-4 text-xs font-medium"><span class="flex items-center gap-1.5 text-slate-500"><span class="w-3 h-3 rounded-sm bg-[#1e6fd9] inline-block"></span>Producción</span><span class="flex items-center gap-1.5 text-slate-400"><span class="w-3 h-3 rounded-sm bg-slate-200 inline-block"></span>Meta</span></div>
+                                </div>
+                                <div class="flex items-end gap-3 h-48">
+                                    <div class="flex-1 flex flex-col items-center gap-1"><div class="w-full flex items-end gap-1 h-40 relative"><div class="flex-1 rounded-t-md bg-slate-100" style="height: 85%;"></div><div class="flex-1 rounded-t-md transition-all bg-[#1e6fd9]" style="height: 80%;"></div></div><span class="text-slate-500 text-xs font-medium">Lun</span></div>
+                                    <div class="flex-1 flex flex-col items-center gap-1"><div class="w-full flex items-end gap-1 h-40 relative"><div class="flex-1 rounded-t-md bg-slate-100" style="height: 85%;"></div><div class="flex-1 rounded-t-md transition-all bg-emerald-500" style="height: 95%;"></div></div><span class="text-slate-500 text-xs font-medium">Mar</span></div>
+                                    <div class="flex-1 flex flex-col items-center gap-1"><div class="w-full flex items-end gap-1 h-40 relative"><div class="flex-1 rounded-t-md bg-slate-100" style="height: 85%;"></div><div class="flex-1 rounded-t-md transition-all bg-[#1e6fd9]" style="height: 84%;"></div></div><span class="text-slate-500 text-xs font-medium">Mié</span></div>
+                                    <div class="flex-1 flex flex-col items-center gap-1"><div class="w-full flex items-end gap-1 h-40 relative"><div class="flex-1 rounded-t-md bg-slate-100" style="height: 85%;"></div><div class="flex-1 rounded-t-md transition-all bg-emerald-500" style="height: 88%;"></div></div><span class="text-slate-500 text-xs font-medium">Jue</span></div>
+                                    <div class="flex-1 flex flex-col items-center gap-1"><div class="w-full flex items-end gap-1 h-40 relative"><div class="flex-1 rounded-t-md bg-slate-100" style="height: 85%;"></div><div class="flex-1 rounded-t-md transition-all bg-[#1e6fd9]" style="height: 70%;"></div></div><span class="text-slate-500 text-xs font-medium">Vie</span></div>
+                                    <div class="flex-1 flex flex-col items-center gap-1"><div class="w-full flex items-end gap-1 h-40 relative"><div class="flex-1 rounded-t-md bg-slate-100" style="height: 64%;"></div><div class="flex-1 rounded-t-md transition-all bg-[#1e6fd9]" style="height: 54%;"></div></div><span class="text-slate-500 text-xs font-medium">Sáb</span></div>
+                                    <div class="flex-1 flex flex-col items-center gap-1"><div class="w-full flex items-end gap-1 h-40 relative"><div class="flex-1 flex items-end justify-center pb-1"><span class="text-slate-300 text-xs">—</span></div></div><span class="text-slate-500 text-xs font-medium">Dom</span></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="xl:col-span-1">
+                            <div class="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
+                                <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between"><h3 class="text-[#0f2744] text-base font-semibold">Alertas del Turno</h3><span class="flex items-center gap-1.5 text-rose-600 text-sm font-medium bg-rose-50 px-3 py-1 rounded-lg"><i class="ri-alarm-warning-line text-base"></i>2 críticas</span></div>
+                                <div class="divide-y divide-slate-50 overflow-y-auto max-h-[300px]">
+                                    <div class="px-6 py-4 flex items-start gap-4 hover:bg-slate-50/60 transition-colors"><div class="flex flex-col items-center gap-1 shrink-0 pt-0.5"><span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700">Crítica</span><span class="text-slate-300 text-[11px]">08:14</span></div><div class="flex-1 min-w-0"><p class="text-[#0f2744] text-sm font-semibold leading-snug">Temperatura fuera de rango en Línea 3</p><p class="text-slate-400 text-xs mt-1"><i class="ri-user-line mr-1"></i>Roberto Sánchez</p></div></div>
+                                    <div class="px-6 py-4 flex items-start gap-4 hover:bg-slate-50/60 transition-colors"><div class="flex flex-col items-center gap-1 shrink-0 pt-0.5"><span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700">Crítica</span><span class="text-slate-300 text-[11px]">09:32</span></div><div class="flex-1 min-w-0"><p class="text-[#0f2744] text-sm font-semibold leading-snug">Falla sensor presión — Compresor B</p><p class="text-slate-400 text-xs mt-1"><i class="ri-user-line mr-1"></i>Jorge Hernández</p></div></div>
+                                    <div class="px-6 py-4 flex items-start gap-4 hover:bg-slate-50/60 transition-colors"><div class="flex flex-col items-center gap-1 shrink-0 pt-0.5"><span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Aviso</span><span class="text-slate-300 text-[11px]">10:05</span></div><div class="flex-1 min-w-0"><p class="text-[#0f2744] text-sm font-semibold leading-snug">Stock materia prima al 15%</p><p class="text-slate-400 text-xs mt-1"><i class="ri-user-line mr-1"></i>Miguel Ángel Ruiz</p></div></div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section>
+                        <div class="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
+                            <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between"><h3 class="text-[#0f2744] text-base font-semibold">Rendimiento por Departamento</h3></div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full">
+                                    <thead>
+                                        <tr class="bg-slate-50 border-b border-slate-100"><th class="text-left px-6 py-3.5 text-slate-400 text-xs font-semibold uppercase tracking-wider">Departamento</th><th class="text-center px-4 py-3.5 text-slate-400 text-xs font-semibold uppercase tracking-wider">Empleados</th><th class="text-center px-4 py-3.5 text-slate-400 text-xs font-semibold uppercase tracking-wider">Eficiencia</th><th class="text-center px-4 py-3.5 text-slate-400 text-xs font-semibold uppercase tracking-wider">Tareas</th><th class="text-center px-4 py-3.5 text-slate-400 text-xs font-semibold uppercase tracking-wider">Alertas</th></tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-50">
+                                        <tr class="hover:bg-slate-50/60 transition-colors"><td class="px-6 py-4"><span class="text-[#0f2744] text-sm font-semibold">Producción</span></td><td class="px-4 py-4 text-center"><span class="text-slate-600 text-sm font-medium">34</span></td><td class="px-4 py-4 text-center"><div class="flex flex-col items-center gap-1.5"><span class="text-xs font-bold px-2.5 py-1 rounded-full text-amber-600 bg-amber-50">94%</span><div class="w-20 h-1.5 bg-slate-100 rounded-full overflow-hidden"><div class="h-full rounded-full bg-amber-500" style="width: 94%;"></div></div></div></td><td class="px-4 py-4 text-center"><span class="text-slate-600 text-sm font-medium">18</span></td><td class="px-4 py-4 text-center"><span class="text-rose-600 bg-rose-50 text-xs font-bold px-2.5 py-1 rounded-full">1</span></td></tr>
+                                        <tr class="hover:bg-slate-50/60 transition-colors"><td class="px-6 py-4"><span class="text-[#0f2744] text-sm font-semibold">Calidad</span></td><td class="px-4 py-4 text-center"><span class="text-slate-600 text-sm font-medium">12</span></td><td class="px-4 py-4 text-center"><div class="flex flex-col items-center gap-1.5"><span class="text-xs font-bold px-2.5 py-1 rounded-full text-emerald-600 bg-emerald-50">98%</span><div class="w-20 h-1.5 bg-slate-100 rounded-full overflow-hidden"><div class="h-full rounded-full bg-emerald-500" style="width: 98%;"></div></div></div></td><td class="px-4 py-4 text-center"><span class="text-slate-600 text-sm font-medium">7</span></td><td class="px-4 py-4 text-center"><span class="text-emerald-600 bg-emerald-50 text-xs font-bold px-2.5 py-1 rounded-full">0</span></td></tr>
+                                        <tr class="hover:bg-slate-50/60 transition-colors"><td class="px-6 py-4"><span class="text-[#0f2744] text-sm font-semibold">Mantenimiento</span></td><td class="px-4 py-4 text-center"><span class="text-slate-600 text-sm font-medium">8</span></td><td class="px-4 py-4 text-center"><div class="flex flex-col items-center gap-1.5"><span class="text-xs font-bold px-2.5 py-1 rounded-full text-rose-600 bg-rose-50">87%</span><div class="w-20 h-1.5 bg-slate-100 rounded-full overflow-hidden"><div class="h-full rounded-full bg-rose-500" style="width: 87%;"></div></div></div></td><td class="px-4 py-4 text-center"><span class="text-slate-600 text-sm font-medium">5</span></td><td class="px-4 py-4 text-center"><span class="text-rose-600 bg-rose-50 text-xs font-bold px-2.5 py-1 rounded-full">2</span></td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section>
+                        <div class="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm mb-6">
+                            <div class="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                                <h3 class="text-[#0f2744] text-base font-semibold">Control de Asistencias y Horas Extras</h3>
+                                <a href="/exportar_asistencias" class="flex items-center gap-2 h-9 px-4 rounded-lg border-2 border-emerald-200 text-emerald-600 text-xs font-semibold hover:bg-emerald-50 transition-colors cursor-pointer whitespace-nowrap">
+                                    <i class="ri-file-excel-2-line text-sm"></i> Bajar Excel Crudo
+                                </a>
+                            </div>
+                            
+                            <div class="p-0 overflow-x-auto">
+                                <table class="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr class="bg-slate-50/50 border-b border-slate-100 text-xs uppercase tracking-wider text-slate-500">
+                                            <th class="px-6 py-4 font-semibold">ID / Empleado</th>
+                                            <th class="px-6 py-4 font-semibold text-center">Días Asistidos</th>
+                                            <th class="px-6 py-4 font-semibold text-center">Horas Regulares</th>
+                                            <th class="px-6 py-4 font-semibold text-center text-rose-600">Horas Extras</th>
+                                            <th class="px-6 py-4 font-semibold text-right">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% if reportes_asistencia %}
+                                            {% for reporte in reportes_asistencia %}
+                                            <tr class="border-b border-slate-50 hover:bg-slate-50/60 transition-colors">
+                                                <td class="px-6 py-4">
+                                                    <div class="flex items-center gap-3">
+                                                        <div class="w-10 h-10 rounded-full bg-[#1e6fd9]/10 text-[#1e6fd9] flex items-center justify-center font-bold text-xs">{{ reporte.iniciales }}</div>
+                                                        <div>
+                                                            <p class="text-sm font-bold text-[#0f2744]">{{ reporte.nombre_completo }}</p>
+                                                            <p class="text-xs text-slate-400">EMP-{{ reporte.numero_empleado }}</p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td class="px-6 py-4 text-center text-sm font-medium text-slate-700">{{ reporte.dias_trabajados }}</td>
+                                                <td class="px-6 py-4 text-center text-sm font-medium text-emerald-600">{{ reporte.horas_regulares }} hrs</td>
+                                                <td class="px-6 py-4 text-center text-sm font-bold text-rose-500">{{ reporte.horas_extras }} hrs</td>
+                                                <td class="px-6 py-4 text-right">
+                                                    <a href="/imprimir_acuse/{{ reporte.numero_empleado }}" target="_blank" class="inline-flex items-center gap-2 bg-[#0f2744] text-white px-4 py-2 rounded-lg text-xs font-semibold hover:bg-[#1a3a6b] transition-colors shadow-sm">
+                                                        <i class="ri-printer-line"></i> Hoja de Firmas
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        {% else %}
+                                            <tr>
+                                                <td colspan="5" class="px-6 py-10 text-center">
+                                                    <i class="ri-file-search-line text-4xl text-slate-300 mb-3 block"></i>
+                                                    <p class="text-slate-500 font-medium text-sm">Aún no hay registros de asistencia procesados para mostrar.</p>
+                                                </td>
+                                            </tr>
+                                        {% endif %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </main>
+        </div>
+    </div>
+</body>
+</html>
