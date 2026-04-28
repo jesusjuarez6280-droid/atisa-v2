@@ -311,6 +311,139 @@ def configuracion():
     conn.close()
     return render_template('configuracion.html', usuarios=usuarios)
 
+@app.route('/guardar_gasolina', methods=['POST'])
+@login_required
+def guardar_gasolina():
+    no_estacion = request.form.get('no_estacion')
+    monto = request.form.get('monto')
+    nombre_empleado = session.get('nombre')
+    conn = get_db_connection()
+    conn.execute(
+        'INSERT INTO bitacora_gasolina (nombre_empleado, no_estacion, monto) VALUES (?, ?, ?)',
+        (nombre_empleado, no_estacion, float(monto))
+    )
+    conn.commit()
+    conn.close()
+    return redirect(url_for('gasolina'))
+
+@app.route('/crear_activo', methods=['POST'])
+@login_required
+@requiere_rol('rh')
+def crear_activo():
+    categoria = request.form.get('categoria')
+    descripcion = request.form.get('descripcion')
+    conn = get_db_connection()
+    conn.execute('INSERT INTO inventario_activos (categoria, descripcion) VALUES (?, ?)', (categoria, descripcion))
+    conn.commit()
+    conn.close()
+    return redirect(url_for('activos'))
+
+@app.route('/asignar_activo', methods=['POST'])
+@login_required
+@requiere_rol('rh')
+def asignar_activo():
+    numero_empleado = request.form.get('numero_empleado')
+    activo_id = request.form.get('activo_id')
+    conn = get_db_connection()
+    conn.execute(
+        'INSERT INTO asignaciones_activos (numero_empleado, activo_id) VALUES (?, ?)',
+        (numero_empleado, activo_id)
+    )
+    conn.execute('UPDATE inventario_activos SET estatus = ? WHERE id = ?', ('Asignado', activo_id))
+    conn.commit()
+    conn.close()
+    return redirect(url_for('activos'))
+
+@app.route('/subir_contrato_activo/<int:asig_id>', methods=['POST'])
+@login_required
+@requiere_rol('rh')
+def subir_contrato_activo(asig_id):
+    archivo = request.files.get('contrato_firmado')
+    if archivo and archivo.filename:
+        filename = secure_filename(archivo.filename)
+        ruta_fisica = os.path.join(app.config['UPLOAD_CONTRATOS'], filename)
+        archivo.save(ruta_fisica)
+        ruta_relativa = f"contratos/{filename}"
+        conn = get_db_connection()
+        conn.execute('UPDATE asignaciones_activos SET ruta_contrato = ? WHERE id = ?', (ruta_relativa, asig_id))
+        conn.commit()
+        conn.close()
+    return redirect(url_for('activos'))
+
+@app.route('/imprimir_responsiva/<int:asig_id>')
+@login_required
+def imprimir_responsiva(asig_id):
+    conn = get_db_connection()
+    asignacion = conn.execute('''
+        SELECT a.id, u.nombre_completo, u.numero_empleado, i.categoria, i.descripcion, a.fecha_prestamo
+        FROM asignaciones_activos a
+        JOIN usuarios u ON a.numero_empleado = u.numero_empleado
+        JOIN inventario_activos i ON a.activo_id = i.id
+        WHERE a.id = ?
+    ''', (asig_id,)).fetchone()
+    conn.close()
+    return render_template('machote_responsiva.html', asignacion=asignacion)
+
+@app.route('/imprimir_acuse/<numero_empleado>')
+@login_required
+def imprimir_acuse(numero_empleado):
+    conn = get_db_connection()
+    usuario = conn.execute('SELECT * FROM usuarios WHERE numero_empleado = ?', (numero_empleado,)).fetchone()
+    registros = conn.execute('''
+        SELECT date(timestamp) as fecha,
+               min(timestamp) as entrada,
+               max(timestamp) as salida
+        FROM asistencias
+        WHERE numero_empleado = ?
+        GROUP BY date(timestamp)
+        ORDER BY fecha DESC
+        LIMIT 7
+    ''', (numero_empleado,)).fetchall()
+    conn.close()
+    return render_template('imprimir_acuse.html', usuario=usuario, registros=registros)
+
+@app.route('/exportar_asistencias')
+@login_required
+@requiere_rol('rh')
+def exportar_asistencias():
+    conn = get_db_connection()
+    asistencias = conn.execute('SELECT * FROM asistencias ORDER BY timestamp DESC').fetchall()
+    conn.close()
+    df = pd.DataFrame([dict(a) for a in asistencias])
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Asistencias')
+    output.seek(0)
+    return send_file(
+        output,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name='asistencias.xlsx'
+    )
+
+@app.route('/ejecutar_receta/<int:receta_id>')
+@login_required
+def ejecutar_receta(receta_id):
+    conn = get_db_connection()
+    receta = conn.execute('SELECT * FROM recetas WHERE id = ?', (receta_id,)).fetchone()
+    pasos = conn.execute(
+        'SELECT * FROM recetas_pasos WHERE receta_id = ? ORDER BY numero_paso ASC',
+        (receta_id,)
+    ).fetchall()
+    conn.close()
+    return render_template('ejecutar_receta.html', receta=receta, pasos=pasos)
+
+@app.route('/eliminar_receta/<int:receta_id>', methods=['POST'])
+@login_required
+@requiere_rol('admin')
+def eliminar_receta(receta_id):
+    conn = get_db_connection()
+    conn.execute('DELETE FROM recetas_pasos WHERE receta_id = ?', (receta_id,))
+    conn.execute('DELETE FROM recetas WHERE id = ?', (receta_id,))
+    conn.commit()
+    conn.close()
+    return redirect(url_for('recetas'))
+
 if __name__ == '__main__':
     inicializar_bd()
     app.run(debug=True, host='0.0.0.0', port=5000)
