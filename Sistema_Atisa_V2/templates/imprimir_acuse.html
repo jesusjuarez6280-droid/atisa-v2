@@ -10,6 +10,17 @@
     <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
     
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .hoja-impresion {
+            background: white; width: 21cm; min-height: 29.7cm;
+            margin: 2rem auto; padding: 3cm; box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        @media print {
+            body { background: white; margin: 0; padding: 0; }
+            .hoja-impresion { box-shadow: none; margin: 0; padding: 2cm; width: 100%; min-height: auto; }
+            .no-print { display: none !important; }
+        }
+    </style>
 </head>
 <body class="text-slate-800">
 

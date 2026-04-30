@@ -382,7 +382,7 @@ def imprimir_responsiva(asig_id):
         WHERE a.id = ?
     ''', (asig_id,)).fetchone()
     conn.close()
-    return render_template('machote_responsiva.html', asignacion=asignacion)
+    return render_template('machote_responsiva.html', datos=asignacion)
 
 @app.route('/imprimir_acuse/<numero_empleado>')
 @login_required
@@ -400,7 +400,41 @@ def imprimir_acuse(numero_empleado):
         LIMIT 7
     ''', (numero_empleado,)).fetchall()
     conn.close()
-    return render_template('imprimir_acuse.html', usuario=usuario, registros=registros)
+
+    detalle = []
+    total_reg = 0.0
+    total_ext = 0.0
+    for r in registros:
+        entrada_str = r['entrada'].split(' ')[1][:5] if r['entrada'] else '—'
+        salida_str = r['salida'].split(' ')[1][:5] if r['salida'] else 'FALTA MARCAJE'
+        total_h = 0.0
+        extras_h = 0.0
+        if r['entrada'] and r['salida'] and r['entrada'] != r['salida']:
+            try:
+                ent = datetime.strptime(r['entrada'], '%Y-%m-%d %H:%M:%S')
+                sal = datetime.strptime(r['salida'], '%Y-%m-%d %H:%M:%S')
+                diff = (sal - ent).total_seconds() / 3600.0
+                if diff > 9:
+                    total_h = round(diff, 2)
+                    extras_h = round(diff - 9, 2)
+                else:
+                    total_h = round(diff, 2)
+            except Exception:
+                pass
+        else:
+            salida_str = 'FALTA MARCAJE'
+        total_reg += total_h - extras_h
+        total_ext += extras_h
+        detalle.append({
+            'fecha': r['fecha'],
+            'entrada': entrada_str,
+            'salida': salida_str,
+            'total': round(total_h, 2),
+            'extras': round(extras_h, 2),
+        })
+
+    return render_template('imprimir_acuse.html', usuario=usuario, detalle=detalle,
+                           total_reg=round(total_reg, 2), total_ext=round(total_ext, 2))
 
 @app.route('/exportar_asistencias')
 @login_required
@@ -431,7 +465,10 @@ def ejecutar_receta(receta_id):
         (receta_id,)
     ).fetchall()
     conn.close()
-    return render_template('ejecutar_receta.html', receta=receta, pasos=pasos)
+    pasos_list = [dict(p) for p in pasos]
+    total_pasos = len(pasos_list)
+    return render_template('ejecutar_receta.html', receta=receta, pasos=pasos,
+                           pasos_json=json.dumps(pasos_list), total_pasos=total_pasos)
 
 @app.route('/eliminar_receta/<int:receta_id>', methods=['POST'])
 @login_required
