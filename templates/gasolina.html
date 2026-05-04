@@ -1,115 +1,103 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bitácora de Gasolina | ERP Atisa</title>
+{% extends "base.html" %}
+
+{% block title %}Control de Gasolina | ERP Atisa{% endblock %}
+
+{% block content %}
+<div class="flex flex-col min-h-screen bg-[#f4f6fb]">
+    <header class="bg-white border-b border-slate-100 px-10 h-[88px] flex items-center justify-between sticky top-0 z-40">
+        <div class="flex items-center gap-4">
+            <div class="w-12 h-12 bg-blue-50 text-[#1e6fd9] rounded-xl flex items-center justify-center text-2xl">
+                <i class="ri-gas-station-fill"></i>
+            </div>
+            <div>
+                <h1 class="text-[#0f2744] text-2xl font-bold">Control de Tarjetas de Gasolina</h1>
+                <p class="text-slate-400 text-sm mt-0.5">Gestión de saldos y asignaciones de combustible</p>
+            </div>
+        </div>
+    </header>
     
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/estilos.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/all.min.css') }}">
-    <script src="{{ url_for('static', filename='js/tailwind.js') }}"></script>
-</head>
-<body class="bg-[#f0f3f9] font-sans">
-    <div class="flex min-h-screen">
-        
-        <aside class="fixed left-0 top-0 h-screen w-[280px] bg-[#0f2744] flex flex-col z-50">
-            <div class="flex items-center justify-center py-8 border-b border-white/10">
-                <img class="h-12" src="{{ url_for('static', filename='img_sistema/logo.png') }}">
-            </div>
-            <nav class="flex-1 px-4 py-6 space-y-2">
-                <a href="/dashboard" class="flex items-center gap-4 px-5 py-4 text-white/60 hover:text-white"><i class="ri-dashboard-line text-xl"></i> Dashboard</a>
-                <a href="/recetas" class="flex items-center gap-4 px-5 py-4 text-white/60 hover:text-white"><i class="ri-list-check text-xl"></i> Recetas</a>
-                <a href="/empleados" class="flex items-center gap-4 px-5 py-4 text-white/60 hover:text-white"><i class="ri-group-line text-xl"></i> Empleados</a>
-                <a href="/reportes" class="flex items-center gap-4 px-5 py-4 text-white/60 hover:text-white"><i class="ri-bar-chart-line text-xl"></i> Reportes</a>
-                <a href="/gasolina" class="flex items-center gap-4 px-5 py-4 bg-[#1e6fd9] text-white rounded-xl"><i class="ri-gas-station-fill text-xl"></i> Tarjeta Gasolina</a>
-            </nav>
-            <div class="px-4 py-5 border-t border-white/10">
-                <div class="flex items-center gap-3 px-3 py-3 rounded-xl bg-white/5">
-                    <div class="w-10 h-10 flex items-center justify-center rounded-full bg-[#1e6fd9] text-white font-bold text-sm shrink-0"><i class="ri-user-fill"></i></div>
-                    <div class="flex-1 min-w-0">
-                        <p class="text-white text-sm font-semibold truncate">{{ session.get('nombre') }}</p>
-                        <p class="text-white/50 text-xs truncate uppercase">{{ session.get('rol') }}</p>
+    <div class="flex-1 p-10 space-y-8">
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+            <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden group">
+                <div class="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-bl-[100px] -z-10"></div>
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-8 h-8 bg-blue-50 text-[#1e6fd9] rounded-lg flex items-center justify-center">
+                        <i class="ri-add-card-fill"></i>
                     </div>
-                    <a href="/logout" class="w-8 h-8 flex items-center justify-center text-white/40 hover:text-rose-400 transition-colors cursor-pointer"><i class="ri-logout-box-r-line text-lg"></i></a>
+                    <h2 class="text-lg font-bold text-[#0f2744]">Registrar Nueva Tarjeta</h2>
                 </div>
-            </div>
-        </aside>
-
-        <main class="flex-1 ml-[280px] p-10">
-            <header class="flex justify-between items-center mb-10">
-                <div>
-                    <h1 class="text-2xl font-bold text-[#0f2744]">Bitácora de Gasolina</h1>
-                    <p class="text-slate-500 mt-1">Registro digital de tarjeta compartida</p>
-                </div>
-            </header>
-
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 
-                <div class="lg:col-span-1">
-                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                        <div class="flex items-center gap-3 mb-6">
-                            <div class="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center"><i class="ri-gas-station-line text-xl"></i></div>
-                            <h2 class="text-lg font-bold text-[#0f2744]">Registrar Carga</h2>
-                        </div>
-                        
-                        <form action="/guardar_gasolina" method="POST" class="space-y-5">
-                            <div>
-                                <label class="block text-sm font-bold text-slate-700 mb-2">No. de Estación de Servicio</label>
-                                <input type="text" name="no_estacion" required placeholder="Ej. 12210" class="w-full border border-slate-200 p-3 rounded-xl focus:border-[#1e6fd9] focus:outline-none">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-bold text-slate-700 mb-2">Monto Cargado ($)</label>
-                                <div class="relative">
-                                    <span class="absolute left-4 top-3.5 text-slate-400 font-bold">$</span>
-                                    <input type="number" step="0.01" name="monto" required placeholder="0.00" class="w-full border border-slate-200 p-3 pl-8 rounded-xl focus:border-[#1e6fd9] focus:outline-none">
-                                </div>
-                            </div>
-                            <button type="submit" class="w-full py-3.5 bg-[#0f2744] text-white rounded-xl font-bold hover:bg-[#1a3a6b] transition-colors flex items-center justify-center gap-2 mt-4">
-                                <i class="ri-save-3-line"></i> Guardar Carga
-                            </button>
-                        </form>
+                <form action="/registrar_tarjeta" method="POST" class="flex flex-col gap-5">
+                    <div class="relative">
+                        <i class="ri-bank-card-line absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input type="text" name="numero_tarjeta" placeholder="Número de Tarjeta" required class="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#1e6fd9] outline-none transition-all">
                     </div>
-                </div>
-
-                <div class="lg:col-span-2">
-                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                        <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
-                            <h3 class="font-bold text-[#0f2744]">Últimos Registros</h3>
-                            <button class="text-sm font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1"><i class="ri-file-excel-2-line"></i> Exportar</button>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left">
-                                <thead class="bg-white border-b border-slate-100">
-                                    <tr>
-                                        <th class="px-6 py-4 text-slate-400 text-xs font-bold uppercase tracking-wider">Fecha / Hora</th>
-                                        <th class="px-6 py-4 text-slate-400 text-xs font-bold uppercase tracking-wider">Nombre</th>
-                                        <th class="px-6 py-4 text-slate-400 text-xs font-bold uppercase tracking-wider">Estación</th>
-                                        <th class="px-6 py-4 text-slate-400 text-xs font-bold uppercase tracking-wider text-right">Monto</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-slate-50">
-                                    {% if registros %}
-                                        {% for reg in registros %}
-                                        <tr class="hover:bg-slate-50/50">
-                                            <td class="px-6 py-4 text-sm font-medium text-slate-600">{{ reg.fecha }}</td>
-                                            <td class="px-6 py-4 text-sm font-bold text-[#0f2744]">{{ reg.nombre_empleado }}</td>
-                                            <td class="px-6 py-4 text-sm text-slate-500">Est. {{ reg.no_estacion }}</td>
-                                            <td class="px-6 py-4 text-sm font-bold text-rose-600 text-right">${{ "%.2f"|format(reg.monto) }}</td>
-                                        </tr>
-                                        {% endfor %}
-                                    {% else %}
-                                        <tr>
-                                            <td colspan="4" class="px-6 py-10 text-center text-slate-400 font-medium">Aún no hay cargas de gasolina registradas.</td>
-                                        </tr>
-                                    {% endif %}
-                                </tbody>
-                            </table>
-                        </div>
+                    <div class="flex gap-4">
+                        <input type="number" step="0.01" name="saldo_inicial" placeholder="Saldo Inicial $" required class="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#1e6fd9] outline-none font-bold text-lg">
+                        <button type="submit" class="bg-[#0f2744] text-white px-8 font-bold rounded-xl hover:bg-[#1e6fd9] transition-all shadow-lg">
+                            Guardar
+                        </button>
                     </div>
-                </div>
-
+                </form>
             </div>
-        </main>
+
+            <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden group">
+                <div class="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-bl-[100px] -z-10"></div>
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-8 h-8 bg-blue-50 text-[#1e6fd9] rounded-lg flex items-center justify-center">
+                        <i class="ri-steering-2-line"></i>
+                    </div>
+                    <h2 class="text-lg font-bold text-[#0f2744]">Asignar a Vehículo / Empleado</h2>
+                </div>
+
+                <form action="/asignar_gasolina" method="POST" class="flex flex-col gap-5">
+                    <div class="relative">
+                        <select name="empleado_id" class="w-full pl-4 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#1e6fd9] outline-none appearance-none" required>
+                            <option value="">Seleccionar Responsable...</option>
+                            {% for emp in empleados %}
+                                <option value="{{ emp.numero_empleado }}">{{ emp.nombre_completo }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="bg-[#1e6fd9] text-white py-3 font-bold rounded-xl hover:bg-[#0f2744] transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20">
+                        <i class="ri-file-list-3-line text-lg"></i> Generar Responsiva y Asignar
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="px-8 py-5 border-b border-slate-100 flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-[#1e6fd9]">
+                    <i class="ri-wallet-3-line"></i>
+                </div>
+                <h3 class="font-bold text-[#0f2744] text-lg">Tarjetas Activas</h3>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead class="bg-slate-50/50">
+                        <tr>
+                            <th class="px-8 py-4 text-slate-400 text-xs font-bold uppercase">No. Tarjeta</th>
+                            <th class="px-8 py-4 text-slate-400 text-xs font-bold uppercase">Responsable</th>
+                            <th class="px-8 py-4 text-slate-400 text-xs font-bold uppercase">Saldo</th>
+                            <th class="px-8 py-4 text-slate-400 text-xs font-bold uppercase text-right">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        {% for tar in tarjetas %}
+                        <tr>
+                            <td class="px-8 py-5 font-mono font-bold text-[#0f2744]">{{ tar.numero_tarjeta }}</td>
+                            <td class="px-8 py-5 text-slate-600">{{ tar.nombre_empleado or 'Sin asignar' }}</td>
+                            <td class="px-8 py-5 text-[#1e6fd9] font-bold text-lg">${{ tar.saldo }}</td>
+                            <td class="px-8 py-5 text-right">
+                                <button class="text-[#0f2744] font-bold hover:text-[#1e6fd9]">Ver Detalle</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
-</body>
-</html>
+</div>
+{% endblock %}

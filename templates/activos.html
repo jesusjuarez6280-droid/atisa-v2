@@ -1,65 +1,80 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Activos y Responsivas | ERP Atisa</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/estilos.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/all.min.css') }}">
-    <script src="{{ url_for('static', filename='js/tailwind.js') }}"></script>
-</head>
-<body class="bg-[#f0f3f9] font-sans">
-    <div class="flex min-h-screen">
-        <aside class="fixed left-0 top-0 h-screen w-[280px] bg-[#0f2744] flex flex-col z-50">
-            <div class="flex items-center justify-center py-8 border-b border-white/10">
-                <img class="h-12" src="{{ url_for('static', filename='img_sistema/logo.png') }}" alt="Logo">
+{% extends "base.html" %}
+
+{% block title %}Inventario y Activos | ERP Atisa{% endblock %}
+
+{% block content %}
+<div class="flex flex-col min-h-screen bg-[#f4f6fb]">
+    <header class="bg-white border-b border-slate-100 px-10 h-[88px] flex items-center justify-between sticky top-0 z-40">
+        <div class="flex items-center gap-4">
+            <div class="w-12 h-12 bg-blue-50 text-[#1e6fd9] rounded-xl flex items-center justify-center text-2xl">
+                <i class="ri-tools-fill"></i>
             </div>
-            <nav class="flex-1 px-4 py-6 space-y-2">
-                <a href="/dashboard" class="flex items-center gap-4 px-5 py-4 text-white/60 hover:text-white"><i class="ri-dashboard-line text-xl"></i> Dashboard</a>
-                <a href="/recetas" class="flex items-center gap-4 px-5 py-4 text-white/60 hover:text-white"><i class="ri-list-check text-xl"></i> Recetas</a>
-                <a href="/empleados" class="flex items-center gap-4 px-5 py-4 text-white/60 hover:text-white"><i class="ri-group-line text-xl"></i> Empleados</a>
-                <a href="/reportes" class="flex items-center gap-4 px-5 py-4 text-white/60 hover:text-white"><i class="ri-bar-chart-line text-xl"></i> Reportes</a>
-                <a href="/activos" class="flex items-center gap-4 px-5 py-4 bg-[#1e6fd9] text-white rounded-xl"><i class="ri-shield-check-line text-xl"></i> Activos y EPP</a>
-                <a href="/gasolina" class="flex items-center gap-4 px-5 py-4 text-white/60 hover:text-white"><i class="ri-gas-station-fill text-xl"></i> Tarjeta Gasolina</a>
-            </nav>
-        </aside>
+            <div>
+                <h1 class="text-[#0f2744] text-2xl font-bold">Control de Activos y EPP</h1>
+                <p class="text-slate-400 text-sm mt-0.5">Gestión de inventario físico y asignación de equipos</p>
+            </div>
+        </div>
+    </header>
 
-        <main class="flex-1 ml-[280px] p-10">
-            <header class="flex justify-between items-center mb-10">
-                <div>
-                    <h1 class="text-2xl font-bold text-[#0f2744]">Control de Activos y EPP</h1>
-                    <p class="text-slate-500 mt-1">Asignación de equipos y firmas de responsivas</p>
+    <div class="flex-1 p-10 space-y-8">
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+            <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden group">
+                <div class="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-bl-[100px] -z-10"></div>
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-8 h-8 bg-blue-100 text-[#1e6fd9] rounded-lg flex items-center justify-center">
+                        <i class="ri-add-box-line"></i>
+                    </div>
+                    <h2 class="text-lg font-bold text-[#0f2744]">1. Ingresar Activo al Almacén</h2>
                 </div>
-            </header>
+                
+                <form action="/crear_activo" method="POST" class="flex flex-col gap-5">
+                    <div class="flex gap-4">
+                        <div class="relative flex-1">
+                            <i class="ri-price-tag-3-line absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                            <select name="categoria" class="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#1e6fd9] focus:bg-white focus:ring-4 focus:ring-blue-500/10 outline-none transition-all appearance-none text-slate-700 font-medium" required>
+                                <option value="">Categoría...</option>
+                                <option value="Laptop">Laptop / Equipo TI</option>
+                                <option value="EPP">Equipo de Protección</option>
+                                <option value="Uniforme">Uniforme</option>
+                                <option value="Herramienta">Herramienta</option>
+                            </select>
+                            <i class="ri-arrow-down-s-line absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                        </div>
+                        <div class="relative flex-[2]">
+                            <i class="ri-text absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                            <input type="text" name="descripcion" placeholder="Descripción del equipo..." required class="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#1e6fd9] focus:bg-white focus:ring-4 focus:ring-blue-500/10 outline-none transition-all text-slate-700">
+                        </div>
+                    </div>
+                    <button type="submit" class="bg-[#0f2744] text-white py-3 font-bold rounded-xl hover:bg-[#1e6fd9] transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-900/20">
+                        <i class="ri-save-3-line text-lg"></i> Dar de Alta en Sistema
+                    </button>
+                </form>
+            </div>
 
-            <div class="grid grid-cols-1 xl:grid-cols-2 gap-8 mb-8">
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                    <h2 class="text-lg font-bold text-[#0f2744] mb-4 border-b pb-2">1. Ingresar Activo al Almacén</h2>
-                    <form action="/crear_activo" method="POST" class="flex gap-4">
-                        <select name="categoria" class="border p-3 rounded-xl focus:outline-none focus:border-[#1e6fd9] font-medium" required>
-                            <option value="">Categoría...</option>
-                            <option value="Laptop">Laptop / Equipo TI</option>
-                            <option value="EPP">Equipo de Protección (EPP)</option>
-                            <option value="Uniforme">Uniforme</option>
-                            <option value="Herramienta">Herramienta</option>
-                        </select>
-                        <input type="text" name="descripcion" placeholder="Ej. Laptop Dell Serie X23..." required class="flex-1 border p-3 rounded-xl focus:outline-none focus:border-[#1e6fd9]">
-                        <button type="submit" class="bg-[#1e6fd9] text-white px-6 font-bold rounded-xl hover:bg-blue-700">Guardar</button>
-                    </form>
+            <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden group">
+                <div class="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-bl-[100px] -z-10"></div>
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-8 h-8 bg-blue-100 text-[#1e6fd9] rounded-lg flex items-center justify-center">
+                        <i class="ri-user-received-2-line"></i>
+                    </div>
+                    <h2 class="text-lg font-bold text-[#0f2744]">2. Asignar / Prestar a Empleado</h2>
                 </div>
-
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 border-l-4 border-l-emerald-500">
-                    <h2 class="text-lg font-bold text-[#0f2744] mb-4 border-b pb-2">2. Asignar / Prestar a Empleado</h2>
-                    <form action="/asignar_activo" method="POST" class="flex flex-col gap-4">
-                        <div class="flex gap-4">
-                            <select name="numero_empleado" class="flex-1 border p-3 rounded-xl focus:outline-none focus:border-[#1e6fd9]" required>
-                                <option value="">Seleccionar Empleado...</option>
+                
+                <form action="/asignar_activo" method="POST" class="flex flex-col gap-5">
+                    <div class="flex gap-4">
+                        <div class="relative flex-1">
+                            <i class="ri-user-3-line absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 z-10"></i>
+                            <select name="numero_empleado" class="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#1e6fd9] focus:bg-white focus:ring-4 focus:ring-blue-500/10 outline-none transition-all appearance-none text-slate-700 font-medium" required>
+                                <option value="">Empleado...</option>
                                 {% for emp in empleados %}
                                     <option value="{{ emp.numero_empleado }}">{{ emp.nombre_completo }}</option>
                                 {% endfor %}
                             </select>
-                            <select name="activo_id" class="flex-1 border p-3 rounded-xl focus:outline-none focus:border-[#1e6fd9]" required>
-                                <option value="">Seleccionar Equipo Disponible...</option>
+                        </div>
+                        <div class="relative flex-1">
+                            <i class="ri-macbook-line absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 z-10"></i>
+                            <select name="activo_id" class="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#1e6fd9] focus:bg-white focus:ring-4 focus:ring-blue-500/10 outline-none transition-all appearance-none text-slate-700 font-medium" required>
+                                <option value="">Equipo Disponible...</option>
                                 {% for inv in inventario %}
                                     {% if inv.estatus == 'Disponible' %}
                                     <option value="{{ inv.id }}">{{ inv.categoria }} - {{ inv.descripcion }}</option>
@@ -67,61 +82,61 @@
                                 {% endfor %}
                             </select>
                         </div>
-                        <button type="submit" class="bg-emerald-600 text-white py-3 font-bold rounded-xl hover:bg-emerald-700">Crear Asignación</button>
-                    </form>
-                </div>
+                    </div>
+                    <button type="submit" class="bg-[#1e6fd9] text-white py-3 font-bold rounded-xl hover:bg-[#0f2744] transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20">
+                        <i class="ri-file-paper-2-line text-lg"></i> Crear Responsiva y Asignar
+                    </button>
+                </form>
             </div>
+        </div>
 
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                <div class="px-6 py-4 border-b border-slate-100 bg-slate-50">
-                    <h3 class="font-bold text-[#0f2744]">Expediente de Equipos Entregados</h3>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="px-8 py-5 border-b border-slate-100 flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-500">
+                    <i class="ri-history-line"></i>
                 </div>
+                <h3 class="font-bold text-[#0f2744] text-lg">Historial de Equipos Entregados</h3>
+            </div>
+            <div class="overflow-x-auto">
                 <table class="w-full text-left">
-                    <thead class="bg-white border-b border-slate-100">
+                    <thead class="bg-slate-50/50 border-b border-slate-100">
                         <tr>
-                            <th class="px-6 py-4 text-slate-400 text-xs font-bold uppercase">Empleado</th>
-                            <th class="px-6 py-4 text-slate-400 text-xs font-bold uppercase">Equipo Prestado</th>
-                            <th class="px-6 py-4 text-slate-400 text-xs font-bold uppercase">Fecha de Entrega</th>
-                            <th class="px-6 py-4 text-slate-400 text-xs font-bold uppercase">Firma / Contrato</th>
-                            <th class="px-6 py-4 text-slate-400 text-xs font-bold uppercase text-right">Acciones</th>
+                            <th class="px-8 py-4 text-slate-400 text-[13px] font-bold uppercase tracking-wider">Empleado Responsable</th>
+                            <th class="px-8 py-4 text-slate-400 text-[13px] font-bold uppercase tracking-wider">Detalle del Equipo</th>
+                            <th class="px-8 py-4 text-slate-400 text-[13px] font-bold uppercase tracking-wider">Fecha Entrega</th>
+                            <th class="px-8 py-4 text-slate-400 text-[13px] font-bold uppercase tracking-wider text-right">Responsiva</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-50">
+                    <tbody class="divide-y divide-slate-100">
                         {% for asig in asignaciones %}
-                        <tr class="hover:bg-slate-50/50">
-                            <td class="px-6 py-4 text-sm font-bold text-[#0f2744]">{{ asig.nombre_completo }}</td>
-                            <td class="px-6 py-4">
-                                <span class="text-xs font-bold px-2 py-1 rounded bg-slate-100 text-slate-600 border mr-2">{{ asig.categoria }}</span>
-                                <span class="text-sm text-slate-600">{{ asig.descripcion }}</span>
+                        <tr class="hover:bg-slate-50 transition-colors group">
+                            <td class="px-8 py-5">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-[#1e6fd9] font-bold">
+                                        {{ asig.nombre_completo[:1] }}
+                                    </div>
+                                    <span class="font-bold text-[#0f2744]">{{ asig.nombre_completo }}</span>
+                                </div>
                             </td>
-                            <td class="px-6 py-4 text-sm text-slate-500">{{ asig.fecha_prestamo }}</td>
-                            <td class="px-6 py-4">
-                                {% if asig.ruta_contrato %}
-                                    <a href="{{ url_for('static', filename=asig.ruta_contrato) }}" target="_blank" class="text-emerald-600 font-bold text-sm flex items-center gap-1 hover:underline">
-                                        <i class="ri-checkbox-circle-fill"></i> Ver Documento
-                                    </a>
-                                {% else %}
-                                    <form action="/subir_contrato_activo/{{ asig.id }}" method="POST" enctype="multipart/form-data" class="flex items-center gap-2">
-                                        <input type="file" name="contrato_firmado" required class="text-xs w-48 text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-rose-50 file:text-rose-700 hover:file:bg-rose-100">
-                                        <button type="submit" class="bg-rose-500 text-white px-2 py-1 rounded text-xs font-bold hover:bg-rose-600">Subir</button>
-                                    </form>
-                                {% endif %}
+                            <td class="px-8 py-5">
+                                <span class="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-md bg-slate-100 text-[#0f2744] border border-slate-200">
+                                    {{ asig.categoria }} - {{ asig.descripcion }}
+                                </span>
                             </td>
-                            <td class="px-6 py-4 text-right">
-                                <a href="/imprimir_responsiva/{{ asig.id }}" target="_blank" class="inline-flex items-center gap-2 bg-[#0f2744] text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-[#1a3a6b]">
-                                    <i class="ri-printer-line"></i> Machote
+                            <td class="px-8 py-5">
+                                <span class="text-sm text-slate-500">{{ asig.fecha_prestamo }}</span>
+                            </td>
+                            <td class="px-8 py-5 text-right">
+                                <a href="/imprimir_responsiva/{{ asig.id }}" target="_blank" class="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-white border border-slate-200 text-[#1e6fd9] hover:bg-blue-50 transition-all">
+                                    <i class="ri-printer-line text-lg"></i>
                                 </a>
                             </td>
-                        </tr>
-                        {% else %}
-                        <tr>
-                            <td colspan="5" class="px-6 py-10 text-center text-slate-400 font-medium">No hay equipos asignados actualmente.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
-        </main>
+        </div>
     </div>
-</body>
-</html>
+</div>
+{% endblock %}
