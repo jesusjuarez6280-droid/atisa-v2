@@ -110,6 +110,30 @@ def inicializar_bd():
         )
     ''')
     
+    # Tarjetas de Gasolina
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS tarjetas_gasolina (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            numero_tarjeta TEXT UNIQUE NOT NULL,
+            saldo REAL NOT NULL DEFAULT 0,
+            estatus TEXT DEFAULT 'Disponible',
+            empleado_id TEXT,
+            FOREIGN KEY(empleado_id) REFERENCES usuarios(numero_empleado)
+        )
+    ''')
+
+    # Asignaciones de Gasolina
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS asignacion_gasolina (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            empleado_id TEXT NOT NULL,
+            tarjeta_id INTEGER NOT NULL,
+            fecha_asignacion DATETIME DEFAULT (datetime('now', 'localtime')),
+            FOREIGN KEY(empleado_id) REFERENCES usuarios(numero_empleado),
+            FOREIGN KEY(tarjeta_id) REFERENCES tarjetas_gasolina(id)
+        )
+    ''')
+
     # Crear Admin por defecto
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM usuarios WHERE username = 'admin'")
@@ -276,9 +300,56 @@ def reportes():
 @login_required
 def gasolina():
     conn = get_db_connection()
-    registros = conn.execute('SELECT * FROM bitacora_gasolina ORDER BY id DESC').fetchall()
+    empleados = conn.execute('SELECT numero_empleado, nombre_completo FROM usuarios ORDER BY nombre_completo').fetchall()
+    tarjetas = conn.execute('''
+        SELECT t.id, t.numero_tarjeta, t.saldo, t.estatus, t.empleado_id,
+               u.nombre_completo as nombre_empleado
+        FROM tarjetas_gasolina t
+        LEFT JOIN usuarios u ON t.empleado_id = u.numero_empleado
+        ORDER BY t.id DESC
+    ''').fetchall()
     conn.close()
-    return render_template('gasolina.html', registros=registros)
+    return render_template('gasolina.html', empleados=empleados, tarjetas=tarjetas)
+
+@app.route('/registrar_tarjeta', methods=['POST'])
+@login_required
+def registrar_tarjeta():
+    numero_tarjeta = request.form.get('numero_tarjeta')
+    saldo = request.form.get('saldo_inicial', 0)
+    conn = get_db_connection()
+    try:
+        conn.execute(
+            'INSERT INTO tarjetas_gasolina (numero_tarjeta, saldo) VALUES (?, ?)',
+            (numero_tarjeta, float(saldo))
+        )
+        conn.commit()
+    except:
+        flash('Error al registrar tarjeta', 'error')
+    finally:
+        conn.close()
+    return redirect(url_for('gasolina'))
+
+@app.route('/asignar_gasolina', methods=['POST'])
+@login_required
+def asignar_gasolina():
+    empleado_id = request.form.get('empleado_id')
+    tarjeta_id = request.form.get('tarjeta_id')
+    conn = get_db_connection()
+    try:
+        conn.execute(
+            'UPDATE tarjetas_gasolina SET empleado_id = ?, estatus = ? WHERE id = ?',
+            (empleado_id, 'Asignada', tarjeta_id)
+        )
+        conn.execute(
+            'INSERT INTO asignacion_gasolina (empleado_id, tarjeta_id) VALUES (?, ?)',
+            (empleado_id, tarjeta_id)
+        )
+        conn.commit()
+    except:
+        flash('Error al asignar tarjeta', 'error')
+    finally:
+        conn.close()
+    return redirect(url_for('gasolina'))
 
 @app.route('/activos')
 @login_required
@@ -296,6 +367,48 @@ def activos():
     empleados = conn.execute('SELECT * FROM usuarios').fetchall()
     conn.close()
     return render_template('activos.html', inventario=inventario, asignaciones=asignaciones, empleados=empleados)
+
+@app.route('/crear_activo', methods=['POST'])
+@login_required
+@requiere_rol('rh')
+def crear_activo():
+    categoria = request.form.get('categoria')
+    descripcion = request.form.get('descripcion')
+    conn = get_db_connection()
+    try:
+        conn.execute(
+            'INSERT INTO inventario_activos (categoria, descripcion) VALUES (?, ?)',
+            (categoria, descripcion)
+        )
+        conn.commit()
+    except:
+        flash('Error al crear activo', 'error')
+    finally:
+        conn.close()
+    return redirect(url_for('activos'))
+
+@app.route('/asignar_activo', methods=['POST'])
+@login_required
+@requiere_rol('rh')
+def asignar_activo():
+    numero_empleado = request.form.get('numero_empleado')
+    activo_id = request.form.get('activo_id')
+    conn = get_db_connection()
+    try:
+        conn.execute(
+            'INSERT INTO asignaciones_activos (numero_empleado, activo_id) VALUES (?, ?)',
+            (numero_empleado, activo_id)
+        )
+        conn.execute(
+            "UPDATE inventario_activos SET estatus = 'Asignado' WHERE id = ?",
+            (activo_id,)
+        )
+        conn.commit()
+    except:
+        flash('Error al asignar activo', 'error')
+    finally:
+        conn.close()
+    return redirect(url_for('activos'))
 
 @app.route('/documentos')
 @login_required
