@@ -24,6 +24,18 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row 
     return conn
 
+def read_db(query, args=()):
+    conn = get_db_connection()
+    result = conn.execute(query, args).fetchall()
+    conn.close()
+    return result
+
+def write_db(query, args=()):
+    conn = get_db_connection()
+    conn.execute(query, args)
+    conn.commit()
+    conn.close()
+
 def inicializar_bd():
     conn = get_db_connection()
     
@@ -110,6 +122,47 @@ def inicializar_bd():
         )
     ''')
     
+    # Activos
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS activos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            categoria TEXT,
+            descripcion TEXT,
+            estatus TEXT DEFAULT 'Disponible'
+        )
+    ''')
+
+    # Asignación de Activos
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS asignacion_activos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            numero_empleado TEXT,
+            activo_id INTEGER,
+            fecha_prestamo TEXT
+        )
+    ''')
+
+    # Tarjetas de Gasolina
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS tarjetas_gasolina (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            numero_tarjeta TEXT,
+            saldo REAL,
+            estatus TEXT DEFAULT 'Disponible',
+            empleado_id TEXT
+        )
+    ''')
+
+    # Asignación de Gasolina
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS asignacion_gasolina (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            empleado_id TEXT,
+            tarjeta_id INTEGER,
+            fecha_asignacion TEXT
+        )
+    ''')
+
     # Crear Admin por defecto
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM usuarios WHERE username = 'admin'")
@@ -275,27 +328,29 @@ def reportes():
 @app.route('/gasolina')
 @login_required
 def gasolina():
-    conn = get_db_connection()
-    registros = conn.execute('SELECT * FROM bitacora_gasolina ORDER BY id DESC').fetchall()
-    conn.close()
-    return render_template('gasolina.html', registros=registros)
+    empleados = read_db('SELECT numero_empleado, nombre_completo FROM usuarios ORDER BY nombre_completo ASC')
+    tarjetas = read_db('''
+        SELECT tg.id, tg.numero_tarjeta, tg.saldo, tg.estatus, u.nombre_completo
+        FROM tarjetas_gasolina tg
+        LEFT JOIN usuarios u ON tg.empleado_id = u.numero_empleado
+        ORDER BY tg.id DESC
+    ''')
+    return render_template('gasolina.html', empleados=empleados, tarjetas=tarjetas)
 
 @app.route('/activos')
 @login_required
 @requiere_rol('rh')
 def activos():
-    conn = get_db_connection()
-    inventario = conn.execute('SELECT * FROM inventario_activos').fetchall()
-    asignaciones = conn.execute('''
-        SELECT a.id, u.nombre_completo, i.categoria, i.descripcion, a.fecha_prestamo, a.ruta_contrato
-        FROM asignaciones_activos a
-        JOIN usuarios u ON a.numero_empleado = u.numero_empleado
-        JOIN inventario_activos i ON a.activo_id = i.id
-        WHERE a.estatus = 'Activo'
-    ''').fetchall()
-    empleados = conn.execute('SELECT * FROM usuarios').fetchall()
-    conn.close()
-    return render_template('activos.html', inventario=inventario, asignaciones=asignaciones, empleados=empleados)
+    empleados = read_db('SELECT numero_empleado, nombre_completo FROM usuarios ORDER BY nombre_completo ASC')
+    inventario = read_db('SELECT * FROM activos ORDER BY id DESC')
+    asignaciones = read_db('''
+        SELECT aa.id, u.nombre_completo, a.categoria, a.descripcion, aa.fecha_prestamo
+        FROM asignacion_activos aa
+        JOIN usuarios u ON aa.numero_empleado = u.numero_empleado
+        JOIN activos a ON aa.activo_id = a.id
+        ORDER BY aa.id DESC
+    ''')
+    return render_template('activos.html', empleados=empleados, inventario=inventario, asignaciones=asignaciones)
 
 @app.route('/documentos')
 @login_required
@@ -307,6 +362,46 @@ def documentos():
 @requiere_rol('admin')
 def configuracion():
     return render_template('configuracion.html')
+
+@app.route('/crear_activo', methods=['POST'])
+@login_required
+def crear_activo():
+    categoria = request.form.get('categoria')
+    descripcion = request.form.get('descripcion')
+    write_db('INSERT INTO activos (categoria, descripcion) VALUES (?, ?)', (categoria, descripcion))
+    flash('Activo creado exitosamente', 'success')
+    return redirect(url_for('activos'))
+
+@app.route('/asignar_activo', methods=['POST'])
+@login_required
+def asignar_activo():
+    numero_empleado = request.form.get('numero_empleado')
+    activo_id = request.form.get('activo_id')
+    fecha_prestamo = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    write_db('INSERT INTO asignacion_activos (numero_empleado, activo_id, fecha_prestamo) VALUES (?, ?, ?)', (numero_empleado, activo_id, fecha_prestamo))
+    write_db("UPDATE activos SET estatus = 'Asignado' WHERE id = ?", (activo_id,))
+    flash('Activo asignado exitosamente', 'success')
+    return redirect(url_for('activos'))
+
+@app.route('/registrar_tarjeta', methods=['POST'])
+@login_required
+def registrar_tarjeta():
+    numero_tarjeta = request.form.get('numero_tarjeta')
+    saldo_inicial = request.form.get('saldo_inicial')
+    write_db('INSERT INTO tarjetas_gasolina (numero_tarjeta, saldo) VALUES (?, ?)', (numero_tarjeta, saldo_inicial))
+    flash('Tarjeta registrada exitosamente', 'success')
+    return redirect(url_for('gasolina'))
+
+@app.route('/asignar_gasolina', methods=['POST'])
+@login_required
+def asignar_gasolina():
+    empleado_id = request.form.get('empleado_id')
+    tarjeta_id = request.form.get('tarjeta_id')
+    fecha_asignacion = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    write_db('INSERT INTO asignacion_gasolina (empleado_id, tarjeta_id, fecha_asignacion) VALUES (?, ?, ?)', (empleado_id, tarjeta_id, fecha_asignacion))
+    write_db("UPDATE tarjetas_gasolina SET estatus = 'Asignada', empleado_id = ? WHERE id = ?", (empleado_id, tarjeta_id))
+    flash('Tarjeta de gasolina asignada exitosamente', 'success')
+    return redirect(url_for('gasolina'))
 
 if __name__ == '__main__':
     inicializar_bd()
