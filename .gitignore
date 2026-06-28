@@ -1,0 +1,20 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+
+# --- SQLite (WAL crea estos archivos junto a la BD) ---
+*.db-wal
+*.db-shm
+
+# --- Tailwind: el binario es pesado (40MB), no se versiona ---
+tailwindcss.exe
+
+# --- Sistema ---
+.DS_Store
+Thumbs.db
+
+# Claude Code (interno, no es del proyecto)
+.claude/
+
+# Archivos subidos en runtime (responsivas firmadas, etc.)
+static/contratos/

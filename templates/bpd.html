@@ -1,0 +1,112 @@
+{% extends _layout|default("base.html") %}
+
+{% block title %}Desempeño BPD | ERP Atisa{% endblock %}
+
+{% block content %}
+<div class="p-10">
+    <header class="flex flex-wrap justify-between items-center gap-4 mb-8">
+        <div>
+            <h1 class="text-2xl font-bold text-[#1d1d1f]">Desempeño BPD</h1>
+            <p class="text-slate-500 mt-1">Evaluaciones periódicas — el sistema calcula promedio, tendencia y semáforo</p>
+        </div>
+        <button type="button" onclick="document.getElementById('modal-bpd').classList.remove('hidden')"
+                class="bg-[#0e6ba8] text-white px-6 py-3 font-bold rounded-xl hover:bg-[#1d1d1f] flex items-center gap-2 transition-colors">
+            <i class="ri-add-line text-lg"></i> Registrar evaluación
+        </button>
+    </header>
+
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-[#0e6ba8]/10 text-[#0e6ba8] flex items-center justify-center shrink-0"><i class="ri-group-line text-xl"></i></div><div><p class="text-2xl font-bold text-[#1d1d1f] leading-none">{{ kpis.colaboradores }}</p><p class="text-xs text-slate-500 font-medium mt-1">Colaboradores</p></div></div></div>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0"><i class="ri-speed-up-line text-xl"></i></div><div><p class="text-2xl font-bold text-[#1d1d1f] leading-none">{{ kpis.prom_equipo }}</p><p class="text-xs text-slate-500 font-medium mt-1">Promedio del equipo</p></div></div></div>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-rose-50 text-rose-500 flex items-center justify-center shrink-0"><i class="ri-alarm-warning-line text-xl"></i></div><div><p class="text-2xl font-bold text-[#1d1d1f] leading-none">{{ kpis.en_rojo }}</p><p class="text-xs text-slate-500 font-medium mt-1">En semáforo rojo</p></div></div></div>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center shrink-0"><i class="ri-history-line text-xl"></i></div><div><p class="text-2xl font-bold text-[#1d1d1f] leading-none">{{ kpis.total_eval }}</p><p class="text-xs text-slate-500 font-medium mt-1">Evaluaciones totales</p></div></div></div>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <table class="w-full text-left">
+            <thead class="bg-slate-50 border-b border-slate-100">
+                <tr>
+                    <th class="px-6 py-4 text-slate-500 text-xs font-bold uppercase">Colaborador</th>
+                    <th class="px-4 py-4 text-slate-500 text-xs font-bold uppercase text-center">Evals</th>
+                    <th class="px-4 py-4 text-slate-500 text-xs font-bold uppercase text-center">Promedio</th>
+                    <th class="px-4 py-4 text-slate-500 text-xs font-bold uppercase text-center">Última</th>
+                    <th class="px-4 py-4 text-slate-500 text-xs font-bold uppercase text-center">Tendencia</th>
+                    <th class="px-6 py-4 text-slate-500 text-xs font-bold uppercase">Histórico</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-50">
+                {% for f in filas %}
+                <tr class="hover:bg-slate-50/70 transition-colors">
+                    <td class="px-6 py-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-[#0e6ba8]/10 text-[#0e6ba8] flex items-center justify-center font-bold text-xs uppercase shrink-0">{{ f.nombre_completo[0] }}</div>
+                            <div class="min-w-0">
+                                <p class="font-medium text-slate-700 truncate">{{ f.nombre_completo }}</p>
+                                {% if f.puesto %}<p class="text-[11px] text-slate-400 truncate">{{ f.puesto }}</p>{% endif %}
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-4 py-3 text-center text-sm text-slate-500">{{ f.n_eval }}</td>
+                    <td class="px-4 py-3 text-center font-bold text-slate-700">{{ f.promedio if f.n_eval else '—' }}</td>
+                    <td class="px-4 py-3 text-center">
+                        {% if f.n_eval %}<span class="px-2.5 py-1 rounded-md text-xs font-bold border {{ f.sem.css }}">{{ f.ultima }}</span>{% else %}<span class="text-slate-400">—</span>{% endif %}
+                    </td>
+                    <td class="px-4 py-3 text-center text-lg">
+                        {% if f.tendencia == 'sube' %}<i class="ri-arrow-up-line text-emerald-500" title="Mejora"></i>
+                        {% elif f.tendencia == 'baja' %}<i class="ri-arrow-down-line text-rose-500" title="Baja"></i>
+                        {% elif f.tendencia == 'igual' %}<i class="ri-arrow-right-line text-slate-400" title="Estable"></i>
+                        {% else %}<span class="text-slate-400 text-sm">—</span>{% endif %}
+                    </td>
+                    <td class="px-6 py-3">
+                        {% if f.spark %}
+                        <svg viewBox="0 0 {{ f.spark.w }} {{ f.spark.h }}" width="{{ f.spark.w }}" height="{{ f.spark.h }}" class="overflow-visible">
+                            {% if f.spark.n > 1 %}<polyline points="{{ f.spark.puntos }}" fill="none" stroke="{{ f.sem.hex }}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"></polyline>{% endif %}
+                            <circle cx="{{ '%.1f'|format(f.spark.cx) }}" cy="{{ '%.1f'|format(f.spark.cy) }}" r="2.6" fill="{{ f.sem.hex }}"></circle>
+                        </svg>
+                        {% else %}<span class="text-slate-400 text-xs">Sin evaluaciones</span>{% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="6" class="px-6 py-12 text-center"><i class="ri-speed-up-line text-4xl text-slate-300 block mb-2"></i><span class="text-slate-500 font-medium">No hay colaboradores que evaluar.</span></td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div id="modal-bpd" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-xl font-bold text-[#1d1d1f]">Registrar evaluación BPD</h3>
+            <button type="button" onclick="document.getElementById('modal-bpd').classList.add('hidden')" class="text-slate-400 hover:text-slate-700"><i class="ri-close-line text-2xl"></i></button>
+        </div>
+        <form action="/bpd/registrar" method="POST" class="flex flex-col gap-4">
+            <div>
+                <label class="text-xs font-bold text-slate-500 uppercase mb-1.5 block">Colaborador</label>
+                <select name="numero_empleado" class="select-pro" required>
+                    <option value="">Selecciona…</option>
+                    {% for f in filas %}<option value="{{ f.numero_empleado }}">{{ f.nombre_completo }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Fecha</label>
+                    <input type="date" name="fecha" value="{{ hoy }}" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Calificación (0-100)</label>
+                    <input type="number" name="calificacion" min="0" max="100" step="0.1" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none">
+                </div>
+            </div>
+            <div>
+                <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Observaciones <span class="font-normal lowercase text-slate-400">(opcional)</span></label>
+                <textarea name="observaciones" rows="2" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none resize-none"></textarea>
+            </div>
+            <div class="flex gap-3 mt-1">
+                <button type="button" onclick="document.getElementById('modal-bpd').classList.add('hidden')" class="flex-1 py-3 font-bold rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50">Cancelar</button>
+                <button type="submit" class="flex-1 bg-[#0e6ba8] text-white py-3 font-bold rounded-xl hover:bg-[#1d1d1f]">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

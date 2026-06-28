@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends _layout|default("base.html") %}
 
 {% block title %}Dashboard | ERP Atisa{% endblock %}
 
@@ -10,15 +10,14 @@
             <div class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center text-slate-400">
                 <i class="ri-search-line text-lg"></i>
             </div>
-            <input placeholder="Buscar empleado, tarea..." class="h-11 pl-11 pr-5 w-72 rounded-xl border-2 border-slate-200 text-sm text-slate-700 placeholder:text-slate-300 focus:outline-none focus:border-[#1e6fd9] transition-colors" type="text">
+            <input id="dashboard-search" placeholder="Buscar empleado por nombre o ID..." class="h-11 pl-11 pr-5 w-72 rounded-xl border-2 border-slate-200 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-[#0e6ba8] transition-colors" type="text">
         </div>
 
         <div class="flex items-center gap-4">
-            <button class="relative w-11 h-11 flex items-center justify-center rounded-xl border-2 border-slate-200 text-slate-500 hover:border-[#1e6fd9] hover:text-[#1e6fd9] transition-colors cursor-pointer">
-                <i class="ri-notification-3-line text-xl"></i>
-                <span class="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">3</span>
-            </button>
-            <div class="w-11 h-11 flex items-center justify-center rounded-full bg-[#0f2744] text-white font-bold text-sm cursor-pointer">
+            <a href="/reportes" title="Ver reportes y alertas" class="w-11 h-11 flex items-center justify-center rounded-xl border-2 border-slate-200 text-slate-500 hover:border-[#0e6ba8] hover:text-[#0e6ba8] transition-colors cursor-pointer">
+                <i class="ri-bar-chart-2-line text-xl"></i>
+            </a>
+            <div class="w-11 h-11 flex items-center justify-center rounded-full bg-[#0e6ba8] text-white font-bold text-sm">
                 {% set nombre = session.get('nombre', '') %}
                 {% set parts = nombre.split() %}
                 {% if parts|length >= 2 %}{{ parts[0][0]|upper }}{{ parts[1][0]|upper }}{% elif parts and parts[0] %}{{ parts[0][:2]|upper }}{% else %}?{% endif %}
@@ -28,80 +27,68 @@
 
     <section>
         <div class="flex items-center justify-between mb-5">
-            <h2 class="text-[#0f2744] text-lg font-semibold">Resumen del Turno</h2>
+            <h2 class="text-[#1d1d1f] text-lg font-semibold">Resumen del Sistema</h2>
             <span class="flex items-center gap-2 text-emerald-600 text-sm font-medium bg-emerald-50 px-3 py-1.5 rounded-lg">
-                <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>En vivo
+                <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>Datos en tiempo real
             </span>
         </div>
         <div class="grid grid-cols-2 xl:grid-cols-4 gap-6">
-            <div class="bg-white rounded-2xl p-7 border border-slate-100 hover:border-slate-200 transition-all duration-200 group">
+            <a href="/empleados" class="bg-white rounded-2xl p-7 border border-slate-100 hover:border-[#0e6ba8]/30 hover:shadow-md transition-all duration-200">
                 <div class="flex items-start justify-between mb-5">
-                    <div class="w-14 h-14 flex items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 to-cyan-600"><i class="ri-task-line text-white text-2xl"></i></div>
-                    <div class="w-8 h-8 flex items-center justify-center text-slate-300 group-hover:text-slate-400 transition-colors"><i class="ri-more-2-fill text-xl"></i></div>
+                    <div class="w-14 h-14 flex items-center justify-center rounded-xl bg-[#0e6ba8]/10"><i class="ri-group-line text-[#0e6ba8] text-2xl"></i></div>
                 </div>
-                <p class="text-[42px] font-bold text-[#0f2744] leading-none mb-2">24</p>
-                <p class="text-slate-500 text-[15px] font-medium mb-3">Tareas Activas</p>
-                <div class="flex items-center gap-2">
-                    <div class="w-4 h-4 flex items-center justify-center"><i class="ri-arrow-up-line text-emerald-500 text-sm"></i></div>
-                    <span class="text-emerald-600 text-sm font-medium">+12% vs ayer</span>
-                </div>
-            </div>
-            <div class="bg-white rounded-2xl p-7 border border-slate-100 hover:border-slate-200 transition-all duration-200 group">
+                <p class="text-[42px] font-bold text-[#1d1d1f] leading-none mb-2 tabular-nums">{{ metricas.empleados_activos }}</p>
+                <p class="text-slate-500 text-[15px] font-medium mb-1">Empleados Activos</p>
+                <p class="text-slate-500 text-xs">Total de usuarios con acceso al sistema</p>
+            </a>
+            <a href="/asistencias" class="bg-white rounded-2xl p-7 border border-slate-100 hover:border-[#0e6ba8]/30 hover:shadow-md transition-all duration-200">
                 <div class="flex items-start justify-between mb-5">
-                    <div class="w-14 h-14 flex items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600"><i class="ri-user-follow-line text-white text-2xl"></i></div>
-                    <div class="w-8 h-8 flex items-center justify-center text-slate-300 group-hover:text-slate-400 transition-colors"><i class="ri-more-2-fill text-xl"></i></div>
+                    <div class="w-14 h-14 flex items-center justify-center rounded-xl bg-emerald-50"><i class="ri-user-follow-line text-emerald-600 text-2xl"></i></div>
                 </div>
-                <p class="text-[42px] font-bold text-[#0f2744] leading-none mb-2">87</p>
-                <p class="text-slate-500 text-[15px] font-medium mb-3">Asistencias Hoy</p>
-                <div class="flex items-center gap-2">
-                    <div class="w-4 h-4 flex items-center justify-center"><i class="ri-arrow-up-line text-emerald-500 text-sm"></i></div>
-                    <span class="text-emerald-600 text-sm font-medium">93% del personal</span>
-                </div>
-            </div>
-            <div class="bg-white rounded-2xl p-7 border border-slate-100 hover:border-slate-200 transition-all duration-200 group">
+                <p class="text-[42px] font-bold text-[#1d1d1f] leading-none mb-2 tabular-nums">{{ metricas.asistencias_hoy }}</p>
+                <p class="text-slate-500 text-[15px] font-medium mb-1">Asistencias Hoy</p>
+                <p class="text-slate-500 text-xs">Empleados que checaron el día de hoy</p>
+            </a>
+            <a href="/asistencias" class="bg-white rounded-2xl p-7 border border-slate-100 hover:border-[#0e6ba8]/30 hover:shadow-md transition-all duration-200">
                 <div class="flex items-start justify-between mb-5">
-                    <div class="w-14 h-14 flex items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-amber-600"><i class="ri-settings-3-line text-white text-2xl"></i></div>
-                    <div class="w-8 h-8 flex items-center justify-center text-slate-300 group-hover:text-slate-400 transition-colors"><i class="ri-more-2-fill text-xl"></i></div>
+                    {% if metricas.retardos_hoy > 0 %}
+                    <div class="w-14 h-14 flex items-center justify-center rounded-xl bg-amber-50"><i class="ri-alarm-warning-line text-amber-600 text-2xl"></i></div>
+                    {% else %}
+                    <div class="w-14 h-14 flex items-center justify-center rounded-xl bg-slate-100"><i class="ri-shield-check-line text-slate-500 text-2xl"></i></div>
+                    {% endif %}
                 </div>
-                <p class="text-[42px] font-bold text-[#0f2744] leading-none mb-2">1,245</p>
-                <p class="text-slate-500 text-[15px] font-medium mb-3">Producción Actual</p>
-                <div class="flex items-center gap-2">
-                    <div class="w-4 h-4 flex items-center justify-center"><i class="ri-arrow-up-line text-emerald-500 text-sm"></i></div>
-                    <span class="text-emerald-600 text-sm font-medium">+8% esta semana</span>
-                </div>
-            </div>
-            <div class="bg-white rounded-2xl p-7 border border-slate-100 hover:border-slate-200 transition-all duration-200 group">
+                <p class="text-[42px] font-bold {% if metricas.retardos_hoy > 0 %}text-amber-600{% else %}text-[#1d1d1f]{% endif %} leading-none mb-2 tabular-nums">{{ metricas.retardos_hoy }}</p>
+                <p class="text-slate-500 text-[15px] font-medium mb-1">Retardos Hoy</p>
+                <p class="text-slate-500 text-xs">Detectados al procesar checadas ZKteco</p>
+            </a>
+            <a href="/recetas" class="bg-white rounded-2xl p-7 border border-slate-100 hover:border-[#0e6ba8]/30 hover:shadow-md transition-all duration-200">
                 <div class="flex items-start justify-between mb-5">
-                    <div class="w-14 h-14 flex items-center justify-center rounded-xl bg-gradient-to-br from-rose-500 to-rose-600"><i class="ri-alarm-warning-line text-white text-2xl"></i></div>
-                    <div class="w-8 h-8 flex items-center justify-center text-slate-300 group-hover:text-slate-400 transition-colors"><i class="ri-more-2-fill text-xl"></i></div>
+                    <div class="w-14 h-14 flex items-center justify-center rounded-xl bg-[#0e6ba8]/10"><i class="ri-list-check-3 text-[#0e6ba8] text-2xl"></i></div>
                 </div>
-                <p class="text-[42px] font-bold text-[#0f2744] leading-none mb-2">3</p>
-                <p class="text-slate-500 text-[15px] font-medium mb-3">Alertas Pendientes</p>
-                <div class="flex items-center gap-2">
-                    <div class="w-4 h-4 flex items-center justify-center"><i class="ri-arrow-up-line text-emerald-500 text-sm"></i></div>
-                    <span class="text-emerald-600 text-sm font-medium">2 críticas</span>
-                </div>
-            </div>
+                <p class="text-[42px] font-bold text-[#1d1d1f] leading-none mb-2 tabular-nums">{{ metricas.recetas_total }}</p>
+                <p class="text-slate-500 text-[15px] font-medium mb-1">Recetas Configuradas</p>
+                <p class="text-slate-500 text-xs">Procesos de manufactura disponibles</p>
+            </a>
         </div>
     </section>
 
     <section>
-        <h2 class="text-[#0f2744] text-lg font-semibold mb-5">Acciones Rápidas</h2>
+        <h2 class="text-[#1d1d1f] text-lg font-semibold mb-5">Acciones Rápidas</h2>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
             <a href="{{ url_for('recetas') }}" class="flex items-center gap-4 bg-white rounded-xl px-6 py-5 border border-slate-100 hover:border-slate-200 hover:bg-slate-50 transition-all cursor-pointer text-left whitespace-nowrap">
-                <div class="w-11 h-11 flex items-center justify-center rounded-xl text-cyan-600 bg-cyan-50"><i class="ri-list-check-3 text-xl"></i></div>
+                <div class="w-11 h-11 flex items-center justify-center rounded-xl text-[#0e6ba8] bg-[#0e6ba8]/10"><i class="ri-list-check-3 text-xl"></i></div>
                 <span class="text-slate-700 text-[15px] font-semibold">Ver Recetas</span>
             </a>
             <a href="{{ url_for('empleados') }}" class="flex items-center gap-4 bg-white rounded-xl px-6 py-5 border border-slate-100 hover:border-slate-200 hover:bg-slate-50 transition-all cursor-pointer text-left whitespace-nowrap">
-                <div class="w-11 h-11 flex items-center justify-center rounded-xl text-emerald-600 bg-emerald-50"><i class="ri-user-add-line text-xl"></i></div>
+                <div class="w-11 h-11 flex items-center justify-center rounded-xl text-[#0e6ba8] bg-[#0e6ba8]/10"><i class="ri-user-add-line text-xl"></i></div>
                 <span class="text-slate-700 text-[15px] font-semibold">Registrar Empleado</span>
             </a>
             <a href="{{ url_for('documentos') }}" class="flex items-center gap-4 bg-white rounded-xl px-6 py-5 border border-slate-100 hover:border-slate-200 hover:bg-slate-50 transition-all cursor-pointer text-left whitespace-nowrap">
-                <div class="w-11 h-11 flex items-center justify-center rounded-xl text-amber-600 bg-amber-50"><i class="ri-folder-open-line text-xl"></i></div>
+                <div class="w-11 h-11 flex items-center justify-center rounded-xl text-[#0e6ba8] bg-[#0e6ba8]/10"><i class="ri-folder-open-line text-xl"></i></div>
                 <span class="text-slate-700 text-[15px] font-semibold">Documentos</span>
             </a>
             <a href="{{ url_for('reportes') }}" class="flex items-center gap-4 bg-white rounded-xl px-6 py-5 border border-slate-100 hover:border-slate-200 hover:bg-slate-50 transition-all cursor-pointer text-left whitespace-nowrap">
-                <div class="w-11 h-11 flex items-center justify-center rounded-xl text-violet-600 bg-violet-50"><i class="ri-bar-chart-2-line text-xl"></i></div>
+                <div class="w-11 h-11 flex items-center justify-center rounded-xl text-[#0e6ba8] bg-[#0e6ba8]/10"><i class="ri-bar-chart-2-line text-xl"></i></div>
                 <span class="text-slate-700 text-[15px] font-semibold">Ver Reportes</span>
             </a>
         </div>
@@ -111,54 +98,75 @@
         <div class="bg-white rounded-2xl border border-slate-100 overflow-hidden">
             <div class="flex items-center justify-between px-8 py-6 border-b border-slate-100">
                 <div>
-                    <h2 class="text-[#0f2744] text-xl font-bold">Registro de Empleados</h2>
-                    <p class="text-slate-400 text-sm mt-0.5">Turno actual — 8 registros</p>
+                    <h2 class="text-[#1d1d1f] text-xl font-bold">Registro de Empleados</h2>
+                    <p class="text-slate-500 text-sm mt-0.5"><span id="contador-empleados">{{ empleados|length }}</span> empleado{{ 's' if empleados|length != 1 else '' }} activo{{ 's' if empleados|length != 1 else '' }}</p>
                 </div>
                 <div class="flex items-center gap-3">
-                    <button class="flex items-center gap-2 h-11 px-5 rounded-xl border-2 border-slate-200 text-slate-600 text-sm font-semibold hover:border-[#1e6fd9] hover:text-[#1e6fd9] transition-colors cursor-pointer whitespace-nowrap">
-                        <div class="w-4 h-4 flex items-center justify-center"><i class="ri-filter-3-line"></i></div>Filtrar
-                    </button>
-                    <button class="flex items-center gap-2 h-11 px-5 rounded-xl border-2 border-slate-200 text-slate-600 text-sm font-semibold hover:border-[#1e6fd9] hover:text-[#1e6fd9] transition-colors cursor-pointer whitespace-nowrap">
-                        <div class="w-4 h-4 flex items-center justify-center"><i class="ri-download-2-line"></i></div>Exportar
-                    </button>
+                    <a href="/empleados" class="flex items-center gap-2 h-11 px-5 rounded-xl border-2 border-slate-200 text-slate-600 text-sm font-semibold hover:border-[#0e6ba8] hover:text-[#0e6ba8] transition-colors cursor-pointer whitespace-nowrap">
+                        <i class="ri-group-line"></i> Ver todos
+                    </a>
                 </div>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full">
                     <thead>
                         <tr class="bg-slate-50 border-b border-slate-100">
-                            <th class="text-left px-8 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Empleado</th>
-                            <th class="text-left px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">ID</th>
-                            <th class="text-left px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Departamento</th>
-                            <th class="text-left px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Hora Entrada</th>
-                            <th class="text-left px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Estatus</th>
-                            <th class="text-left px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Acciones</th>
+                            <th class="text-left px-8 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Empleado</th>
+                            <th class="text-left px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">ID</th>
+                            <th class="text-left px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Rol</th>
+                            <th class="text-left px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Usuario</th>
+                            <th class="text-left px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Estatus</th>
+                            <th class="text-left px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Acciones</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        <tr class="border-b border-slate-50 hover:bg-slate-50/70 transition-colors">
-                            <td class="px-8 py-5"><div class="flex items-center gap-4"><div class="w-10 h-10 flex items-center justify-center rounded-full bg-[#0f2744] text-white text-xs font-bold shrink-0">CM</div><span class="text-slate-800 text-[15px] font-semibold">Carlos Mendoza</span></div></td>
-                            <td class="px-6 py-5"><span class="font-mono text-slate-500 text-sm bg-slate-100 px-3 py-1 rounded-lg">EMP-001</span></td>
-                            <td class="px-6 py-5"><span class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-cyan-50 text-cyan-700">Producción</span></td>
-                            <td class="px-6 py-5"><div class="flex items-center gap-2 text-slate-600 text-[15px]"><i class="ri-time-line text-slate-400"></i>06:02</div></td>
-                            <td class="px-6 py-5"><div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-50"><div class="w-2 h-2 rounded-full bg-emerald-500"></div><span class="text-xs font-semibold text-emerald-700">Activo</span></div></td>
-                            <td class="px-6 py-5"><div class="flex items-center gap-2"><button class="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-[#1e6fd9] hover:bg-[#1e6fd9]/10 transition-colors cursor-pointer"><i class="ri-eye-line text-lg"></i></button><button class="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-amber-500 hover:bg-amber-50 transition-colors cursor-pointer"><i class="ri-edit-line text-lg"></i></button></div></td>
+                    <tbody id="dashboard-empleados-body">
+                        {% for emp in empleados %}
+                        {% set partes = (emp.nombre_completo or '').split() %}
+                        {% if partes|length >= 2 %}{% set inic = (partes[0][0] ~ partes[1][0])|upper %}{% elif partes|length == 1 %}{% set inic = partes[0][:2]|upper %}{% else %}{% set inic = '?' %}{% endif %}
+                        <tr class="border-b border-slate-50 hover:bg-slate-50/70 transition-colors emp-row" data-search="{{ emp.nombre_completo|lower }} {{ emp.numero_empleado|lower }} {{ emp.username|lower }}">
+                            <td class="px-8 py-5">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-10 h-10 flex items-center justify-center rounded-full bg-[#0e6ba8] text-white text-xs font-bold shrink-0">{{ inic }}</div>
+                                    <span class="text-slate-800 text-[15px] font-semibold">{{ emp.nombre_completo }}</span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-5"><span class="font-mono text-slate-500 text-sm bg-slate-100 px-3 py-1 rounded-lg">{{ emp.numero_empleado }}</span></td>
+                            <td class="px-6 py-5">
+                                {% if emp.rol == 'admin' %}
+                                <span class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-violet-50 text-violet-700 uppercase">{{ emp.rol }}</span>
+                                {% elif emp.rol == 'rh' %}
+                                <span class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 uppercase">{{ emp.rol }}</span>
+                                {% else %}
+                                <span class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-cyan-50 text-cyan-700 uppercase">{{ emp.rol }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-5"><div class="flex items-center gap-2 text-slate-600 text-sm"><i class="ri-at-line text-slate-400"></i>{{ emp.username }}</div></td>
+                            <td class="px-6 py-5">
+                                <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-50">
+                                    <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+                                    <span class="text-xs font-semibold text-emerald-700">Activo</span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-5">
+                                <div class="flex items-center gap-2">
+                                    <a href="/empleados" class="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-[#0e6ba8] hover:bg-[#0e6ba8]/10 transition-colors" title="Ver empleado"><i class="ri-eye-line text-lg"></i></a>
+                                    <a href="/empleados" class="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-amber-500 hover:bg-amber-50 transition-colors" title="Editar empleado"><i class="ri-edit-line text-lg"></i></a>
+                                </div>
+                            </td>
                         </tr>
-                        <tr class="border-b border-slate-50 hover:bg-slate-50/70 transition-colors bg-slate-50/30">
-                            <td class="px-8 py-5"><div class="flex items-center gap-4"><div class="w-10 h-10 flex items-center justify-center rounded-full bg-[#0f2744] text-white text-xs font-bold shrink-0">LJ</div><span class="text-slate-800 text-[15px] font-semibold">Laura Jiménez</span></div></td>
-                            <td class="px-6 py-5"><span class="font-mono text-slate-500 text-sm bg-slate-100 px-3 py-1 rounded-lg">EMP-002</span></td>
-                            <td class="px-6 py-5"><span class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-violet-50 text-violet-700">Calidad</span></td>
-                            <td class="px-6 py-5"><div class="flex items-center gap-2 text-slate-600 text-[15px]"><i class="ri-time-line text-slate-400"></i>06:15</div></td>
-                            <td class="px-6 py-5"><div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-50"><div class="w-2 h-2 rounded-full bg-emerald-500"></div><span class="text-xs font-semibold text-emerald-700">Activo</span></div></td>
-                            <td class="px-6 py-5"><div class="flex items-center gap-2"><button class="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-[#1e6fd9] hover:bg-[#1e6fd9]/10 transition-colors cursor-pointer"><i class="ri-eye-line text-lg"></i></button><button class="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-amber-500 hover:bg-amber-50 transition-colors cursor-pointer"><i class="ri-edit-line text-lg"></i></button></div></td>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="px-6 py-12 text-center">
+                                <i class="ri-group-line text-4xl text-slate-300 block mb-2"></i>
+                                <span class="text-slate-500 font-medium">No hay empleados activos.</span>
+                            </td>
                         </tr>
-                        <tr class="border-b border-slate-50 hover:bg-slate-50/70 transition-colors">
-                            <td class="px-8 py-5"><div class="flex items-center gap-4"><div class="w-10 h-10 flex items-center justify-center rounded-full bg-[#0f2744] text-white text-xs font-bold shrink-0">RS</div><span class="text-slate-800 text-[15px] font-semibold">Roberto Sánchez</span></div></td>
-                            <td class="px-6 py-5"><span class="font-mono text-slate-500 text-sm bg-slate-100 px-3 py-1 rounded-lg">EMP-003</span></td>
-                            <td class="px-6 py-5"><span class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-orange-50 text-orange-700">Mantenimiento</span></td>
-                            <td class="px-6 py-5"><div class="flex items-center gap-2 text-slate-600 text-[15px]"><i class="ri-time-line text-slate-400"></i>07:00</div></td>
-                            <td class="px-6 py-5"><div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-50"><div class="w-2 h-2 rounded-full bg-amber-500"></div><span class="text-xs font-semibold text-amber-700">En Pausa</span></div></td>
-                            <td class="px-6 py-5"><div class="flex items-center gap-2"><button class="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-[#1e6fd9] hover:bg-[#1e6fd9]/10 transition-colors cursor-pointer"><i class="ri-eye-line text-lg"></i></button><button class="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-amber-500 hover:bg-amber-50 transition-colors cursor-pointer"><i class="ri-edit-line text-lg"></i></button></div></td>
+                        {% endfor %}
+                        <tr id="dashboard-empleados-vacio" class="hidden">
+                            <td colspan="6" class="px-6 py-10 text-center">
+                                <i class="ri-search-eye-line text-3xl text-slate-300 block mb-2"></i>
+                                <span class="text-slate-500 font-medium">Sin coincidencias.</span>
+                            </td>
                         </tr>
                     </tbody>
                 </table>
@@ -167,4 +175,33 @@
     </section>
 
 </div>
+
+<script>
+(function(){
+    const input = document.getElementById('dashboard-search');
+    const filas = document.querySelectorAll('.emp-row');
+    const vacio = document.getElementById('dashboard-empleados-vacio');
+    if(!input) return;
+    input.addEventListener('input', function(){
+        const q = input.value.trim().toLowerCase();
+        let visibles = 0;
+        filas.forEach(function(fila){
+            const data = fila.getAttribute('data-search') || '';
+            if(q === '' || data.indexOf(q) !== -1){
+                fila.classList.remove('hidden');
+                visibles++;
+            } else {
+                fila.classList.add('hidden');
+            }
+        });
+        if(vacio){
+            if(filas.length > 0 && visibles === 0){
+                vacio.classList.remove('hidden');
+            } else {
+                vacio.classList.add('hidden');
+            }
+        }
+    });
+})();
+</script>
 {% endblock %}

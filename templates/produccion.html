@@ -1,0 +1,104 @@
+{% extends _layout|default("base.html") %}
+
+{% block title %}Producción | ERP Atisa{% endblock %}
+
+{% block content %}
+<div class="p-10">
+    <header class="flex flex-wrap justify-between items-center gap-4 mb-8">
+        <div>
+            <h1 class="text-2xl font-bold text-[#1d1d1f]">Producción · Llenado</h1>
+            <p class="text-slate-500 mt-1">Frascos llenados por día y lote — los totales se calculan solos</p>
+        </div>
+        <button type="button" onclick="document.getElementById('modal-prod').classList.remove('hidden')"
+                class="bg-[#0e6ba8] text-white px-6 py-3 font-bold rounded-xl hover:bg-[#1d1d1f] flex items-center gap-2 transition-colors">
+            <i class="ri-add-line text-lg"></i> Registrar producción
+        </button>
+    </header>
+
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-[#0e6ba8]/10 text-[#0e6ba8] flex items-center justify-center shrink-0"><i class="ri-medicine-bottle-line text-xl"></i></div><div><p class="text-2xl font-bold text-[#1d1d1f] leading-none">{{ "{:,}".format(kpis.total_mes) }}</p><p class="text-xs text-slate-500 font-medium mt-1">Frascos este mes</p></div></div></div>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center shrink-0"><i class="ri-calendar-check-line text-xl"></i></div><div><p class="text-2xl font-bold text-[#1d1d1f] leading-none">{{ kpis.dias }}</p><p class="text-xs text-slate-500 font-medium mt-1">Días con registro</p></div></div></div>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0"><i class="ri-line-chart-line text-xl"></i></div><div><p class="text-2xl font-bold text-[#1d1d1f] leading-none">{{ "{:,}".format(kpis.prom_dia) }}</p><p class="text-xs text-slate-500 font-medium mt-1">Promedio diario</p></div></div></div>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-blue-50 text-[#0e6ba8] flex items-center justify-center shrink-0"><i class="ri-database-2-line text-xl"></i></div><div><p class="text-2xl font-bold text-[#1d1d1f] leading-none">{{ kpis.registros }}</p><p class="text-xs text-slate-500 font-medium mt-1">Registros</p></div></div></div>
+    </div>
+
+    {% if barras %}
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
+        <h2 class="text-lg font-bold text-[#1d1d1f] mb-4">Producción de los últimos días</h2>
+        <div class="flex items-end gap-2 h-32">
+            {% for b in barras %}
+            <div class="flex-1 flex flex-col items-center justify-end gap-1.5 h-full group">
+                <span class="text-[10px] font-bold text-slate-400 group-hover:text-[#0e6ba8]">{{ b.total }}</span>
+                <div class="w-full rounded-t-md bg-[#0e6ba8]/80 group-hover:bg-[#0e6ba8] transition-colors" style="height:{{ b.pct }}%; min-height:3px;" title="{{ b.fecha }}: {{ b.total }}"></div>
+                <span class="text-[9px] text-slate-400 truncate w-full text-center">{{ b.fecha[5:] }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-100"><h2 class="text-lg font-bold text-[#1d1d1f]">Registros de llenado</h2></div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-slate-50 border-b border-slate-100">
+                    <tr>
+                        <th class="px-6 py-4 text-slate-500 text-xs font-bold uppercase">Fecha</th>
+                        <th class="px-4 py-4 text-slate-500 text-xs font-bold uppercase">Producto</th>
+                        <th class="px-4 py-4 text-slate-500 text-xs font-bold uppercase">Lote</th>
+                        <th class="px-4 py-4 text-slate-500 text-xs font-bold uppercase text-right">T/M</th>
+                        <th class="px-4 py-4 text-slate-500 text-xs font-bold uppercase text-right">T/V</th>
+                        <th class="px-4 py-4 text-slate-500 text-xs font-bold uppercase text-right">Total día</th>
+                        <th class="px-6 py-4 text-slate-500 text-xs font-bold uppercase text-right">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-50">
+                    {% for f in filas %}
+                    <tr class="hover:bg-slate-50/70 transition-colors">
+                        <td class="px-6 py-3 text-sm text-slate-600 whitespace-nowrap">{{ f.fecha }}</td>
+                        <td class="px-4 py-3 font-semibold text-slate-700">{{ f.producto }}</td>
+                        <td class="px-4 py-3 text-sm text-slate-500">{{ f.lote or '—' }}</td>
+                        <td class="px-4 py-3 text-right text-sm text-slate-600">{{ "{:,}".format(f.turno_manana or 0) }}</td>
+                        <td class="px-4 py-3 text-right text-sm text-slate-600">{{ "{:,}".format(f.turno_tarde or 0) }}</td>
+                        <td class="px-4 py-3 text-right font-bold text-[#0e6ba8]">{{ "{:,}".format(f.total) }}</td>
+                        <td class="px-6 py-3 text-right">
+                            <form action="/produccion/eliminar" method="POST" onsubmit="return confirm('¿Eliminar este registro?');" class="inline">
+                                <input type="hidden" name="id" value="{{ f.id }}">
+                                <button type="submit" class="w-9 h-9 rounded-lg border border-slate-200 text-slate-500 hover:bg-rose-50 hover:text-rose-500 hover:border-rose-200 transition-colors" title="Eliminar"><i class="ri-delete-bin-line"></i></button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="7" class="px-6 py-12 text-center"><i class="ri-medicine-bottle-line text-4xl text-slate-300 block mb-2"></i><span class="text-slate-500 font-medium">No hay registros de producción.</span></td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="modal-prod" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-xl font-bold text-[#1d1d1f]">Registrar producción</h3>
+            <button type="button" onclick="document.getElementById('modal-prod').classList.add('hidden')" class="text-slate-400 hover:text-slate-700"><i class="ri-close-line text-2xl"></i></button>
+        </div>
+        <form action="/produccion/registrar" method="POST" class="flex flex-col gap-4">
+            <div class="grid grid-cols-2 gap-3">
+                <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Fecha</label><input type="date" name="fecha" value="{{ hoy }}" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none"></div>
+                <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Lote</label><input type="text" name="lote" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none"></div>
+            </div>
+            <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Producto</label><input type="text" name="producto" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none"></div>
+            <div class="grid grid-cols-2 gap-3">
+                <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Frascos T/M</label><input type="number" name="turno_manana" min="0" value="0" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none"></div>
+                <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Frascos T/V</label><input type="number" name="turno_tarde" min="0" value="0" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none"></div>
+            </div>
+            <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Nota <span class="font-normal lowercase text-slate-400">(opcional)</span></label><input type="text" name="nota" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none"></div>
+            <div class="flex gap-3 mt-1">
+                <button type="button" onclick="document.getElementById('modal-prod').classList.add('hidden')" class="flex-1 py-3 font-bold rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50">Cancelar</button>
+                <button type="submit" class="flex-1 bg-[#0e6ba8] text-white py-3 font-bold rounded-xl hover:bg-[#1d1d1f]">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

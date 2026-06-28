@@ -1,0 +1,38 @@
+{# Toasts de notificación — estética "lujo silencioso". Incluido en base.html, _partial.html y login.html. #}
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div class="fixed top-5 right-5 z-[10000] flex flex-col gap-3 w-[360px] max-w-[calc(100vw-2.5rem)]">
+    {% for cat, msg in messages %}
+    {% set ok = cat == 'success' %}
+    {% set err = cat == 'error' %}
+    <div class="flash-toast toast-enter flex items-start gap-3 bg-white rounded-2xl border border-[#ececef] shadow-[0_16px_48px_-8px_rgba(16,24,40,0.18)] pl-3.5 pr-2.5 py-3">
+      <div class="mt-0.5 w-9 h-9 rounded-xl flex items-center justify-center shrink-0
+                  {% if ok %}bg-emerald-50 text-emerald-600{% elif err %}bg-rose-50 text-rose-500{% else %}bg-[#0e6ba8]/10 text-[#0e6ba8]{% endif %}">
+        <i class="text-[19px] {% if ok %}ri-check-line{% elif err %}ri-error-warning-line{% else %}ri-information-line{% endif %}"></i>
+      </div>
+      <div class="flex-1 min-w-0 py-0.5">
+        <p class="text-[11px] font-semibold uppercase tracking-wide
+                  {% if ok %}text-emerald-600{% elif err %}text-rose-500{% else %}text-[#0e6ba8]{% endif %}">
+          {% if ok %}Listo{% elif err %}Atención{% else %}Aviso{% endif %}
+        </p>
+        <p class="text-[#1d1d1f] text-sm font-medium leading-snug mt-0.5">{{ msg }}</p>
+      </div>
+      <button type="button" onclick="this.closest('.flash-toast').remove()"
+              class="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-[#c7c7cc] hover:text-[#6e6e73] hover:bg-[#f3f3f5] transition-colors">
+        <i class="ri-close-line text-base"></i>
+      </button>
+    </div>
+    {% endfor %}
+  </div>
+  <script>
+    setTimeout(function () {
+      document.querySelectorAll('.flash-toast').forEach(function (t) {
+        t.style.transition = 'opacity .45s ease, transform .45s ease';
+        t.style.opacity = '0';
+        t.style.transform = 'translateX(18px)';
+        setTimeout(function () { t.remove(); }, 450);
+      });
+    }, 4500);
+  </script>
+  {% endif %}
+{% endwith %}

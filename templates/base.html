@@ -4,77 +4,257 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}ERP Atisa{% endblock %}</title>
-    
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+
     <link rel="stylesheet" href="{{ url_for('static', filename='css/remixicon.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/estilos.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/all.min.css') }}">
-    
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/select-pro.css') }}">
+
+    <!-- Tailwind: CSS precompilado (estático) si existe, con fallback al runtime -->
+    {% if tailwind_estatico %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+    {% else %}
     <script src="{{ url_for('static', filename='js/tailwind.js') }}"></script>
+    {% endif %}
+
+    <!-- HTMX: sensación SPA con swaps parciales (local, sirve sin internet) -->
+    <script src="{{ url_for('static', filename='js/htmx.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/htmx-preload.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/select-pro.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/atisa-ui.js') }}" defer></script>
+
+    <style>
+        /* Estado activo del sidebar (paleta lujo silencioso) */
+        .nav-activo { background: rgba(14,107,168,.10); color: #0e6ba8 !important; }
+        .nav-activo i { color: #0e6ba8 !important; }
+        /* Departamento activo en el riel (mismo lenguaje visual) */
+        .dept-activo { background: rgba(14,107,168,.10); color: #0e6ba8 !important; }
+        /* Todo en MAYÚSCULAS (dirección de diseño). Es solo visual: el dato guardado
+           en la base de datos NO cambia. Se excluyen campos de captura para no estorbar
+           al escribir, datos técnicos (mono/código) y la clase de escape .normal-case.
+           El letter-spacing sutil evita que las mayúsculas se vean "encimadas". */
+        body { text-transform: uppercase; letter-spacing: .012em; }
+        input, textarea, select, code, pre, .font-mono, .normal-case,
+        .select-pro-panel input { text-transform: none; letter-spacing: normal; }
+
+        /* ── Utilidades de marca que el Tailwind precompilado (modo estático) NO trae.
+           Se definen aquí UNA vez y sirven para todo el sistema. Si en una pantalla usas
+           una medida o color arbitrario nuevo (ej. w-[420px]), agrégalo en este bloque. ── */
+        .w-\[300px\]{width:300px}
+        .w-\[68px\]{width:68px}
+        .ml-\[300px\]{margin-left:300px}
+        .space-y-0\.5 > :not([hidden]) ~ :not([hidden]){margin-top:.125rem}
+        .text-\[19px\]{font-size:19px}
+        .text-\[20px\]{font-size:20px}
+        .text-\[\#0e6ba8\]{color:#0e6ba8}
+        .bg-\[\#0e6ba8\]{background-color:#0e6ba8}
+        .bg-\[\#0e6ba8\]\/10{background-color:rgba(14,107,168,.10)}
+        .border-\[\#0e6ba8\]{border-color:#0e6ba8}
+        .border-\[\#0e6ba8\]\/30{border-color:rgba(14,107,168,.30)}
+        .hover\:border-\[\#0e6ba8\]:hover{border-color:#0e6ba8}
+        .hover\:text-\[\#0e6ba8\]:hover{color:#0e6ba8}
+        .hover\:bg-\[\#0e6ba8\]\/10:hover{background-color:rgba(14,107,168,.10)}
+        /* Azul de TEXTO legible (contraste ~8:1) para texto chico o sobre fondos
+           tintados. Usa .text-azul en vez de text-[#0e6ba8] cuando el texto sea
+           pequeño/énfasis: el #0e6ba8 puro se lee mal en chico sobre tintes. */
+        .text-azul{color:#0b557f}
+        /* Neutrales de marca garantizados (por si el precompilado no los trajo) */
+        .text-\[\#1d1d1f\]{color:#1d1d1f}
+        .text-\[\#6e6e73\]{color:#6e6e73}
+        .text-\[\#86868b\]{color:#86868b}
+        /* Foco azul de TODOS los inputs (se usa 82+ veces) y opacidades/variantes de marca */
+        .focus\:border-\[\#0e6ba8\]:focus{border-color:#0e6ba8}
+        .bg-\[\#0e6ba8\]\/80{background-color:rgba(14,107,168,.80)}
+        .bg-\[\#0e6ba8\]\/15{background-color:rgba(14,107,168,.15)}
+        .bg-\[\#0e6ba8\]\/5{background-color:rgba(14,107,168,.05)}
+        .hover\:bg-\[\#0e6ba8\]\/5:hover{background-color:rgba(14,107,168,.05)}
+        .group:hover .group-hover\:bg-\[\#0e6ba8\]{background-color:#0e6ba8}
+        .group:hover .group-hover\:text-\[\#0e6ba8\]{color:#0e6ba8}
+        /* Barra de progreso superior */
+        #barra-progreso { width:0; opacity:0; transition: width .3s ease, opacity .3s ease; }
+        #barra-progreso.htmx-request { width:80%; opacity:1; }
+        /* Atenúa el contenido mientras carga (feedback sutil) */
+        #content.htmx-request { opacity:.55; transition: opacity .15s ease; }
+    </style>
 </head>
-<body>
+<body hx-boost="true" hx-ext="preload" hx-target="#content">
+    <!-- Barra de carga superior (sensación de velocidad) -->
+    <div id="barra-progreso" class="htmx-indicator fixed top-0 left-0 h-0.5 bg-[#0e6ba8] z-[9999]"></div>
+
+    <!-- Notificaciones (flash) -->
+    {% include '_flashes.html' %}
+
     <div id="root">
-        <div class="flex min-h-screen bg-[#f4f6fb]" style="font-family: Inter, sans-serif;">
-            
-            <aside class="fixed left-0 top-0 h-screen w-[280px] bg-[#0f2744] flex flex-col z-50 select-none">
-                <div class="flex items-center justify-center px-6 py-8 border-b border-white/10">
-                    <img alt="Logo ERP Industrial" class="h-12 object-contain" src="{{ url_for('static', filename='img_sistema/logo.png') }}">
+        <div class="flex min-h-screen bg-[#f5f5f7]">
+
+            {# Departamento activo según la ruta actual (evita parpadeo en la carga completa) #}
+            {% set _ns = namespace(activo='') %}
+            {% for d in nav_visible %}
+                {% for ruta, txt, icono, match in d.modulos_visibles %}
+                    {% if _ns.activo == '' and (ruta == request.path or (match and request.path.startswith(match))) %}{% set _ns.activo = d.key %}{% endif %}
+                {% endfor %}
+            {% endfor %}
+            {% if _ns.activo == '' and nav_visible %}{% set _ns.activo = nav_visible[0].key %}{% endif %}
+
+            <aside class="fixed left-0 top-0 h-screen w-[300px] flex z-50 select-none">
+
+                <!-- Riel: departamentos del organigrama -->
+                <div class="w-[68px] bg-white border-r border-[#ececef] flex flex-col items-center shrink-0">
+                    <div class="h-[88px] flex items-center justify-center border-b border-[#f0f0f3] w-full">
+                        <img src="{{ url_for('static', filename='img_sistema/isotipo.png') }}" alt="Atisa" class="w-10 h-10 object-contain">
+                    </div>
+                    <div class="flex-1 w-full py-4 flex flex-col items-center gap-1.5 overflow-y-auto">
+                        {% for d in nav_visible %}
+                        <button type="button" data-dept="{{ d.key }}" onclick="abrirDepto('{{ d.key }}')" title="{{ d.nombre }}"
+                                class="dept-btn w-11 h-11 rounded-xl flex items-center justify-center text-[#86868b] hover:bg-[#f3f3f5] hover:text-[#1d1d1f] transition-colors duration-150 {% if d.key == _ns.activo %}dept-activo{% endif %}">
+                            <i class="{{ d.icono }} text-[20px]"></i>
+                        </button>
+                        {% endfor %}
+                    </div>
                 </div>
-                
-                <nav class="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-                    <a href="/dashboard" class="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer whitespace-nowrap {% if request.path == '/dashboard' %}bg-[#1e6fd9]/30 text-white border-l-4 border-[#3b9eff]{% else %}text-white/60 hover:bg-white/8 hover:text-white/90 border-l-4 border-transparent{% endif %}">
-                        <div class="w-6 h-6 flex items-center justify-center"><i class="ri-dashboard-3-line text-xl"></i></div>
-                        <span class="text-[17px] font-medium">Dashboard</span>
-                    </a>
-                    <a href="/recetas" class="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer whitespace-nowrap {% if request.path == '/recetas' %}bg-[#1e6fd9]/30 text-white border-l-4 border-[#3b9eff]{% else %}text-white/60 hover:bg-white/8 hover:text-white/90 border-l-4 border-transparent{% endif %}">
-                        <div class="w-6 h-6 flex items-center justify-center"><i class="ri-list-check-3 text-xl"></i></div>
-                        <span class="text-[17px] font-medium">Recetas</span>
-                    </a>
-                    <a href="/empleados" class="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer whitespace-nowrap {% if request.path == '/empleados' %}bg-[#1e6fd9]/30 text-white border-l-4 border-[#3b9eff]{% else %}text-white/60 hover:bg-white/8 hover:text-white/90 border-l-4 border-transparent{% endif %}">
-                        <div class="w-6 h-6 flex items-center justify-center"><i class="ri-group-line text-xl"></i></div>
-                        <span class="text-[17px] font-medium">Empleados</span>
-                    </a>
-                    <a href="/documentos" class="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer whitespace-nowrap {% if request.path == '/documentos' %}bg-[#1e6fd9]/30 text-white border-l-4 border-[#3b9eff]{% else %}text-white/60 hover:bg-white/8 hover:text-white/90 border-l-4 border-transparent{% endif %}">
-                        <div class="w-6 h-6 flex items-center justify-center"><i class="ri-folder-open-line text-xl"></i></div>
-                        <span class="text-[17px] font-medium">Documentos</span>
-                    </a>
-                    <a href="/reportes" class="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer whitespace-nowrap {% if request.path == '/reportes' %}bg-[#1e6fd9]/30 text-white border-l-4 border-[#3b9eff]{% else %}text-white/60 hover:bg-white/8 hover:text-white/90 border-l-4 border-transparent{% endif %}">
-                        <div class="w-6 h-6 flex items-center justify-center"><i class="ri-bar-chart-2-line text-xl"></i></div>
-                        <span class="text-[17px] font-medium">Reportes</span>
-                    </a>
-                    <a href="/activos" class="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer whitespace-nowrap {% if request.path == '/activos' %}bg-[#1e6fd9]/30 text-white border-l-4 border-[#3b9eff]{% else %}text-white/60 hover:bg-white/8 hover:text-white/90 border-l-4 border-transparent{% endif %}">
-                        <div class="w-6 h-6 flex items-center justify-center"><i class="ri-shield-check-line text-xl"></i></div>
-                        <span class="text-[17px] font-medium">Activos y EPP</span>
-                    </a>
-                    <a href="/gasolina" class="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer whitespace-nowrap {% if request.path == '/gasolina' %}bg-[#1e6fd9]/30 text-white border-l-4 border-[#3b9eff]{% else %}text-white/60 hover:bg-white/8 hover:text-white/90 border-l-4 border-transparent{% endif %}">
-                        <div class="w-6 h-6 flex items-center justify-center"><i class="ri-gas-station-fill text-xl"></i></div>
-                        <span class="text-[17px] font-medium">Tarjeta Gasolina</span>
-                    </a>
-                    <a href="/configuracion" class="w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left transition-all duration-200 cursor-pointer whitespace-nowrap {% if request.path == '/configuracion' %}bg-[#1e6fd9]/30 text-white border-l-4 border-[#3b9eff]{% else %}text-white/60 hover:bg-white/8 hover:text-white/90 border-l-4 border-transparent{% endif %}">
-                        <div class="w-6 h-6 flex items-center justify-center"><i class="ri-settings-4-line text-xl"></i></div>
-                        <span class="text-[17px] font-medium">Configuración</span>
-                    </a>
-                </nav>
-                
-                <div class="px-4 py-5 border-t border-white/10">
-                    <div class="flex items-center gap-3 px-3 py-3 rounded-xl bg-white/5">
-                        <div class="w-10 h-10 flex items-center justify-center rounded-full bg-[#1e6fd9] text-white font-bold text-sm shrink-0 uppercase">
-                            {{ session.get('nombre', 'U')[0] }}
+
+                <!-- Panel: módulos del departamento activo -->
+                <div class="flex-1 min-w-0 bg-white border-r border-[#ececef] flex flex-col">
+                    <div class="flex items-center px-6 h-[88px] border-b border-[#f0f0f3]">
+                        <img alt="Atisa" class="h-9 object-contain" src="{{ url_for('static', filename='img_sistema/logo.png') }}">
+                    </div>
+
+                    <nav class="flex-1 px-3 py-5 overflow-y-auto">
+                        {% for d in nav_visible %}
+                        <div data-panel="{{ d.key }}" class="dept-panel {% if d.key != _ns.activo %}hidden{% endif %}">
+                            <p class="px-3.5 mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#86868b]">{{ d.nombre }}</p>
+                            <div class="space-y-0.5">
+                                {% for ruta, txt, icono, match in d.modulos_visibles %}
+                                <a href="{{ ruta }}"
+                                   data-nav data-match="{{ match }}"
+                                   hx-get="{{ ruta }}" hx-target="#content" hx-swap="innerHTML show:window:top"
+                                   hx-push-url="true" hx-indicator="#barra-progreso, #content"
+                                   preload="mouseover"
+                                   class="nav-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[15px] font-medium text-[#6e6e73] hover:bg-[#f3f3f5] hover:text-[#1d1d1f] transition-colors duration-150 whitespace-nowrap">
+                                    <i class="{{ icono }} text-[19px] text-[#86868b]"></i>
+                                    <span>{{ txt }}</span>
+                                </a>
+                                {% endfor %}
+                                {% if d.es_roadmap %}
+                                <div class="px-3.5 py-10 text-center">
+                                    <i class="ri-tools-line text-3xl text-slate-300 block mb-2"></i>
+                                    <p class="text-sm font-semibold text-[#6e6e73]">Próximamente</p>
+                                    <p class="text-xs text-slate-400 mt-1">Módulos de este<br>departamento en construcción</p>
+                                </div>
+                                {% endif %}
+                            </div>
                         </div>
-                        <div class="flex-1 min-w-0">
-                            <p class="text-white text-sm font-semibold truncate">{{ session.get('nombre', 'Usuario') }}</p>
-                            <p class="text-white/50 text-xs truncate uppercase">{{ session.get('rol', 'Colaborador') }}</p>
+                        {% endfor %}
+                    </nav>
+
+                    <div class="px-3 py-4 border-t border-[#f0f0f3]">
+                        <div class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[#f3f3f5] transition-colors">
+                            <div class="w-9 h-9 flex items-center justify-center rounded-full bg-[#0e6ba8] text-white font-semibold text-sm shrink-0 uppercase">
+                                {{ (session.get('nombre') or 'U')[:1] }}
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-[#1d1d1f] text-sm font-semibold truncate">{{ session.get('nombre', 'Usuario') }}</p>
+                                <p class="text-[#86868b] text-xs truncate capitalize">{{ session.get('rol', 'Colaborador') }}</p>
+                            </div>
+                            <a href="/logout" hx-boost="false" class="w-8 h-8 flex items-center justify-center text-[#86868b] hover:text-rose-500 transition-colors cursor-pointer" title="Cerrar sesión">
+                                <i class="ri-logout-box-r-line text-lg"></i>
+                            </a>
                         </div>
-                        <a href="/logout" class="w-8 h-8 flex items-center justify-center text-white/40 hover:text-rose-400 transition-colors cursor-pointer" title="Cerrar sesión">
-                            <i class="ri-logout-box-r-line text-lg"></i>
-                        </a>
                     </div>
                 </div>
             </aside>
 
-            <main class="flex-1 ml-[280px] flex flex-col min-h-screen">
-                {% block content %}{% endblock %}
+            <main class="flex-1 ml-[300px] flex flex-col min-h-screen">
+                <div id="content">
+                    {% block content %}{% endblock %}
+                </div>
             </main>
         </div>
     </div>
+
+    <script>
+        // CSRF: inyecta el token en TODA petición HTMX (forms boosteados, hx-post, etc.)
+        document.body.addEventListener('htmx:configRequest', function (e) {
+            var m = document.querySelector('meta[name="csrf-token"]');
+            if (m) e.detail.headers['X-CSRFToken'] = m.getAttribute('content');
+        });
+
+        // ── Anti doble-clic: bloquea el botón de envío mientras se procesa ──
+        // Evita duplicados por doble clic (doble cargo de gasolina, activo duplicado, etc.).
+        document.addEventListener('submit', function (e) {
+            if (e.defaultPrevented) return;            // un confirm() canceló el envío
+            var btns = e.target.querySelectorAll('button[type="submit"], button:not([type])');
+            if (!btns.length) return;
+            btns.forEach(function (b) { b.disabled = true; b.classList.add('opacity-60', 'pointer-events-none'); });
+            function reactivar() {
+                btns.forEach(function (b) { b.disabled = false; b.classList.remove('opacity-60', 'pointer-events-none'); });
+            }
+            document.body.addEventListener('htmx:afterRequest', reactivar, { once: true });
+            setTimeout(reactivar, 5000);               // red de seguridad si no hubo navegación
+        }, false);
+        // Marca el enlace activo del sidebar (el sidebar ya no se re-renderiza en cada navegación)
+        function marcarActivo() {
+            const p = window.location.pathname;
+            document.querySelectorAll('[data-nav]').forEach(function (a) {
+                const m = a.getAttribute('data-match');
+                const activo = a.getAttribute('href') === p || (m && p.startsWith(m));
+                a.classList.toggle('nav-activo', activo);
+            });
+        }
+
+        // ── Navegación por departamentos (riel + panel) ──
+        // Cambiar de departamento solo muestra/oculta su panel de módulos (todo en
+        // el cliente, sin recargar). El sidebar no se re-renderiza al navegar.
+        function abrirDepto(key) {
+            document.querySelectorAll('[data-dept]').forEach(function (b) {
+                b.classList.toggle('dept-activo', b.getAttribute('data-dept') === key);
+            });
+            document.querySelectorAll('[data-panel]').forEach(function (p) {
+                p.classList.toggle('hidden', p.getAttribute('data-panel') !== key);
+            });
+            try { sessionStorage.setItem('atisa_depto', key); } catch (e) {}
+        }
+        // Departamento que contiene la ruta actual (o null si ninguna coincide)
+        function deptoDeRuta() {
+            var p = window.location.pathname, encontrado = null;
+            document.querySelectorAll('[data-panel] [data-nav]').forEach(function (a) {
+                var m = a.getAttribute('data-match');
+                if (a.getAttribute('href') === p || (m && p.startsWith(m))) {
+                    encontrado = a.closest('[data-panel]').getAttribute('data-panel');
+                }
+            });
+            return encontrado;
+        }
+        // Abre el depto correcto: el de la ruta actual; si no, el último visto; si no, el primero.
+        function sincronizarDepto() {
+            var porRuta = deptoDeRuta(), guardado = null;
+            try { guardado = sessionStorage.getItem('atisa_depto'); } catch (e) {}
+            var primero = document.querySelector('[data-dept]');
+            var key = porRuta || guardado || (primero && primero.getAttribute('data-dept'));
+            // Si el depto guardado ya no es visible para este rol, cae al primero
+            if (key && !document.querySelector('[data-panel="' + key + '"]')) {
+                key = primero && primero.getAttribute('data-dept');
+            }
+            if (key) abrirDepto(key);
+            marcarActivo();
+        }
+        document.addEventListener('DOMContentLoaded', sincronizarDepto);
+        document.body.addEventListener('htmx:afterSettle', sincronizarDepto);
+
+        // Limpia paneles huérfanos de select-pro (se anexan al <body>, no a #content,
+        // así que al hacer swap quedaban acumulándose). Se regeneran solos al re-inicializar.
+        document.body.addEventListener('htmx:beforeSwap', function () {
+            document.querySelectorAll('body > .select-pro-panel').forEach(function (p) { p.remove(); });
+        });
+
+        // Completa la barra de progreso al terminar la petición
+        document.body.addEventListener('htmx:afterRequest', function () {
+            const b = document.getElementById('barra-progreso');
+            if (!b) return;
+            b.style.width = '100%';
+            setTimeout(function () { b.style.width = '0'; }, 250);
+        });
+    </script>
 </body>
 </html>

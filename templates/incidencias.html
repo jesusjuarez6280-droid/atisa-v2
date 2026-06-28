@@ -1,0 +1,171 @@
+{% extends _layout|default("base.html") %}
+
+{% block title %}Incidencias | ERP Atisa{% endblock %}
+
+{% block content %}
+<div class="p-10">
+    <header class="flex flex-wrap justify-between items-center gap-4 mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-[#1d1d1f]">Incidencias</h1>
+            <p class="text-slate-500 mt-1">Calendario de faltas, permisos y vacaciones — alerta automática a la 3ª falta</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <a hx-get="/incidencias?mes={{ mes_prev }}" hx-target="#content" hx-push-url="true" hx-indicator="#barra-progreso, #content" class="w-10 h-10 flex items-center justify-center rounded-xl border border-slate-200 text-slate-500 hover:border-[#0e6ba8] hover:text-[#0e6ba8] cursor-pointer transition-colors"><i class="ri-arrow-left-s-line text-xl"></i></a>
+            <span class="px-4 py-2.5 font-bold text-[#1d1d1f] min-w-[150px] text-center capitalize">{{ mes_label }}</span>
+            <a hx-get="/incidencias?mes={{ mes_next }}" hx-target="#content" hx-push-url="true" hx-indicator="#barra-progreso, #content" class="w-10 h-10 flex items-center justify-center rounded-xl border border-slate-200 text-slate-500 hover:border-[#0e6ba8] hover:text-[#0e6ba8] cursor-pointer transition-colors"><i class="ri-arrow-right-s-line text-xl"></i></a>
+            <button type="button" onclick="document.getElementById('modal-festivos').classList.remove('hidden')" class="ml-2 bg-white border border-slate-200 text-slate-600 px-4 py-2.5 font-bold rounded-xl hover:border-[#0e6ba8] hover:text-[#0e6ba8] flex items-center gap-2 transition-colors"><i class="ri-calendar-event-line"></i> Festivos</button>
+            <button type="button" onclick="abrirIncid()" class="bg-[#0e6ba8] text-white px-5 py-2.5 font-bold rounded-xl hover:bg-[#1d1d1f] flex items-center gap-2 transition-colors"><i class="ri-add-line"></i> Registrar</button>
+        </div>
+    </header>
+
+    <!-- Leyenda -->
+    <div class="flex flex-wrap gap-2 mb-3">
+        {% for cod, etiqueta, css in codigos %}
+        <span class="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500"><span class="w-6 h-6 rounded border flex items-center justify-center text-[10px] font-bold {{ css }}">{{ cod }}</span>{{ etiqueta }}</span>
+        {% endfor %}
+    </div>
+
+    <!-- Nota: auto-llenado desde el checador -->
+    <div class="flex items-start gap-2 text-sm text-slate-700 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 mb-5">
+        <i class="ri-flashlight-line text-azul text-base mt-0.5"></i>
+        <span><strong class="text-azul">Se llena solo del checador:</strong> la <strong>A</strong> (asistencia, borde punteado) y los <strong>retardos</strong> (punto amarillo <span class="inline-block w-2 h-2 rounded-full bg-amber-500 align-middle"></span>) aparecen automáticamente al importar asistencias{% if auto_total %} — <strong>{{ auto_total }}</strong> días auto-llenados este mes{% endif %}. Tú solo marcas lo que el reloj no sabe (faltas justificadas, permisos, vacaciones…). Toca cualquier día para sobrescribirlo.</span>
+    </div>
+
+    {% if filas %}
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="text-left border-collapse">
+                <thead>
+                    <tr class="border-b border-slate-100">
+                        <th class="px-4 py-3 sticky left-0 bg-white z-20 text-slate-500 text-xs font-bold uppercase min-w-[190px]">Colaborador</th>
+                        {% for d in dias %}<th class="w-8 py-2 text-center text-[11px] font-bold text-slate-400">{{ d }}</th>{% endfor %}
+                        <th class="px-3 py-2 text-center text-[11px] font-bold text-slate-400">Faltas</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in filas %}
+                    <tr class="border-b border-slate-50 hover:bg-slate-50/60 transition-colors group">
+                        <td class="px-4 py-1.5 sticky left-0 bg-white group-hover:bg-[#fafafb] z-10 border-r border-slate-100">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-7 h-7 rounded-full bg-[#0e6ba8]/10 text-[#0e6ba8] flex items-center justify-center font-bold text-[11px] uppercase shrink-0">{{ f.nombre_completo[0] }}</div>
+                                <div class="min-w-0">
+                                    <p class="text-sm font-medium text-slate-700 truncate">{{ f.corto }}</p>
+                                    {% if f.puesto %}<p class="text-[10px] text-slate-400 truncate">{{ f.puesto }}</p>{% endif %}
+                                </div>
+                            </div>
+                        </td>
+                        {% for cell in f.celdas %}
+                        <td class="p-0.5 text-center">
+                            <button type="button" onclick="abrirIncid('{{ f.numero_empleado }}', '{{ mes }}-{{ '%02d'|format(cell.dia) }}', '{{ cell.codigo or '' }}')"
+                                    title="{% if cell.auto %}{% if cell.codigo == 'A' and cell.retardo > 0 %}Retardo {{ cell.retardo }} min — checador{% elif cell.codigo == 'A' %}Asistencia — checador{% elif cell.codigo == 'F' %}Falta — sin checada (auto){% elif cell.codigo == 'FEST' %}Día festivo{% elif cell.codigo == 'D' %}Descanso (domingo){% endif %}{% endif %}"
+                                    class="relative w-7 h-7 rounded text-[10px] font-bold border transition-colors
+                                    {% if not cell.codigo %}border-transparent text-slate-200 hover:bg-slate-100 hover:text-slate-400
+                                    {% elif not cell.auto %}{{ cell.css }}
+                                    {% elif cell.retardo > 0 %}bg-amber-50 text-amber-600 border-amber-200 border-dashed
+                                    {% else %}{{ cell.css }} border-dashed opacity-90{% endif %}">
+                                {{ cell.codigo or '·' }}
+                                {% if cell.auto and cell.retardo > 0 %}<span class="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-amber-500 ring-1 ring-white"></span>{% endif %}
+                            </button>
+                        </td>
+                        {% endfor %}
+                        <td class="px-3 text-center">
+                            {% if f.alerta %}<span class="px-2 py-0.5 rounded-md text-xs font-bold bg-rose-50 text-rose-600 border border-rose-100" title="3 o más faltas">⚠ {{ f.faltas }}</span>
+                            {% elif f.faltas %}<span class="text-sm font-bold text-amber-600">{{ f.faltas }}</span>
+                            {% else %}<span class="text-slate-400">0</span>{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-16 text-center">
+        <i class="ri-calendar-close-line text-5xl text-slate-300 block mb-3"></i>
+        <h3 class="text-lg font-bold text-[#1d1d1f]">No hay colaboradores</h3>
+        <p class="text-slate-500 mt-1">Da de alta empleados y aparecerán en este calendario.</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Modal registrar incidencia (compartido) -->
+<div id="modal-incid" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-xl font-bold text-[#1d1d1f]">Registrar incidencia</h3>
+            <button type="button" onclick="document.getElementById('modal-incid').classList.add('hidden')" class="text-slate-400 hover:text-slate-700"><i class="ri-close-line text-2xl"></i></button>
+        </div>
+        <form action="/incidencias/marcar" method="POST" class="flex flex-col gap-4">
+            <div>
+                <label class="text-xs font-bold text-slate-500 uppercase mb-1.5 block">Colaborador</label>
+                <select name="numero_empleado" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none">
+                    {% for f in filas %}<option value="{{ f.numero_empleado }}">{{ f.nombre_completo }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Fecha</label>
+                    <input type="date" name="fecha" value="{{ hoy }}" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Tipo</label>
+                    <select name="codigo" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none">
+                        <option value="">— Quitar —</option>
+                        {% for cod, etiqueta, css in codigos %}<option value="{{ cod }}">{{ cod }} · {{ etiqueta }}</option>{% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Nota <span class="font-normal lowercase text-slate-400">(opcional)</span></label>
+                <input type="text" name="nota" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none">
+            </div>
+            <div class="flex gap-3 mt-1">
+                <button type="button" onclick="document.getElementById('modal-incid').classList.add('hidden')" class="flex-1 py-3 font-bold rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50">Cancelar</button>
+                <button type="submit" class="flex-1 bg-[#0e6ba8] text-white py-3 font-bold rounded-xl hover:bg-[#1d1d1f]">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: gestionar días festivos -->
+<div id="modal-festivos" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between mb-5">
+            <div>
+                <h3 class="text-xl font-bold text-[#1d1d1f]">Días festivos · <span class="capitalize">{{ mes_label }}</span></h3>
+                <p class="text-slate-500 text-sm">Se marcan solos en el calendario y NO cuentan como falta</p>
+            </div>
+            <button type="button" onclick="document.getElementById('modal-festivos').classList.add('hidden')" class="text-slate-400 hover:text-slate-700"><i class="ri-close-line text-2xl"></i></button>
+        </div>
+        <form action="/festivos/agregar" method="POST" class="flex gap-2 mb-5">
+            <input type="date" name="fecha" required class="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none text-sm">
+            <input type="text" name="nombre" placeholder="Nombre (opcional)" class="flex-1 min-w-0 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none text-sm">
+            <button type="submit" class="bg-[#0e6ba8] text-white px-4 py-2.5 font-bold rounded-xl hover:bg-[#1d1d1f] transition-colors shrink-0"><i class="ri-add-line"></i></button>
+        </form>
+        <div class="divide-y divide-slate-100 border border-slate-100 rounded-xl">
+            {% for fst in festivos_mes %}
+            <div class="flex items-center justify-between px-4 py-2.5">
+                <div><span class="text-sm font-semibold text-slate-700">{{ fst.fecha }}</span> <span class="text-sm text-slate-500">· {{ fst.nombre }}</span></div>
+                <form action="/festivos/eliminar" method="POST">
+                    <input type="hidden" name="id" value="{{ fst.id }}"><input type="hidden" name="mes" value="{{ mes }}">
+                    <button type="submit" class="w-8 h-8 rounded-lg border border-slate-200 text-slate-400 hover:bg-rose-50 hover:text-rose-500 hover:border-rose-200 transition-colors" title="Quitar"><i class="ri-delete-bin-line"></i></button>
+                </form>
+            </div>
+            {% else %}
+            <p class="px-4 py-6 text-center text-slate-500 text-sm">No hay festivos en {{ mes_label }}.</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<script>
+    function abrirIncid(num, fecha, codigo) {
+        var m = document.getElementById('modal-incid');
+        if (num !== undefined && num !== null) { m.querySelector('[name=numero_empleado]').value = num; }
+        if (fecha) { m.querySelector('[name=fecha]').value = fecha; }
+        m.querySelector('[name=codigo]').value = (codigo === undefined || codigo === null) ? 'A' : codigo;
+        m.querySelector('[name=nota]').value = '';
+        m.classList.remove('hidden');
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,82 @@
+{% extends _layout|default("base.html") %}
+
+{% block title %}Rol de Limpiezas | ERP Atisa{% endblock %}
+
+{% block content %}
+<div class="p-10">
+    <header class="flex flex-wrap justify-between items-center gap-4 mb-8">
+        <div>
+            <h1 class="text-2xl font-bold text-[#1d1d1f]">Rol de Limpiezas</h1>
+            <p class="text-slate-500 mt-1">Rotación semanal de áreas auxiliares de producción</p>
+        </div>
+        <button type="button" onclick="document.getElementById('modal-limp').classList.remove('hidden')"
+                class="bg-[#0e6ba8] text-white px-6 py-3 font-bold rounded-xl hover:bg-[#1d1d1f] flex items-center gap-2 transition-colors">
+            <i class="ri-add-line text-lg"></i> Asignar
+        </button>
+    </header>
+
+    {% if semanas %}
+    <div class="flex flex-col gap-5">
+        {% for semana in semanas %}
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="px-6 py-3.5 border-b border-slate-100 bg-slate-50/60 flex items-center gap-2">
+                <i class="ri-calendar-todo-line text-[#0e6ba8]"></i>
+                <h3 class="font-bold text-[#1d1d1f]">{{ semana }}</h3>
+            </div>
+            <div class="divide-y divide-slate-50">
+                {% for r in grupos[semana] %}
+                <div class="flex items-center justify-between px-6 py-3 hover:bg-slate-50/60 transition-colors">
+                    <div class="flex items-center gap-3">
+                        <span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-[#0e6ba8]/10 text-[#0e6ba8]">{{ r.area }}</span>
+                        <span class="text-slate-700 font-medium">{{ r.responsable }}</span>
+                        {% if r.nota %}<span class="text-xs text-slate-500">· {{ r.nota }}</span>{% endif %}
+                    </div>
+                    <form action="/limpiezas/eliminar" method="POST" onsubmit="return confirm('¿Eliminar esta asignación?');">
+                        <input type="hidden" name="id" value="{{ r.id }}">
+                        <button type="submit" class="w-8 h-8 rounded-lg border border-slate-200 text-slate-400 hover:bg-rose-50 hover:text-rose-500 hover:border-rose-200 transition-colors" title="Eliminar"><i class="ri-delete-bin-line"></i></button>
+                    </form>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-16 text-center">
+        <i class="ri-brush-line text-5xl text-slate-300 block mb-3"></i>
+        <h3 class="text-lg font-bold text-[#1d1d1f]">Aún no hay rol de limpiezas</h3>
+        <p class="text-slate-500 mt-1">Usa el botón «Asignar» para crear la primera rotación semanal.</p>
+    </div>
+    {% endif %}
+</div>
+
+<div id="modal-limp" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-xl font-bold text-[#1d1d1f]">Asignar limpieza</h3>
+            <button type="button" onclick="document.getElementById('modal-limp').classList.add('hidden')" class="text-slate-400 hover:text-slate-700"><i class="ri-close-line text-2xl"></i></button>
+        </div>
+        <form action="/limpiezas/registrar" method="POST" class="flex flex-col gap-4">
+            <div>
+                <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Semana</label>
+                <input type="text" name="semana" required placeholder="Ej. 15 jun al 21 jun" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none">
+            </div>
+            <div>
+                <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Área</label>
+                <input type="text" name="area" list="lista-areas-limp" required placeholder="Ej. Esclusa producción" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none">
+                <datalist id="lista-areas-limp"><option>Área común Producción</option><option>Esclusa producción</option><option>Utensilios de limpieza</option><option>Acondicionado</option><option>Pasillo de ingreso</option></datalist>
+            </div>
+            <div>
+                <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Responsable</label>
+                <input type="text" name="responsable" list="lista-emps-limp" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none">
+                <datalist id="lista-emps-limp">{% for e in empleados %}<option>{{ e.nombre_completo }}</option>{% endfor %}</datalist>
+            </div>
+            <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Nota <span class="font-normal lowercase text-slate-400">(opcional)</span></label><input type="text" name="nota" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none"></div>
+            <div class="flex gap-3 mt-1">
+                <button type="button" onclick="document.getElementById('modal-limp').classList.add('hidden')" class="flex-1 py-3 font-bold rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50">Cancelar</button>
+                <button type="submit" class="flex-1 bg-[#0e6ba8] text-white py-3 font-bold rounded-xl hover:bg-[#1d1d1f]">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

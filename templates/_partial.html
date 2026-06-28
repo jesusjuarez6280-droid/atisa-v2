@@ -1,0 +1,5 @@
+{# Cascarón para peticiones HTMX: emite solo el contenido, sin <html> ni sidebar. #}
+{# htmx detecta el <title> en la respuesta y actualiza document.title en cada navegación. #}
+<title>{% block title %}ERP Atisa{% endblock %}</title>
+{% include '_flashes.html' %}
+{% block content %}{% endblock %}

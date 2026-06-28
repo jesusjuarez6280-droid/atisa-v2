@@ -1,0 +1,19 @@
+{% extends _layout|default("base.html") %}
+{% block title %}Sin acceso | ERP Atisa{% endblock %}
+{% block content %}
+<div class="min-h-screen flex items-center justify-center p-10">
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-12 max-w-md text-center">
+        <div class="w-16 h-16 mx-auto rounded-2xl bg-blue-50 text-[#0e6ba8] flex items-center justify-center mb-5">
+            <i class="ri-lock-2-line text-3xl"></i>
+        </div>
+        <h1 class="text-xl font-bold text-[#1d1d1f] mb-2">Sin módulos asignados</h1>
+        <p class="text-slate-500 text-sm leading-relaxed">
+            Tu cuenta no tiene acceso a ningún módulo todavía. Contacta al administrador
+            del sistema para que te asigne los permisos correspondientes.
+        </p>
+        <a href="/logout" hx-boost="false" class="mt-6 inline-flex items-center gap-2 h-11 px-5 rounded-xl bg-[#1d1d1f] text-white text-sm font-semibold hover:bg-[#0e6ba8] transition-colors">
+            <i class="ri-logout-box-r-line"></i> Cerrar sesión
+        </a>
+    </div>
+</div>
+{% endblock %}

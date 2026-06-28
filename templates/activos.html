@@ -1,110 +1,221 @@
-{% extends "base.html" %}
+{% extends _layout|default("base.html") %}
 
 {% block title %}Inventario y Activos | ERP Atisa{% endblock %}
 
 {% block content %}
-<div class="flex flex-col min-h-screen bg-[#f4f6fb]">
+<div class="flex flex-col min-h-screen bg-[#f5f5f7]">
     <header class="bg-white border-b border-slate-100 px-10 h-[88px] flex items-center justify-between sticky top-0 z-40">
         <div class="flex items-center gap-4">
-            <div class="w-12 h-12 bg-blue-50 text-[#1e6fd9] rounded-xl flex items-center justify-center text-2xl">
+            <div class="w-12 h-12 bg-blue-50 text-[#0e6ba8] rounded-xl flex items-center justify-center text-2xl">
                 <i class="ri-tools-fill"></i>
             </div>
             <div>
-                <h1 class="text-[#0f2744] text-2xl font-bold">Control de Activos y EPP</h1>
-                <p class="text-slate-400 text-sm mt-0.5">Gestión de inventario físico y asignación de equipos</p>
+                <h1 class="text-[#1d1d1f] text-2xl font-bold">Control de Activos y EPP</h1>
+                <p class="text-slate-500 text-sm mt-0.5">Gestión de inventario físico y asignación de equipos</p>
             </div>
         </div>
     </header>
 
     <div class="flex-1 p-10 space-y-8">
         <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
-            <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden group">
-                <div class="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-bl-[100px] -z-10"></div>
+
+            <!-- ══════════════════════════════════════
+                 CARD 1 — INGRESAR ACTIVO AL ALMACÉN
+            ══════════════════════════════════════ -->
+            <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
                 <div class="flex items-center gap-3 mb-6">
-                    <div class="w-8 h-8 bg-blue-100 text-[#1e6fd9] rounded-lg flex items-center justify-center">
+                    <div class="w-8 h-8 bg-blue-100 text-[#0e6ba8] rounded-lg flex items-center justify-center">
                         <i class="ri-add-box-line"></i>
                     </div>
-                    <h2 class="text-lg font-bold text-[#0f2744]">1. Ingresar Activo al Almacén</h2>
+                    <h2 class="text-lg font-bold text-[#1d1d1f]">1. Ingresar Activo al Almacén</h2>
                 </div>
-                
-                <form action="/crear_activo" method="POST" class="flex flex-col gap-5">
-                    <div class="flex gap-4">
-                        <div class="relative flex-1">
-                            <i class="ri-price-tag-3-line absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                            <select name="categoria" class="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#1e6fd9] focus:bg-white focus:ring-4 focus:ring-blue-500/10 outline-none transition-all appearance-none text-slate-700 font-medium" required>
-                                <option value="">Categoría...</option>
-                                <option value="Laptop">Laptop / Equipo TI</option>
-                                <option value="EPP">Equipo de Protección</option>
-                                <option value="Uniforme">Uniforme</option>
-                                <option value="Herramienta">Herramienta</option>
+
+                <form action="/crear_activo" method="POST" class="flex flex-col gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div class="md:col-span-1">
+                            <select name="categoria" class="select-pro" required>
+                                <option value="">Categoría del activo...</option>
+                                <optgroup label="Equipo Electrónico">
+                                    <option value="Laptop">Laptop / Equipo TI</option>
+                                    <option value="Computadora">Computadora (Desktop)</option>
+                                    <option value="Celular">Celular</option>
+                                    <option value="Tablet">Tablet</option>
+                                </optgroup>
+                                <optgroup label="Vehículos">
+                                    <option value="Vehículo">Carro / Vehículo</option>
+                                </optgroup>
+                                <optgroup label="Producción y Taller">
+                                    <option value="Herramienta">Herramienta</option>
+                                </optgroup>
+                                <optgroup label="Vestuario y EPP">
+                                    <option value="Uniforme">Uniforme</option>
+                                    <option value="Calzado">Calzado de Seguridad</option>
+                                    <option value="Bata">Bata de Trabajo</option>
+                                    <option value="EPP">EPP / Equipo de Seguridad</option>
+                                </optgroup>
                             </select>
-                            <i class="ri-arrow-down-s-line absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
                         </div>
-                        <div class="relative flex-[2]">
-                            <i class="ri-text absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                            <input type="text" name="descripcion" placeholder="Descripción del equipo..." required class="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#1e6fd9] focus:bg-white focus:ring-4 focus:ring-blue-500/10 outline-none transition-all text-slate-700">
+                        <div class="md:col-span-2">
+                            <input type="text" name="descripcion" placeholder="Descripción del equipo o artículo..." required
+                                   class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none transition-all text-slate-700 text-sm font-medium h-12">
                         </div>
                     </div>
-                    <button type="submit" class="bg-[#0f2744] text-white py-3 font-bold rounded-xl hover:bg-[#1e6fd9] transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-900/20">
+                    <button type="submit" class="bg-[#0e6ba8] text-white py-3.5 font-bold rounded-xl hover:bg-[#1d1d1f] transition-all flex items-center justify-center gap-2 shadow-lg">
                         <i class="ri-save-3-line text-lg"></i> Dar de Alta en Sistema
                     </button>
                 </form>
             </div>
 
-            <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden group">
-                <div class="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-bl-[100px] -z-10"></div>
+            <!-- ══════════════════════════════════════
+                 CARD 2 — ASIGNAR / PRESTAR A EMPLEADO
+            ══════════════════════════════════════ -->
+            <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
                 <div class="flex items-center gap-3 mb-6">
-                    <div class="w-8 h-8 bg-blue-100 text-[#1e6fd9] rounded-lg flex items-center justify-center">
+                    <div class="w-8 h-8 bg-blue-100 text-[#0e6ba8] rounded-lg flex items-center justify-center">
                         <i class="ri-user-received-2-line"></i>
                     </div>
-                    <h2 class="text-lg font-bold text-[#0f2744]">2. Asignar / Prestar a Empleado</h2>
+                    <h2 class="text-lg font-bold text-[#1d1d1f]">2. Asignar / Prestar a Empleado</h2>
                 </div>
-                
-                <form action="/asignar_activo" method="POST" class="flex flex-col gap-5">
-                    <div class="flex gap-4">
-                        <div class="relative flex-1">
-                            <i class="ri-user-3-line absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 z-10"></i>
-                            <select name="numero_empleado" class="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#1e6fd9] focus:bg-white focus:ring-4 focus:ring-blue-500/10 outline-none transition-all appearance-none text-slate-700 font-medium" required>
-                                <option value="">Empleado...</option>
-                                {% for emp in empleados %}
-                                    <option value="{{ emp.numero_empleado }}">{{ emp.nombre_completo }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="relative flex-1">
-                            <i class="ri-macbook-line absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 z-10"></i>
-                            <select name="activo_id" class="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#1e6fd9] focus:bg-white focus:ring-4 focus:ring-blue-500/10 outline-none transition-all appearance-none text-slate-700 font-medium" required>
-                                <option value="">Equipo Disponible...</option>
-                                {% for inv in inventario %}
-                                    {% if inv.estatus == 'Disponible' %}
-                                    <option value="{{ inv.id }}">{{ inv.categoria }} - {{ inv.descripcion }}</option>
-                                    {% endif %}
-                                {% endfor %}
-                            </select>
-                        </div>
+
+                <form action="/asignar_activo" method="POST" class="flex flex-col gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <select name="numero_empleado" class="select-pro" required>
+                            <option value="">Selecciona un empleado...</option>
+                            {% for emp in empleados %}
+                                <option value="{{ emp.numero_empleado }}">{{ emp.nombre_completo }}</option>
+                            {% endfor %}
+                        </select>
+                        <select name="activo_id" id="sel-activo" class="select-pro" required>
+                            <option value="">Selecciona equipo disponible...</option>
+                            {% for inv in inventario %}
+                                {% if inv.estatus == 'Disponible' %}
+                                <option value="{{ inv.id }}" data-cat="{{ inv.categoria }}">{{ inv.categoria }} — {{ inv.descripcion }}</option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
                     </div>
-                    <button type="submit" class="bg-[#1e6fd9] text-white py-3 font-bold rounded-xl hover:bg-[#0f2744] transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20">
-                        <i class="ri-file-paper-2-line text-lg"></i> Crear Responsiva y Asignar
+
+                    <!-- ─ Datos para la Responsiva ─ -->
+                    <div class="bg-blue-50 border border-blue-100 rounded-xl p-5 space-y-4">
+                        <div class="flex items-center justify-between">
+                            <p class="text-xs font-bold text-[#1d1d1f] uppercase tracking-wider flex items-center gap-2">
+                                <i class="ri-information-line text-[#0e6ba8] text-base"></i> Datos para la Carta Responsiva
+                            </p>
+                            <span class="text-xs font-normal text-slate-500">Campos según tipo de carta</span>
+                        </div>
+
+                        <!-- Tipo de carta -->
+                        <div>
+                            <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Tipo de Carta a Generar</label>
+                            <select name="tipo_responsiva" id="sel-tipo-responsiva" required class="select-pro">
+                                <optgroup label="Comodato — Equipo Electrónico">
+                                    <option value="Comodato de Celular">Comodato de Celular (con políticas TELCEL)</option>
+                                    <option value="Comodato de Laptop">Comodato de Laptop</option>
+                                    <option value="Comodato de Tablet">Comodato de Tablet</option>
+                                    <option value="Comodato de Computadora">Comodato de Computadora</option>
+                                </optgroup>
+                                <optgroup label="Préstamo de Equipo">
+                                    <option value="Préstamo de Vehículo">Préstamo de Vehículo de Empresa</option>
+                                    <option value="Préstamo de Herramienta">Préstamo de Herramienta</option>
+                                </optgroup>
+                                <optgroup label="Entrega de Vestuario">
+                                    <option value="Entrega de Uniforme">Entrega de Uniforme</option>
+                                    <option value="Entrega de Calzado">Entrega de Calzado de Seguridad</option>
+                                    <option value="Entrega de Bata">Entrega de Bata de Trabajo</option>
+                                </optgroup>
+                                <optgroup label="EPP y Seguridad">
+                                    <option value="Entrega de EPP">Entrega de Equipo de Protección Personal</option>
+                                    <option value="Deslinde EPP">Deslinde de Responsabilidad — EPP</option>
+                                </optgroup>
+                            </select>
+                        </div>
+
+                        <!-- Puesto y área: siempre visibles -->
+                        <div class="grid grid-cols-2 gap-3">
+                            <input type="text" name="puesto" placeholder="Puesto / Cargo"
+                                   class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:border-[#0e6ba8] outline-none transition-all h-12">
+                            <input type="text" name="area" placeholder="Departamento / Área"
+                                   class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:border-[#0e6ba8] outline-none transition-all h-12">
+                        </div>
+
+                        <!-- ── Grupo: Equipo electrónico (laptop / tablet / computadora / celular) ── -->
+                        <div id="grp-equipo" class="hidden space-y-3">
+                            <div class="grid grid-cols-2 gap-3">
+                                <input type="text" name="marca" placeholder="Marca"
+                                       class="campos-equipo w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:border-[#0e6ba8] outline-none transition-all h-12">
+                                <input type="text" name="modelo" placeholder="Modelo"
+                                       class="campos-equipo w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:border-[#0e6ba8] outline-none transition-all h-12">
+                                <input type="text" name="no_serie" placeholder="Número de Serie"
+                                       class="campos-equipo w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:border-[#0e6ba8] outline-none transition-all h-12">
+                                <!-- IMEI: solo celular -->
+                                <div id="grp-imei">
+                                    <input type="text" name="imei" id="campo-imei" placeholder="IMEI (solo celular)"
+                                           class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:border-[#0e6ba8] outline-none transition-all h-12">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ── Grupo: Vehículo ── -->
+                        <div id="grp-vehiculo" class="hidden space-y-3">
+                            <div class="grid grid-cols-2 gap-3">
+                                <input type="text" name="marca" placeholder="Marca del vehículo"
+                                       class="campos-vehiculo w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:border-[#0e6ba8] outline-none transition-all h-12">
+                                <input type="text" name="modelo" placeholder="Modelo / Año"
+                                       class="campos-vehiculo w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:border-[#0e6ba8] outline-none transition-all h-12">
+                                <input type="text" name="placa" id="campo-placa" placeholder="Placas"
+                                       class="campos-vehiculo w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:border-[#0e6ba8] outline-none transition-all h-12">
+                                <input type="text" name="color" id="campo-color-vh" placeholder="Color del vehículo"
+                                       class="campos-vehiculo w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:border-[#0e6ba8] outline-none transition-all h-12">
+                                <input type="text" name="no_serie" placeholder="No. Serie / NIV"
+                                       class="campos-vehiculo w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:border-[#0e6ba8] outline-none transition-all h-12 col-span-2">
+                            </div>
+                        </div>
+
+                        <!-- ── Grupo: Vestuario (uniforme / calzado / bata) ── -->
+                        <div id="grp-vestuario" class="hidden space-y-3">
+                            <div class="grid grid-cols-2 gap-3">
+                                <input type="text" name="talla" id="campo-talla" placeholder="Talla (ej. M, 28, 26)"
+                                       class="campos-vestuario w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:border-[#0e6ba8] outline-none transition-all h-12">
+                                <input type="text" name="color" id="campo-color-vest" placeholder="Color"
+                                       class="campos-vestuario w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:border-[#0e6ba8] outline-none transition-all h-12">
+                            </div>
+                        </div>
+
+                        <!-- Observaciones: siempre visible -->
+                        <textarea name="observaciones" rows="2" placeholder="Observaciones adicionales (opcional)"
+                                  class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:border-[#0e6ba8] outline-none transition-all resize-y"></textarea>
+
+                        <p class="text-xs text-slate-500 flex items-start gap-2">
+                            <i class="ri-lightbulb-flash-line text-amber-500 mt-0.5 text-base"></i>
+                            Los campos vacíos aparecerán como <strong>"— No aplica —"</strong> en la carta. Al guardar se abre la carta lista para imprimir.
+                        </p>
+                    </div>
+
+                    <button type="submit" class="bg-[#0e6ba8] text-white py-3.5 font-bold rounded-xl hover:bg-[#1d1d1f] transition-all flex items-center justify-center gap-2 shadow-lg">
+                        <i class="ri-file-paper-2-line text-lg"></i> Generar Responsiva y Asignar
                     </button>
                 </form>
             </div>
         </div>
 
+        <!-- ══════════════════════════════════════
+             HISTORIAL DE EQUIPOS ENTREGADOS
+        ══════════════════════════════════════ -->
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
             <div class="px-8 py-5 border-b border-slate-100 flex items-center gap-3">
-                <div class="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-500">
+                <div class="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-[#0e6ba8]">
                     <i class="ri-history-line"></i>
                 </div>
-                <h3 class="font-bold text-[#0f2744] text-lg">Historial de Equipos Entregados</h3>
+                <h3 class="font-bold text-[#1d1d1f] text-lg">Historial de Equipos Entregados</h3>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-left">
                     <thead class="bg-slate-50/50 border-b border-slate-100">
                         <tr>
-                            <th class="px-8 py-4 text-slate-400 text-[13px] font-bold uppercase tracking-wider">Empleado Responsable</th>
-                            <th class="px-8 py-4 text-slate-400 text-[13px] font-bold uppercase tracking-wider">Detalle del Equipo</th>
-                            <th class="px-8 py-4 text-slate-400 text-[13px] font-bold uppercase tracking-wider">Fecha Entrega</th>
-                            <th class="px-8 py-4 text-slate-400 text-[13px] font-bold uppercase tracking-wider text-right">Responsiva</th>
+                            <th class="px-8 py-4 text-slate-500 text-[13px] font-bold uppercase tracking-wider">Empleado Responsable</th>
+                            <th class="px-8 py-4 text-slate-500 text-[13px] font-bold uppercase tracking-wider">Detalle del Equipo</th>
+                            <th class="px-8 py-4 text-slate-500 text-[13px] font-bold uppercase tracking-wider">Fecha Entrega</th>
+                            <th class="px-8 py-4 text-slate-500 text-[13px] font-bold uppercase tracking-wider text-right">Acciones</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
@@ -112,24 +223,76 @@
                         <tr class="hover:bg-slate-50 transition-colors group">
                             <td class="px-8 py-5">
                                 <div class="flex items-center gap-3">
-                                    <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-[#1e6fd9] font-bold">
+                                    <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-[#0e6ba8] font-bold">
                                         {{ asig.nombre_completo[:1] }}
                                     </div>
-                                    <span class="font-bold text-[#0f2744]">{{ asig.nombre_completo }}</span>
+                                    <span class="font-bold text-[#1d1d1f]">{{ asig.nombre_completo }}</span>
                                 </div>
                             </td>
                             <td class="px-8 py-5">
-                                <span class="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-md bg-slate-100 text-[#0f2744] border border-slate-200">
-                                    {{ asig.categoria }} - {{ asig.descripcion }}
+                                <span class="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-md bg-slate-100 text-[#1d1d1f] border border-slate-200">
+                                    {{ asig.categoria }} — {{ asig.descripcion }}
                                 </span>
                             </td>
                             <td class="px-8 py-5">
                                 <span class="text-sm text-slate-500">{{ asig.fecha_prestamo }}</span>
                             </td>
-                            <td class="px-8 py-5 text-right">
-                                <a href="/imprimir_responsiva/{{ asig.id }}" target="_blank" class="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-white border border-slate-200 text-[#1e6fd9] hover:bg-blue-50 transition-all">
-                                    <i class="ri-printer-line text-lg"></i>
-                                </a>
+                            <td class="px-8 py-5">
+                                <div class="flex items-center justify-end gap-2 flex-wrap">
+                                    <a href="/responsiva/{{ asig.id }}" target="_blank" title="Ver / imprimir responsiva"
+                                       class="inline-flex items-center gap-1.5 px-3 h-10 rounded-xl bg-blue-50 border border-blue-200 text-[#0e6ba8] text-xs font-bold hover:bg-[#0e6ba8]/10 transition-all">
+                                        <i class="ri-printer-line text-base"></i> Responsiva
+                                    </a>
+                                    {% if asig.firmada and asig.ruta_contrato %}
+                                    <a href="/ver_contrato/{{ asig.id }}" target="_blank" title="Ver responsiva firmada"
+                                       class="inline-flex items-center gap-1.5 px-3 h-10 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold hover:bg-emerald-100 transition-all">
+                                        <i class="ri-shield-check-line text-base"></i> Firmada
+                                    </a>
+                                    {% else %}
+                                    <button type="button" onclick="document.getElementById('modal-firma-{{ asig.id }}').classList.remove('hidden')"
+                                            class="inline-flex items-center gap-1.5 px-3 h-10 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-xs font-bold hover:bg-amber-100 transition-all">
+                                        <i class="ri-upload-2-line text-base"></i> Subir firmada
+                                    </button>
+                                    {% endif %}
+                                    <form action="/devolver_activo" method="POST" onsubmit="return confirm('¿Confirmar devolución de este activo?');" class="inline">
+                                        <input type="hidden" name="asignacion_id" value="{{ asig.id }}">
+                                        <button type="submit" title="Marcar como devuelto"
+                                                class="inline-flex items-center gap-1.5 px-3 h-10 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-200 transition-all">
+                                            <i class="ri-arrow-go-back-line text-base"></i> Devolver
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr id="modal-firma-{{ asig.id }}" class="hidden">
+                            <td colspan="4" class="p-0">
+                                <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+                                    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
+                                        <div class="flex items-center justify-between mb-6">
+                                            <h3 class="text-xl font-bold text-[#1d1d1f]">Subir Responsiva Firmada</h3>
+                                            <button type="button" onclick="document.getElementById('modal-firma-{{ asig.id }}').classList.add('hidden')"
+                                                    class="text-slate-400 hover:text-slate-700"><i class="ri-close-line text-2xl"></i></button>
+                                        </div>
+                                        <p class="text-slate-500 text-sm mb-4">Sube el escaneado/foto de la responsiva ya firmada por <strong class="text-[#1d1d1f]">{{ asig.nombre_completo }}</strong>.</p>
+                                        <form action="/subir_contrato_firmado/{{ asig.id }}" method="POST" enctype="multipart/form-data" hx-boost="false" class="flex flex-col gap-4">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <input type="file" name="contrato_firmado" accept=".pdf,image/*" required
+                                                   class="w-full text-sm text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-[#1d1d1f] file:text-white file:text-xs file:font-bold file:cursor-pointer">
+                                            <div class="flex gap-3 mt-2">
+                                                <button type="button" onclick="document.getElementById('modal-firma-{{ asig.id }}').classList.add('hidden')"
+                                                        class="flex-1 py-3 font-bold rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50">Cancelar</button>
+                                                <button type="submit" class="flex-1 bg-[#0e6ba8] text-white py-3 font-bold rounded-xl hover:bg-[#1d1d1f]">Subir</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" class="px-8 py-16 text-center">
+                                <i class="ri-inbox-line text-4xl text-slate-300 block mb-3"></i>
+                                <p class="text-slate-500 font-medium">Aún no hay equipos asignados.</p>
                             </td>
                         </tr>
                         {% endfor %}
@@ -139,4 +302,84 @@
         </div>
     </div>
 </div>
+
+<script>
+(function () {
+    /* Configuración de grupos de campos por tipo de carta */
+    const CONFIG = {
+        'Comodato de Celular':     { equipo: true,  imei: true,  vehiculo: false, vestuario: false },
+        'Comodato de Laptop':      { equipo: true,  imei: false, vehiculo: false, vestuario: false },
+        'Comodato de Tablet':      { equipo: true,  imei: false, vehiculo: false, vestuario: false },
+        'Comodato de Computadora': { equipo: true,  imei: false, vehiculo: false, vestuario: false },
+        'Préstamo de Vehículo':    { equipo: false, imei: false, vehiculo: true,  vestuario: false },
+        'Préstamo de Herramienta': { equipo: false, imei: false, vehiculo: false, vestuario: false },
+        'Entrega de Uniforme':     { equipo: false, imei: false, vehiculo: false, vestuario: true  },
+        'Entrega de Calzado':      { equipo: false, imei: false, vehiculo: false, vestuario: true  },
+        'Entrega de Bata':         { equipo: false, imei: false, vehiculo: false, vestuario: true  },
+        'Entrega de EPP':          { equipo: false, imei: false, vehiculo: false, vestuario: false },
+        'Deslinde EPP':            { equipo: false, imei: false, vehiculo: false, vestuario: false },
+    };
+
+    function toggleGrupos(tipo) {
+        const cfg = CONFIG[tipo] || {};
+
+        const grpEquipo   = document.getElementById('grp-equipo');
+        const grpImei     = document.getElementById('grp-imei');
+        const grpVehiculo = document.getElementById('grp-vehiculo');
+        const grpVest     = document.getElementById('grp-vestuario');
+
+        /* Equipo electrónico */
+        if (grpEquipo) {
+            grpEquipo.classList.toggle('hidden', !cfg.equipo);
+            grpEquipo.querySelectorAll('input').forEach(i => i.disabled = !cfg.equipo);
+        }
+        /* IMEI solo celular */
+        if (grpImei) {
+            grpImei.classList.toggle('hidden', !cfg.imei);
+            const imeiInput = document.getElementById('campo-imei');
+            if (imeiInput) imeiInput.disabled = !cfg.imei;
+        }
+        /* Vehículo */
+        if (grpVehiculo) {
+            grpVehiculo.classList.toggle('hidden', !cfg.vehiculo);
+            grpVehiculo.querySelectorAll('input').forEach(i => i.disabled = !cfg.vehiculo);
+        }
+        /* Vestuario */
+        if (grpVest) {
+            grpVest.classList.toggle('hidden', !cfg.vestuario);
+            grpVest.querySelectorAll('input').forEach(i => i.disabled = !cfg.vestuario);
+        }
+    }
+
+    /* Escuchar cambio en el select nativo de tipo_responsiva */
+    const selTipo = document.getElementById('sel-tipo-responsiva');
+    if (selTipo) {
+        selTipo.addEventListener('change', function () { toggleGrupos(this.value); });
+        /* Inicializar con el valor actual */
+        toggleGrupos(selTipo.value);
+    }
+
+    /* Autonomía: sugerir el tipo de carta según la categoría del equipo elegido
+       (el sistema ya sabe que es laptop/celular/uniforme → no lo vuelve a preguntar) */
+    const MAP_CAT = {
+        'Laptop': 'Comodato de Laptop', 'Computadora': 'Comodato de Computadora',
+        'Celular': 'Comodato de Celular', 'Tablet': 'Comodato de Tablet',
+        'Vehículo': 'Préstamo de Vehículo', 'Herramienta': 'Préstamo de Herramienta',
+        'Uniforme': 'Entrega de Uniforme', 'Calzado': 'Entrega de Calzado',
+        'Bata': 'Entrega de Bata', 'EPP': 'Entrega de EPP'
+    };
+    const selActivo = document.getElementById('sel-activo');
+    if (selActivo && selTipo) {
+        selActivo.addEventListener('change', function () {
+            const opt = this.options[this.selectedIndex];
+            const cat = opt ? opt.getAttribute('data-cat') : '';
+            const tipo = MAP_CAT[cat];
+            if (tipo) {
+                selTipo.value = tipo;
+                selTipo.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        });
+    }
+})();
+</script>
 {% endblock %}

@@ -1,0 +1,178 @@
+{% extends _layout|default("base.html") %}
+
+{% set es_editar = modo == 'editar' %}
+{% block title %}{{ 'Editar' if es_editar else 'Crear' }} Receta | ERP Atisa{% endblock %}
+
+{% block content %}
+<div class="flex flex-col min-h-screen bg-[#f5f5f7]">
+    <header class="bg-white border-b border-slate-100 px-10 h-[88px] flex items-center justify-between sticky top-0 z-40">
+        <div class="flex items-center gap-4">
+            <div class="w-12 h-12 bg-blue-50 text-[#0e6ba8] rounded-xl flex items-center justify-center text-2xl">
+                <i class="{{ 'ri-edit-2-line' if es_editar else 'ri-file-add-line' }}"></i>
+            </div>
+            <div>
+                <h1 class="text-[#1d1d1f] text-2xl font-bold">{{ 'Editar Receta' if es_editar else 'Crear Nueva Receta' }}</h1>
+                <p class="text-slate-500 text-sm mt-0.5">{{ 'Modifica los pasos y datos del proceso' if es_editar else 'Define el proceso paso a paso' }}</p>
+            </div>
+        </div>
+        <a href="/recetas" class="flex items-center gap-2 h-11 px-5 rounded-xl border-2 border-slate-200 text-slate-600 text-sm font-semibold hover:border-[#0e6ba8] hover:text-[#0e6ba8] transition-colors">
+            <i class="ri-arrow-left-line"></i> Cancelar
+        </a>
+    </header>
+
+    <div class="flex-1 p-10">
+        <form action="{{ '/actualizar_receta/' ~ receta.id if es_editar else '/crear_receta' }}" method="POST" enctype="multipart/form-data" hx-boost="false" class="max-w-4xl mx-auto space-y-6">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-8 h-8 bg-blue-100 text-[#0e6ba8] rounded-lg flex items-center justify-center">
+                        <i class="ri-information-line"></i>
+                    </div>
+                    <h2 class="text-lg font-bold text-[#1d1d1f]">Datos Generales</h2>
+                </div>
+                <div class="flex flex-col gap-5">
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Nombre de la Receta</label>
+                        <input type="text" name="nombre" required value="{{ receta.nombre if es_editar else '' }}" placeholder="Ej. Línea A — Producto XYZ-100" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] focus:bg-white outline-none transition-all">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Descripción</label>
+                        <textarea name="descripcion" rows="3" placeholder="Resumen breve del propósito de esta receta..." class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] focus:bg-white outline-none transition-all resize-y">{{ receta.descripcion if es_editar and receta.descripcion else '' }}</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 bg-blue-100 text-[#0e6ba8] rounded-lg flex items-center justify-center">
+                            <i class="ri-list-ordered"></i>
+                        </div>
+                        <h2 class="text-lg font-bold text-[#1d1d1f]">Pasos del Proceso</h2>
+                    </div>
+                    <button type="button" id="btn-agregar-paso" class="flex items-center gap-2 h-10 px-4 rounded-xl bg-[#1d1d1f] text-white text-sm font-semibold hover:bg-[#0e6ba8] transition-colors">
+                        <i class="ri-add-line text-base"></i> Agregar paso
+                    </button>
+                </div>
+
+                <div id="contenedor-pasos" class="space-y-5"></div>
+
+                <template id="template-paso">
+                    <div class="paso-bloque bg-slate-50 border border-slate-200 rounded-2xl p-6 relative">
+                        <input type="hidden" data-name="paso_id" value="">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-full bg-[#0e6ba8] text-white font-bold flex items-center justify-center text-sm paso-numero">1</div>
+                                <span class="font-bold text-[#1d1d1f]">Paso <span class="paso-numero-text">1</span></span>
+                            </div>
+                            <button type="button" class="btn-eliminar-paso w-9 h-9 rounded-lg border border-rose-200 text-rose-500 hover:bg-rose-50 transition-colors hidden" title="Eliminar paso">
+                                <i class="ri-close-line text-lg"></i>
+                            </button>
+                        </div>
+                        <div class="flex flex-col gap-4">
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Instrucción</label>
+                                <textarea data-name="instruccion" rows="2" required placeholder="Describe qué debe hacer el operador en este paso..." class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none resize-y"></textarea>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Cronómetro</label>
+                                    <input type="number" data-name="minutos" min="0" placeholder="Minutos — 0 = sin cronómetro" class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none">
+                                </div>
+                                <div>
+                                    <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Imagen del Paso <span class="font-normal lowercase text-slate-400">(opcional)</span></label>
+                                    <input type="file" data-name="imagen" accept="image/*" class="w-full text-sm text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-[#1d1d1f] file:text-white file:text-xs file:font-bold file:cursor-pointer">
+                                    <p data-name="imagen-actual" class="text-xs text-emerald-600 mt-1 hidden"><i class="ri-image-line"></i> Imagen actual guardada (sube otra para reemplazarla)</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <a href="/recetas" class="flex-1 h-14 flex items-center justify-center font-bold rounded-xl border border-slate-200 text-slate-600 hover:bg-white transition-colors">
+                    Cancelar
+                </a>
+                <button type="submit" class="flex-[2] h-14 bg-[#0e6ba8] text-white font-bold rounded-xl hover:bg-[#1d1d1f] transition-all shadow-lg flex items-center justify-center gap-2">
+                    <i class="ri-save-3-line text-lg"></i> {{ 'Guardar Cambios' if es_editar else 'Guardar Receta' }}
+                </button>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+<script id="pasos-data" type="application/json">
+{% if es_editar %}
+[{% for p in pasos %}{"id":{{ p.id }},"instruccion":{{ p.instruccion|tojson }},"minutos":{{ p.minutos or 0 }},"imagen_ruta":{{ (p.imagen_ruta or '')|tojson }}}{{ "," if not loop.last else "" }}{% endfor %}]
+{% else %}
+[]
+{% endif %}
+</script>
+
+<script>
+(function() {
+    const contenedor = document.getElementById('contenedor-pasos');
+    const template = document.getElementById('template-paso');
+    const btnAgregar = document.getElementById('btn-agregar-paso');
+    const pasosIniciales = JSON.parse(document.getElementById('pasos-data').textContent.trim() || '[]');
+
+    function renumerarPasos() {
+        const bloques = contenedor.querySelectorAll('.paso-bloque');
+        bloques.forEach((bloque, idx) => {
+            const n = idx + 1;
+            bloque.querySelector('.paso-numero').textContent = n;
+            bloque.querySelector('.paso-numero-text').textContent = n;
+
+            const pasoId = bloque.querySelector('[data-name="paso_id"]');
+            const txt = bloque.querySelector('[data-name="instruccion"]');
+            const min = bloque.querySelector('[data-name="minutos"]');
+            const img = bloque.querySelector('[data-name="imagen"]');
+            if (pasoId) pasoId.name = 'paso_' + n + '_id';
+            if (txt) txt.name = 'paso_' + n + '_instruccion';
+            if (min) min.name = 'paso_' + n + '_minutos';
+            if (img) img.name = 'paso_' + n + '_imagen';
+
+            const btnEliminar = bloque.querySelector('.btn-eliminar-paso');
+            if (idx === 0) {
+                btnEliminar.classList.add('hidden');
+            } else {
+                btnEliminar.classList.remove('hidden');
+            }
+        });
+    }
+
+    function agregarPaso(datos) {
+        const clone = template.content.firstElementChild.cloneNode(true);
+        if (datos) {
+            clone.querySelector('[data-name="paso_id"]').value = datos.id || '';
+            clone.querySelector('[data-name="instruccion"]').value = datos.instruccion || '';
+            clone.querySelector('[data-name="minutos"]').value = datos.minutos || 0;
+            if (datos.imagen_ruta) {
+                clone.querySelector('[data-name="imagen-actual"]').classList.remove('hidden');
+            }
+        }
+        const btnEliminar = clone.querySelector('.btn-eliminar-paso');
+        btnEliminar.addEventListener('click', function() {
+            if (clone.querySelector('[data-name="paso_id"]').value) {
+                if (!confirm('¿Eliminar este paso? Se borrará al guardar la receta.')) return;
+            }
+            clone.remove();
+            renumerarPasos();
+        });
+        contenedor.appendChild(clone);
+        renumerarPasos();
+    }
+
+    btnAgregar.addEventListener('click', () => agregarPaso());
+
+    if (pasosIniciales.length > 0) {
+        pasosIniciales.forEach(p => agregarPaso(p));
+    } else {
+        agregarPaso();
+    }
+})();
+</script>
+{% endblock %}

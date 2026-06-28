@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ a.tipo_responsiva }} — {{ a.nombre_completo }}</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/remixicon.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/estilos.css') }}">
+    <script src="{{ url_for('static', filename='js/tailwind.js') }}"></script>
+
+    <style>
+        body { font-family: Inter, sans-serif; background: #f5f5f7; }
+        .doc { font-family: 'Times New Roman', Times, serif; color: #000; }
+        .doc h1, .doc h2 { font-family: 'Times New Roman', Times, serif; }
+        .doc p, .doc li { text-align: justify; line-height: 1.5; }
+        .doc table { border-collapse: collapse; width: 100%; }
+        .doc table.tabla-datos td { padding: 5px 10px; font-size: 13px; }
+        .doc table.tabla-datos tr:nth-child(odd) td { background: #f8fafc; }
+        .doc table.tabla-epp th, .doc table.tabla-epp td { border: 1px solid #000; padding: 5px 8px; font-size: 12px; }
+        .doc table.tabla-epp thead { background: #16a34a; color: white; }
+        .doc table.tabla-vest th, .doc table.tabla-vest td { border: 1px solid #000; padding: 5px 8px; font-size: 12px; }
+        .doc table.tabla-vest thead { background: #0e6ba8; color: white; }
+        .doc table.tabla-deslinde td { border: 1px solid #000; padding: 6px 10px; font-size: 13px; }
+        .firma-linea { border-top: 1.5px solid #000; margin-top: 56px; padding-top: 5px; }
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white !important; }
+            .doc { box-shadow: none !important; border: none !important; padding: 0 !important; }
+            .page-break { page-break-before: always; }
+            @page { margin: 1.8cm 2cm; size: letter; }
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <div class="no-print fixed top-6 right-6 flex items-center gap-3 z-50">
+        <a href="/activos" class="flex items-center gap-2 h-11 px-5 rounded-xl border-2 border-slate-200 bg-white text-slate-600 text-sm font-bold hover:border-[#0e6ba8] hover:text-[#0e6ba8] transition-colors">
+            <i class="ri-arrow-left-line"></i> Volver a Activos
+        </a>
+        <button onclick="window.print()" class="flex items-center gap-2 h-11 px-5 rounded-xl bg-[#1d1d1f] text-white text-sm font-bold hover:bg-[#0e6ba8] transition-colors shadow-lg">
+            <i class="ri-printer-line"></i> Imprimir / Guardar PDF
+        </button>
+    </div>
+
+    <div class="no-print max-w-[850px] mx-auto pt-10 px-6">
+        <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-[#1d1d1f]">
+            <p class="font-bold flex items-center gap-2"><i class="ri-information-line text-[#0e6ba8]"></i> Carta: <strong>{{ a.tipo_responsiva }}</strong></p>
+            <p class="text-slate-600 mt-1 text-xs">Imprime, firma físicamente, escanea y súbela desde la página de Activos.</p>
+        </div>
+    </div>
+
+    {# ──────────────────────────────────────────────────────── #}
+    {# Variables auxiliares                                     #}
+    {# ──────────────────────────────────────────────────────── #}
+    {% set tipo = a.tipo_responsiva or '' %}
+    {% set meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'] %}
+    {% set fecha_larga = hoy.strftime('%d de ') ~ meses[hoy.month-1] ~ hoy.strftime(' de %Y') %}
+
+    {# ══════════════════════════════════════════════════════════
+       CARTA 1 — COMODATO DE CELULAR (con políticas TELCEL)
+    ══════════════════════════════════════════════════════════ #}
+    {% if 'Celular' in tipo %}
+
+    <div class="max-w-[850px] mx-auto py-10 px-6">
+        <div class="doc bg-white p-14 rounded-2xl shadow-sm border border-slate-200">
+
+            <p class="text-right mb-12 text-sm">{{ EMPRESA_CIUDAD }} a <strong>{{ fecha_larga }}</strong></p>
+            <h1 class="text-center text-xl font-bold mb-10">CARTA RESPONSIVA EN COMODATO</h1>
+
+            <p class="mb-4 text-sm indent-8">
+                Por este conducto declaro bajo protesta de decir verdad que recibo el aparato electrónico que en adelante se detalla, en perfectas condiciones y a mi entera satisfacción:
+            </p>
+            <p class="mb-4 text-sm">
+                1 celular nuevo Telcel de la marca y modelo
+                <strong>{{ a.marca or '— No aplica —' }}{% if a.modelo %} {{ a.modelo }}{% endif %}</strong>,
+                con número de serie: <strong>{{ a.no_serie or '— No aplica —' }}</strong>,
+                número IMEI <strong>{{ a.imei or '— No aplica —' }}</strong>.
+            </p>
+            <p class="mb-4 text-sm">
+                Reconozco que este dispositivo es propiedad de la Empresa <strong>{{ EMPRESA_NOMBRE }},</strong> y se me entrega como préstamo para cubrir mis necesidades de comunicación. Esto con el objeto de facilitar mis actividades.
+            </p>
+            <p class="mb-4 text-sm">
+                Quedo como único y exclusivo responsable del resguardo de dicho teléfono junto con sus accesorios, así como el uso adecuado del mismo.
+            </p>
+            <p class="mb-12 text-sm">
+                Habiendo leído y estando de acuerdo en el contenido de la presente carta responsiva en comodato de asignación de teléfono celular y sus accesorios, la firmo en la ciudad de {{ EMPRESA_CIUDAD }}, el día <strong>{{ hoy.strftime('%d') }}</strong> del mes de <strong>{{ meses[hoy.month-1] }}</strong> de <strong>{{ hoy.strftime('%Y') }}</strong>.
+            </p>
+
+            <div class="grid grid-cols-2 gap-16 mt-20">
+                <div class="text-center"><p class="font-bold mb-20">ENTREGA</p>
+                    <div class="firma-linea"><p class="font-bold text-sm">_______________________</p><p class="text-xs mt-1">REPRESENTANTE LEGAL</p></div>
+                </div>
+                <div class="text-center"><p class="font-bold mb-20">RECIBE</p>
+                    <div class="firma-linea"><p class="font-bold text-sm">{{ a.nombre_completo }}</p><p class="text-xs mt-1">EMPLEADO</p></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="doc page-break bg-white p-14 rounded-2xl shadow-sm border border-slate-200 mt-10">
+            <h2 class="text-center text-base font-bold mb-6">POLÍTICAS DE ENTREGA Y USO DE CELULAR</h2>
+            <p class="text-sm mb-4"><strong>Objetivo:</strong> Cubrir las necesidades de comunicación entre todos los empleados, con el fin de facilitar las actividades a desempeñar, el uso del celular es de manera laboral llamadas y mensajes con todos para cualquier situación que se presente, pero también se puede usar de forma personal esto para que estén todo el tiempo en contacto con sus seres queridos y ante una emergencia estén siempre al pendiente.</p>
+            <ol class="list-decimal ml-6 text-sm space-y-3">
+                <li>Cualquier anomalía, descompostura, etc., que presenten los equipos celulares, será reportada al <strong>Encargado de Sistemas</strong>, para su análisis y posterior solicitud de atención al proveedor.</li>
+                <li><strong>Robo o extravío.</strong> – El empleado deberá notificar al <strong>Encargado de Sistemas</strong> sobre el evento para que posteriormente <strong>el Área Administrativa</strong> proceda a levantar el reporte ante <strong>TELCEL</strong> para la suspensión de la línea. En este caso el empleado está obligado a cubrir el costo del equipo, o el costo de la reparación; si el equipo no es factible repararlo se pagará el costo del equipo o tendrá que sustituirlo por uno de similares características. El costo del equipo por la reposición podrá ser descontado vía nómina.</li>
+                <li><strong>Fallas en el equipo.</strong> Ante el mal funcionamiento del equipo asignado por cuestiones de uso en condiciones normales de operación, el empleado deberá levantar un reporte y entregar el equipo al <strong>Encargado de Sistemas</strong>, indicando las fallas que el equipo presenta, para que sea entregado al proveedor para su revisión y compostura; si el equipo no tiene arreglo, se realizará el cambio de este sin costo para el empleado siempre y cuando entre por garantía.</li>
+                <li><strong>Daños en el equipo.</strong> En caso de daños provocados por el empleado al equipo (mojar, golpear, quemar, etc.), el empleado entregará el equipo al <strong>Encargado de Sistemas</strong>; se determina la responsabilidad del empleado, éste cubrirá el costo de la reparación; si el equipo no tiene compostura deberá pagar el costo de reposición del equipo.</li>
+                <li><strong>Condiciones de resguardo del equipo.</strong> El equipo de comunicación es de total responsabilidad del empleado, por lo que deberá procurar tener las medidas de cuidado y protección que permitan mantener a los equipos con el menor tipo de riesgos (robo, golpes, accidentes, sobrecargas, etc.).</li>
+                <li><strong>Bajas.</strong> Cuando el empleado renuncie, cause baja o separación de su puesto, tendrá la obligación de entregar el teléfono celular asignado, así como sus accesorios al <strong>Gerente Administrativo o al Departamento de Recursos Humanos,</strong> el día de la presentación de su renuncia al puesto; en caso de no devolver el equipo celular asignado será descontado del finiquito que le corresponda el importe del costo del equipo.</li>
+                <li><strong>Plan y renovación.</strong> El plan del equipo será de 24 meses forzosamente, por lo que el equipo será cambiado solo al finalizar el plan.</li>
+            </ol>
+            <p class="text-sm font-bold mt-10 mb-3">He leído y acepto los lineamientos antes mencionados.</p>
+            <div class="border-2 border-emerald-600 rounded p-4 mt-2 h-32">
+                <p class="text-xs">NOMBRE Y FIRMA DE ENTERADO</p>
+                <p class="text-sm font-bold mt-2">{{ a.nombre_completo }}</p>
+            </div>
+        </div>
+    </div>
+
+    {# ══════════════════════════════════════════════════════════
+       CARTA 2 — PRÉSTAMO DE VEHÍCULO DE EMPRESA
+    ══════════════════════════════════════════════════════════ #}
+    {% elif 'Vehículo' in tipo or 'Carro' in tipo %}
+
+    <div class="max-w-[850px] mx-auto py-10 px-6">
+        <div class="doc bg-white p-14 rounded-2xl shadow-sm border border-slate-200">
+
+            <p class="text-right mb-10 text-sm">{{ EMPRESA_CIUDAD }} a <strong>{{ fecha_larga }}</strong></p>
+            <h1 class="text-center text-xl font-bold mb-8">CARTA RESPONSIVA DE VEHÍCULO DE EMPRESA</h1>
+
+            <p class="mb-5 text-sm indent-8">
+                Por este conducto, yo <strong>{{ a.nombre_completo }}</strong>, con cargo de <strong>{{ a.puesto or '— No aplica —' }}</strong>{% if a.area %}, adscrito al área de <strong>{{ a.area }}</strong>{% endif %}, empleado de la empresa <strong>{{ EMPRESA_NOMBRE }}</strong>, declaro bajo protesta de decir verdad que recibo en préstamo el siguiente vehículo, propiedad de la empresa, en perfectas condiciones y a mi entera satisfacción:
+            </p>
+
+            <table class="tabla-datos mb-8 text-sm w-full">
+                <tr><td class="py-1.5 pr-4 w-2/5 font-bold">Marca:</td><td>{{ a.marca or '— No aplica —' }}</td></tr>
+                <tr><td class="py-1.5 font-bold">Modelo / Año:</td><td>{{ a.modelo or '— No aplica —' }}</td></tr>
+                <tr><td class="py-1.5 font-bold">Placas:</td><td>{{ a.placa or '— No aplica —' }}</td></tr>
+                <tr><td class="py-1.5 font-bold">Color:</td><td>{{ a.color or '— No aplica —' }}</td></tr>
+                <tr><td class="py-1.5 font-bold">No. Serie / NIV:</td><td>{{ a.no_serie or '— No aplica —' }}</td></tr>
+                <tr><td class="py-1.5 font-bold">Descripción:</td><td>{{ a.descripcion or '— No aplica —' }}</td></tr>
+            </table>
+
+            <p class="mb-3 text-sm">Al recibir el vehículo descrito, me comprometo a:</p>
+            <ol class="list-decimal ml-6 text-sm space-y-2 mb-5">
+                <li>Utilizar el vehículo <strong>exclusivamente para actividades relacionadas con mis funciones laborales</strong> en {{ EMPRESA_NOMBRE }}, salvo autorización expresa por escrito.</li>
+                <li>Cuidar y mantener el vehículo en buenas condiciones, reportando inmediatamente al área administrativa cualquier anomalía mecánica, accidente o incidente.</li>
+                <li><strong>No prestar, ceder ni permitir el uso del vehículo a terceros</strong> sin autorización expresa de la empresa.</li>
+                <li>Reportar de inmediato cualquier <strong>accidente, robo, daño o extravío</strong> que sufra el vehículo, colaborando con las investigaciones y trámites correspondientes.</li>
+                <li>Cumplir en todo momento con las disposiciones legales de tránsito vigentes durante el uso del vehículo.</li>
+                <li>Devolver el vehículo con el tanque de combustible en el nivel recibido y en las mismas condiciones generales al término de la relación laboral, o cuando así me lo requiera la empresa.</li>
+                <li>Cubrir el importe de los <strong>daños causados por negligencia, uso inadecuado o accidente imputable a mi responsabilidad</strong>, los cuales podrán descontarse de mi nómina o finiquito.</li>
+            </ol>
+
+            {% if a.observaciones %}
+            <p class="mb-5 text-sm"><strong>Observaciones:</strong> {{ a.observaciones }}</p>
+            {% endif %}
+
+            <p class="mb-10 text-sm">
+                Habiendo leído y estando de acuerdo con el contenido de la presente carta responsiva, la firmo en la ciudad de {{ EMPRESA_CIUDAD }}, el día <strong>{{ hoy.strftime('%d') }}</strong> del mes de <strong>{{ meses[hoy.month-1] }}</strong> de <strong>{{ hoy.strftime('%Y') }}</strong>.
+            </p>
+
+            <div class="grid grid-cols-2 gap-16 mt-16">
+                <div class="text-center"><p class="font-bold mb-20">ENTREGA</p>
+                    <div class="firma-linea"><p class="font-bold text-sm">_______________________</p><p class="text-xs mt-1">REPRESENTANTE LEGAL<br>{{ EMPRESA_NOMBRE }}</p></div>
+                </div>
+                <div class="text-center"><p class="font-bold mb-20">RECIBE</p>
+                    <div class="firma-linea"><p class="font-bold text-sm">{{ a.nombre_completo }}</p><p class="text-xs mt-1">{{ a.puesto or 'EMPLEADO' }}</p></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# ══════════════════════════════════════════════════════════
+       CARTA 3 — COMODATO GENÉRICO (Laptop / Tablet / Computadora / Herramienta)
+    ══════════════════════════════════════════════════════════ #}
+    {% elif 'Comodato' in tipo or 'Herramienta' in tipo or 'Préstamo' in tipo %}
+
+    {% set es_laptop      = 'Laptop' in tipo %}
+    {% set es_tablet      = 'Tablet' in tipo %}
+    {% set es_computo     = 'Computadora' in tipo or 'Cómputo' in tipo or 'Computo' in tipo %}
+    {% set es_herramienta = 'Herramienta' in tipo %}
+    {% set articulo       = 'la laptop' if es_laptop else 'la tablet' if es_tablet else 'la computadora' if es_computo else 'la herramienta' if es_herramienta else 'el equipo' %}
+    {% set articulo_cap   = 'LAPTOP' if es_laptop else 'TABLET' if es_tablet else 'COMPUTADORA' if es_computo else 'HERRAMIENTA' if es_herramienta else 'EQUIPO' %}
+
+    <div class="max-w-[850px] mx-auto py-10 px-6">
+        <div class="doc bg-white p-14 rounded-2xl shadow-sm border border-slate-200">
+
+            <p class="text-right mb-12 text-sm">{{ EMPRESA_CIUDAD }} a <strong>{{ fecha_larga }}</strong></p>
+            <h1 class="text-center text-xl font-bold mb-10">CARTA RESPONSIVA EN {% if es_herramienta %}PRÉSTAMO{% else %}COMODATO{% endif %} DE {{ articulo_cap }}</h1>
+
+            <p class="mb-4 text-sm indent-8">
+                Por este conducto declaro bajo protesta de decir verdad que recibo {{ articulo }} que en adelante se detalla, en perfectas condiciones y a mi entera satisfacción:
+            </p>
+
+            <table class="mb-5 text-sm" style="font-family: 'Times New Roman', serif;">
+                <tr><td class="py-1 pr-4 align-top w-1/3"><strong>Tipo / Categoría:</strong></td><td>{{ a.categoria }}</td></tr>
+                <tr><td class="py-1 pr-4 align-top"><strong>Descripción:</strong></td><td>{{ a.descripcion }}</td></tr>
+                <tr><td class="py-1 pr-4 align-top"><strong>Marca:</strong></td><td>{{ a.marca or '— No aplica —' }}</td></tr>
+                <tr><td class="py-1 pr-4 align-top"><strong>Modelo:</strong></td><td>{{ a.modelo or '— No aplica —' }}</td></tr>
+                <tr><td class="py-1 pr-4 align-top"><strong>Número de Serie:</strong></td><td>{{ a.no_serie or '— No aplica —' }}</td></tr>
+            </table>
+
+            <p class="mb-4 text-sm">
+                Reconozco que {{ articulo }} es propiedad de la Empresa <strong>{{ EMPRESA_NOMBRE }},</strong> y se me entrega como préstamo para cubrir mis necesidades laborales en el puesto de <strong>{{ a.puesto or '— No aplica —' }}</strong>{% if a.area %} dentro del área de <strong>{{ a.area }}</strong>{% endif %}.
+            </p>
+
+            <p class="mb-4 text-sm">Quedo como único y exclusivo responsable del resguardo de {{ articulo }} así como del uso adecuado del mismo. Me comprometo a:</p>
+            <ul class="list-disc ml-6 text-sm space-y-1 mb-4">
+                <li>Utilizarlo exclusivamente para fines relacionados con mis actividades laborales en {{ EMPRESA_NOMBRE }}.</li>
+                <li>Cuidarlo y mantenerlo en buen estado, reportando inmediatamente cualquier falla, daño o extravío.</li>
+                <li>No prestarlo, transferirlo ni cederlo a terceros sin autorización expresa de la empresa.</li>
+                <li>Devolverlo en las mismas condiciones al término de la relación laboral o cuando me sea requerido.</li>
+                <li>Aceptar el descuento de nómina o pago equivalente por daños o pérdida atribuibles a mi responsabilidad.</li>
+            </ul>
+
+            {% if a.observaciones %}
+            <p class="mb-4 text-sm"><strong>Observaciones:</strong> {{ a.observaciones }}</p>
+            {% endif %}
+
+            <p class="mb-12 text-sm">
+                Habiendo leído y estando de acuerdo con el contenido de la presente carta responsiva, la firmo en la ciudad de {{ EMPRESA_CIUDAD }}, el día <strong>{{ hoy.strftime('%d') }}</strong> del mes de <strong>{{ meses[hoy.month-1] }}</strong> de <strong>{{ hoy.strftime('%Y') }}</strong>.
+            </p>
+
+            <div class="grid grid-cols-2 gap-16 mt-20">
+                <div class="text-center"><p class="font-bold mb-20">ENTREGA</p>
+                    <div class="firma-linea"><p class="font-bold text-sm">_______________________</p><p class="text-xs mt-1">REPRESENTANTE LEGAL</p></div>
+                </div>
+                <div class="text-center"><p class="font-bold mb-20">RECIBE</p>
+                    <div class="firma-linea"><p class="font-bold text-sm">{{ a.nombre_completo }}</p><p class="text-xs mt-1">EMPLEADO · {{ a.numero_empleado }}</p></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# ══════════════════════════════════════════════════════════
+       CARTA 4 — DESLINDE EPP
+    ══════════════════════════════════════════════════════════ #}
+    {% elif 'Deslinde' in tipo %}
+
+    <div class="max-w-[850px] mx-auto py-10 px-6">
+        <div class="doc bg-white p-14 rounded-2xl shadow-sm border border-slate-200">
+
+            <h1 class="text-center text-base font-bold mb-10 leading-snug">
+                CARTA DE DESLINDE DE RESPONSABILIDAD POR INCUMPLIMIENTO EN EL USO DE EQUIPO DE SEGURIDAD
+            </h1>
+            <p class="text-right text-sm mb-8">En {{ EMPRESA_CIUDAD }}; a <strong>{{ fecha_larga }}</strong></p>
+
+            <p class="text-sm mb-4">
+                Por medio de la presente, yo, <strong class="underline">{{ a.nombre_completo }}</strong>, declaro que he sido debidamente informado(a) por parte de la Empresa <strong>{{ EMPRESA_NOMBRE }},</strong> sobre las <strong>normas y políticas de seguridad</strong> que deben seguirse dentro de sus instalaciones y/o durante el desarrollo de actividades laborales, incluyendo el uso <strong>obligatorio del equipo de protección personal (EPP)</strong> correspondiente.
+            </p>
+            <p class="text-sm mb-4">
+                Reconozco que el uso de dicho equipo es indispensable para preservar mi integridad física y evitar accidentes, lesiones o enfermedades relacionadas con el trabajo. Así mismo, <strong>me comprometo a utilizar correctamente el equipo de seguridad proporcionado y a seguir las instrucciones y procedimientos establecidos por la empresa.</strong>
+            </p>
+            <p class="text-sm mb-4">
+                En este sentido, <strong>libero de toda responsabilidad a la Empresa {{ EMPRESA_NOMBRE }},</strong> y a sus <strong>representantes legales</strong>, en caso de que ocurra algún accidente o incidente derivado del <strong>incumplimiento por mi parte en el uso adecuado del equipo de seguridad o por desobedecer las normas de seguridad previamente establecidas.</strong>
+            </p>
+            <p class="text-sm mb-8">
+                Manifiesto que firmo esta carta de forma <strong>voluntaria,</strong> consciente de los riesgos que implica no cumplir con las medidas de seguridad, y que no tengo objeción alguna en aceptar los términos aquí establecidos.
+            </p>
+
+            <p class="text-center text-sm font-bold mb-4">Sin más por el momento, firmo la presente</p>
+
+            <table class="tabla-deslinde mt-2 mb-4">
+                <tr><td class="w-1/3"><strong>Nombre Completo:</strong></td><td>{{ a.nombre_completo }}</td></tr>
+                <tr><td><strong>Cargo / Área:</strong></td><td>{{ a.puesto or '— No aplica —' }} / {{ a.area or '— No aplica —' }}</td></tr>
+                <tr><td><strong>Teléfono de Contacto:</strong></td><td>&nbsp;</td></tr>
+                <tr><td><strong>Firma:</strong></td><td style="height: 60px;">&nbsp;</td></tr>
+                <tr><td colspan="2" class="text-center"><strong>Testigo:</strong> ______________________________</td></tr>
+                <tr><td><strong>Firma testigo:</strong></td><td style="height: 60px;">&nbsp;</td></tr>
+            </table>
+        </div>
+    </div>
+
+    {# ══════════════════════════════════════════════════════════
+       CARTA 5 — ENTREGA DE VESTUARIO (Uniforme / Calzado / Bata)
+    ══════════════════════════════════════════════════════════ #}
+    {% elif 'Uniforme' in tipo or 'Calzado' in tipo or 'Bata' in tipo %}
+
+    {% set es_calzado = 'Calzado' in tipo %}
+    {% set es_bata    = 'Bata' in tipo %}
+    {% set titulo_vest = 'ENTREGA DE CALZADO DE SEGURIDAD' if es_calzado else 'ENTREGA DE BATA DE TRABAJO' if es_bata else 'ENTREGA DE UNIFORME DE TRABAJO' %}
+    {% set articulo_vest = 'calzado de seguridad' if es_calzado else 'bata de trabajo' if es_bata else 'uniforme de trabajo' %}
+
+    <div class="max-w-[850px] mx-auto py-10 px-6">
+        <div class="doc bg-white p-14 rounded-2xl shadow-sm border border-slate-200">
+
+            <h1 class="text-center text-base font-bold mb-6">{{ titulo_vest }}</h1>
+
+            <table class="tabla-vest mb-6">
+                <tr>
+                    <td class="w-1/3"><strong>Nombre Completo:</strong></td><td>{{ a.nombre_completo }}</td>
+                </tr>
+                <tr>
+                    <td><strong>Departamento:</strong></td><td>{{ a.area or '— No aplica —' }}</td>
+                </tr>
+                <tr>
+                    <td><strong>Cargo:</strong></td><td>{{ a.puesto or '— No aplica —' }}</td>
+                </tr>
+                <tr>
+                    <td><strong>Talla:</strong></td><td>{{ a.talla or '— No aplica —' }}</td>
+                </tr>
+                {% if a.color %}
+                <tr>
+                    <td><strong>Color:</strong></td><td>{{ a.color }}</td>
+                </tr>
+                {% endif %}
+            </table>
+
+            <h2 class="text-center font-bold text-sm mb-4">COMPROMISO</h2>
+            <p class="text-sm mb-4">
+                Me comprometo a utilizar adecuadamente durante toda la jornada laboral el {{ articulo_vest }} suministrado por la empresa <strong>{{ EMPRESA_NOMBRE }},</strong> con el fin de dar cumplimiento a las normas de Seguridad y Salud en el Trabajo vigentes y aplicables, las cuales contribuyen a mi bienestar mental, físico y social.
+            </p>
+            <p class="text-sm mb-3">
+                El uso de los elementos de vestimenta y protección está enmarcado en la siguiente normatividad: <strong>Resolución 2400 de 1979</strong> — Son obligaciones de los trabajadores: utilizar y mantener adecuadamente los equipos de protección personal que el patrono suministre. <strong>Decreto 1072 de 2015 Art. 2.2.4.6.12</strong> — Se debe registrar la entrega de equipos y elementos de protección personal.
+            </p>
+            <p class="text-sm mb-5">
+                Así mismo se hace de su conocimiento que si el colaborador no cumple con el uso adecuado del artículo entregado, se le hará un llamado de atención; si posteriormente hace caso omiso, se hará acreedor a un acta administrativa.
+            </p>
+
+            <!-- Tabla de artículo entregado -->
+            <table class="tabla-vest mt-4">
+                <thead>
+                    <tr>
+                        <th class="w-12">#</th>
+                        <th>DESCRIPCIÓN</th>
+                        <th class="w-20">TALLA</th>
+                        <th class="w-20">COLOR</th>
+                        <th class="w-28">FECHA</th>
+                        <th class="w-40">FIRMA RECIBIDO</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="text-center font-bold">1</td>
+                        <td><strong>{{ a.categoria }} — {{ a.descripcion }}</strong></td>
+                        <td class="text-center">{{ a.talla or 'n/a' }}</td>
+                        <td class="text-center">{{ a.color or 'n/a' }}</td>
+                        <td class="text-center">{{ hoy.strftime('%d/%m/%Y') }}</td>
+                        <td>&nbsp;</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p class="text-sm mt-5">
+                <strong>Importante:</strong> En caso de que el colaborador acumulara una tercera falta o sea dado de baja antes de los 3 meses, deberá pagar la cantidad de <strong>$1,200 pesos</strong> por concepto de reposición, los cuales se rebajarán de su finiquito.
+            </p>
+
+            {% if a.observaciones %}
+            <div class="mt-4 text-sm">
+                <p class="font-bold mb-1">Observaciones:</p>
+                <p class="bg-slate-50 border border-slate-200 rounded p-3">{{ a.observaciones }}</p>
+            </div>
+            {% endif %}
+
+            <div class="grid grid-cols-2 gap-16 mt-16">
+                <div class="text-center">
+                    <div class="firma-linea"><p class="font-bold text-sm">{{ a.nombre_completo }}</p><p class="text-xs mt-1">FIRMA DEL COLABORADOR</p></div>
+                </div>
+                <div class="text-center">
+                    <div class="firma-linea"><p class="font-bold text-sm">_______________________</p><p class="text-xs mt-1">RECURSOS HUMANOS</p></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# ══════════════════════════════════════════════════════════
+       CARTA 6 — ENTREGA DE EPP (Equipo de Protección Personal)
+    ══════════════════════════════════════════════════════════ #}
+    {% else %}
+
+    {% set epp_items = ['Casco', 'Lentes de seguridad', 'Guantes', 'Botas industriales', 'Tapones auditivos', 'Camisas de trabajo', 'Pantalones de trabajo', 'Respirador medio cara'] %}
+    {% set desc_lower = (a.descripcion or '')|lower %}
+    {% set cat_lower  = (a.categoria or '')|lower %}
+
+    <div class="max-w-[850px] mx-auto py-10 px-6">
+        <div class="doc bg-white p-14 rounded-2xl shadow-sm border border-slate-200">
+
+            <h1 class="text-center text-base font-bold mb-6">ENTREGA DE EQUIPO DE PROTECCIÓN PERSONAL</h1>
+
+            <table class="tabla-epp mb-6">
+                <tr><td class="w-1/3" style="background:#16a34a;color:white;"><strong>Nombre Completo:</strong></td><td>{{ a.nombre_completo }}</td></tr>
+                <tr><td style="background:#16a34a;color:white;"><strong>Departamento:</strong></td><td>{{ a.area or '— No aplica —' }}</td></tr>
+                <tr><td style="background:#16a34a;color:white;"><strong>Cargo:</strong></td><td>{{ a.puesto or '— No aplica —' }}</td></tr>
+            </table>
+
+            <h2 class="text-center font-bold text-sm mb-4">COMPROMISO</h2>
+            <p class="text-sm mb-4">
+                Me comprometo a utilizar adecuadamente durante toda la jornada laboral los elementos de protección personal suministrados por la empresa <strong>{{ EMPRESA_NOMBRE }},</strong> con el fin de dar cumplimiento a las normas de Seguridad y Salud en el Trabajo vigentes.
+            </p>
+            <p class="text-sm mb-3">
+                <strong>LEY 9 de 1979: Art. 122</strong> — Los empleadores están obligados a proporcionar a cada trabajador, sin costo para éste, elementos de protección personal. <strong>RESOLUCIÓN 2400 de 1979</strong> — Son obligaciones de los trabajadores: utilizar y mantener adecuadamente los equipos de protección personal que el patrono suministre. <strong>Decreto 1072 de 2015 Art. 2.2.4.6.12</strong> — Se debe registrar la entrega de EPP. <strong>Resolución 0312 de 2019</strong> — Estándares mínimos del Sistema de Gestión de SST.
+            </p>
+            <p class="text-sm mb-5">
+                Así mismo se hace de su conocimiento que si el colaborador no cumple con el uso adecuado del equipo de seguridad, se le hará un llamado de atención; si posteriormente hace caso omiso, se hará acreedor a un acta administrativa.
+            </p>
+
+            <table class="tabla-epp mt-4">
+                <thead>
+                    <tr>
+                        <th class="w-12">ITEM</th>
+                        <th>DESCRIPCIÓN</th>
+                        <th class="w-20">CANTIDAD</th>
+                        <th class="w-28">FECHA</th>
+                        <th class="w-40">FIRMA RECIBIDO</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in epp_items %}
+                        {% set entregado = (item|lower) in desc_lower or (item|lower) in cat_lower %}
+                        <tr>
+                            <td class="text-center"><strong>{{ loop.index }}</strong></td>
+                            <td><strong>{{ item }}</strong></td>
+                            <td class="text-center"><strong>{{ '1' if entregado else '0' }}</strong></td>
+                            <td class="text-center">{% if entregado %}{{ hoy.strftime('%d/%m/%Y') }}{% else %}n/a{% endif %}</td>
+                            <td>&nbsp;</td>
+                        </tr>
+                    {% endfor %}
+                    {# Fila extra si el equipo asignado no coincide con los estándar #}
+                    {% set hay_match = namespace(v=false) %}
+                    {% for item in epp_items %}{% if (item|lower) in desc_lower or (item|lower) in cat_lower %}{% set hay_match.v = true %}{% endif %}{% endfor %}
+                    {% if not hay_match.v %}
+                    <tr>
+                        <td class="text-center"><strong>+</strong></td>
+                        <td><strong>{{ a.categoria }} — {{ a.descripcion }}</strong></td>
+                        <td class="text-center"><strong>1</strong></td>
+                        <td class="text-center">{{ hoy.strftime('%d/%m/%Y') }}</td>
+                        <td>&nbsp;</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+
+            <p class="text-sm mt-5">
+                <strong>Importante:</strong> En caso de que el colaborador acumulara una tercera administrativa y sea dado de baja, o tenga menos de 3 meses laborando y sea dado de baja, deberá pagar la cantidad de <strong>$1,200 pesos</strong> por concepto de reposición de equipo de protección, los cuales se rebajarán de su finiquito.
+            </p>
+
+            {% if a.observaciones %}
+            <div class="mt-6 text-sm">
+                <p class="font-bold mb-1">Observaciones:</p>
+                <p class="bg-slate-50 border border-slate-200 rounded p-3">{{ a.observaciones }}</p>
+            </div>
+            {% endif %}
+
+            <div class="grid grid-cols-2 gap-16 mt-16">
+                <div class="text-center">
+                    <div class="firma-linea"><p class="font-bold text-sm">{{ a.nombre_completo }}</p><p class="text-xs mt-1">FIRMA DEL COLABORADOR</p></div>
+                </div>
+                <div class="text-center">
+                    <div class="firma-linea"><p class="font-bold text-sm">_______________________</p><p class="text-xs mt-1">RECURSOS HUMANOS</p></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% endif %}
+
+</body>
+</html>

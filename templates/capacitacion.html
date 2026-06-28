@@ -1,0 +1,139 @@
+{% extends _layout|default("base.html") %}
+
+{% block title %}Capacitación | ERP Atisa{% endblock %}
+
+{% block content %}
+<div class="p-10">
+    <header class="flex flex-wrap justify-between items-center gap-4 mb-8">
+        <div>
+            <h1 class="text-2xl font-bold text-[#1d1d1f]">Capacitación y Desarrollo</h1>
+            <p class="text-slate-500 mt-1">Programa de cursos — el avance por persona y por curso se calcula solo</p>
+        </div>
+        <button type="button" onclick="document.getElementById('modal-cursos').classList.remove('hidden')"
+                class="bg-white border border-slate-200 text-slate-600 px-5 py-3 font-bold rounded-xl hover:border-[#0e6ba8] hover:text-[#0e6ba8] flex items-center gap-2 transition-colors">
+            <i class="ri-list-settings-line text-lg"></i> Gestionar cursos
+        </button>
+    </header>
+
+    {% if filas %}
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-[#0e6ba8]/10 text-[#0e6ba8] flex items-center justify-center shrink-0"><i class="ri-group-line text-xl"></i></div><div><p class="text-2xl font-bold text-[#1d1d1f] leading-none">{{ kpis.colaboradores }}</p><p class="text-xs text-slate-500 font-medium mt-1">Colaboradores</p></div></div></div>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center shrink-0"><i class="ri-book-open-line text-xl"></i></div><div><p class="text-2xl font-bold text-[#1d1d1f] leading-none">{{ kpis.cursos }}</p><p class="text-xs text-slate-500 font-medium mt-1">Cursos activos</p></div></div></div>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0"><i class="ri-bar-chart-box-line text-xl"></i></div><div><p class="text-2xl font-bold text-[#1d1d1f] leading-none">{{ kpis.avance }}%</p><p class="text-xs text-slate-500 font-medium mt-1">Avance global</p></div></div></div>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-blue-50 text-[#0e6ba8] flex items-center justify-center shrink-0"><i class="ri-check-double-line text-xl"></i></div><div><p class="text-2xl font-bold text-[#1d1d1f] leading-none">{{ kpis.tomados }}</p><p class="text-xs text-slate-500 font-medium mt-1">Cursos tomados</p></div></div></div>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
+            <h2 class="text-lg font-bold text-[#1d1d1f]">Matriz de Capacitación</h2>
+            <div class="flex items-center gap-3 text-[11px] font-semibold text-slate-500">
+                <span class="flex items-center gap-1.5"><span class="w-5 h-5 rounded border bg-emerald-50 text-emerald-600 border-emerald-100 flex items-center justify-center font-bold">O</span>Tomado</span>
+                <span class="flex items-center gap-1.5"><span class="w-5 h-5 rounded border bg-amber-50 text-amber-600 border-amber-100 flex items-center justify-center font-bold">P</span>Programado</span>
+                <span class="flex items-center gap-1.5"><span class="w-5 h-5 rounded border bg-slate-50 text-slate-400 border-slate-100 flex items-center justify-center font-bold">·</span>Pendiente</span>
+            </div>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="border-b border-slate-100">
+                        <th class="px-4 py-3 sticky left-0 bg-white z-20 text-slate-500 text-xs font-bold uppercase w-64">Colaborador</th>
+                        {% for c in cursos %}
+                        <th class="px-1 py-2 align-bottom w-11"><div class="h-48 flex items-end justify-center"><span class="text-[11px] font-semibold text-slate-600 leading-tight whitespace-nowrap" style="writing-mode:vertical-rl; transform:rotate(180deg);">{{ c.nombre }}</span></div></th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for fila in filas %}
+                    <tr class="border-b border-slate-50 hover:bg-slate-50/60 transition-colors group">
+                        <td class="px-4 py-2 sticky left-0 bg-white group-hover:bg-[#fafafb] z-10 border-r border-slate-100">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-8 h-8 rounded-full bg-[#0e6ba8]/10 text-[#0e6ba8] flex items-center justify-center font-bold text-xs uppercase shrink-0">{{ fila.nombre_completo[0] }}</div>
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-sm font-semibold text-slate-700 truncate">{{ fila.corto }}</p>
+                                    {% if fila.puesto %}<p class="text-[10px] text-slate-400 truncate -mt-0.5 mb-0.5">{{ fila.puesto }}</p>{% endif %}
+                                    <span class="inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded border bg-blue-50 text-azul border-blue-100">{{ fila.avance }}% avance</span>
+                                </div>
+                                <button type="button" onclick="document.getElementById('modal-cap-{{ fila.numero_empleado }}').classList.remove('hidden')" class="w-8 h-8 rounded-lg border border-slate-200 text-slate-500 hover:bg-[#0e6ba8]/10 hover:text-[#0e6ba8] hover:border-[#0e6ba8] transition-colors shrink-0" title="Editar"><i class="ri-edit-line"></i></button>
+                            </div>
+                        </td>
+                        {% for cell in fila.celdas %}
+                        <td class="px-1 py-2 text-center"><div class="mx-auto w-9 h-9 rounded-md border flex items-center justify-center text-sm font-bold {{ cell.css }}" title="{{ cell.estatus }}">{{ cell.sigla }}</div></td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr class="bg-slate-50/70 border-t border-slate-200">
+                        <td class="px-4 py-3 sticky left-0 bg-slate-50 z-10 border-r border-slate-100 text-xs font-bold uppercase text-slate-500">Tomados</td>
+                        {% for c in cursos %}<td class="px-1 py-3 text-center text-sm font-bold {% if tomados_por_curso[c.id] > 0 %}text-emerald-600{% else %}text-slate-400{% endif %}">{{ tomados_por_curso[c.id] }}</td>{% endfor %}
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-16 text-center">
+        <i class="ri-graduation-cap-line text-5xl text-slate-300 block mb-3"></i>
+        <h3 class="text-lg font-bold text-[#1d1d1f]">No hay colaboradores que capacitar</h3>
+        <p class="text-slate-500 mt-1">Da de alta empleados y aparecerán en esta matriz.</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Modales por colaborador -->
+{% for fila in filas %}
+<div id="modal-cap-{{ fila.numero_empleado }}" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-8 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between mb-6">
+            <div><h3 class="text-xl font-bold text-[#1d1d1f]">Capacitación</h3><p class="text-slate-500 text-sm">{{ fila.nombre_completo }}</p></div>
+            <button type="button" onclick="document.getElementById('modal-cap-{{ fila.numero_empleado }}').classList.add('hidden')" class="text-slate-400 hover:text-slate-700"><i class="ri-close-line text-2xl"></i></button>
+        </div>
+        <form action="/capacitacion/guardar" method="POST" class="flex flex-col gap-4">
+            <input type="hidden" name="numero_empleado" value="{{ fila.numero_empleado }}">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+                {% for cell in fila.celdas %}
+                {% set c = cursos[loop.index0] %}
+                <div class="flex items-center gap-3">
+                    <label class="flex-1 text-sm text-slate-600 truncate" title="{{ c.nombre }}">{{ c.nombre }}</label>
+                    <select name="curso_{{ c.id }}" class="w-32 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:border-[#0e6ba8] outline-none">
+                        <option value="Pendiente" {% if cell.estatus == 'Pendiente' %}selected{% endif %}>Pendiente</option>
+                        <option value="Programado" {% if cell.estatus == 'Programado' %}selected{% endif %}>Programado</option>
+                        <option value="Tomado" {% if cell.estatus == 'Tomado' %}selected{% endif %}>Tomado</option>
+                    </select>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="flex gap-3 mt-1">
+                <button type="button" onclick="document.getElementById('modal-cap-{{ fila.numero_empleado }}').classList.add('hidden')" class="flex-1 py-3 font-bold rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50">Cancelar</button>
+                <button type="submit" class="flex-1 bg-[#0e6ba8] text-white py-3 font-bold rounded-xl hover:bg-[#1d1d1f]">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endfor %}
+
+<!-- Modal catálogo de cursos -->
+<div id="modal-cursos" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-8 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between mb-6">
+            <div><h3 class="text-xl font-bold text-[#1d1d1f]">Catálogo de Cursos</h3><p class="text-slate-500 text-sm">Los cursos del programa de capacitación</p></div>
+            <button type="button" onclick="document.getElementById('modal-cursos').classList.add('hidden')" class="text-slate-400 hover:text-slate-700"><i class="ri-close-line text-2xl"></i></button>
+        </div>
+        <form action="/capacitacion/nuevo_curso" method="POST" class="flex gap-2 mb-5">
+            <input type="text" name="nombre" placeholder="Nuevo curso…" required class="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none">
+            <button type="submit" class="bg-[#0e6ba8] text-white px-4 py-2.5 font-bold rounded-xl hover:bg-[#1d1d1f] transition-colors flex items-center gap-1.5"><i class="ri-add-line"></i> Agregar</button>
+        </form>
+        <div class="divide-y divide-slate-100 border border-slate-100 rounded-xl">
+            {% for c in cursos %}
+            <div class="flex items-center justify-between px-4 py-2.5">
+                <span class="text-sm text-slate-700 font-medium">{{ loop.index }}. {{ c.nombre }}</span>
+                <form action="/capacitacion/eliminar_curso" method="POST" onsubmit="return confirm('¿Ocultar «{{ c.nombre }}»? El histórico se conserva.');">
+                    <input type="hidden" name="curso_id" value="{{ c.id }}">
+                    <button type="submit" class="w-8 h-8 rounded-lg border border-slate-200 text-slate-400 hover:bg-rose-50 hover:text-rose-500 hover:border-rose-200 transition-colors" title="Quitar"><i class="ri-delete-bin-line"></i></button>
+                </form>
+            </div>
+            {% else %}<p class="px-4 py-6 text-center text-slate-500 text-sm">No hay cursos en el catálogo.</p>{% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

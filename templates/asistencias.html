@@ -1,0 +1,328 @@
+{% extends _layout|default("base.html") %}
+{% block title %}Asistencias | ERP Atisa{% endblock %}
+{% block content %}
+<div class="flex flex-col min-h-screen bg-[#f5f5f7]">
+
+    <header class="bg-white border-b border-slate-100 px-10 h-[88px] flex items-center justify-between sticky top-0 z-40">
+        <div class="flex items-center gap-4">
+            <div class="w-12 h-12 bg-blue-50 text-[#0e6ba8] rounded-xl flex items-center justify-center text-2xl">
+                <i class="ri-time-line"></i>
+            </div>
+            <div>
+                <h1 class="text-[#1d1d1f] text-2xl font-bold">Control de Asistencias</h1>
+                <p class="text-slate-500 text-sm mt-0.5">Importa checadas del ZKteco y revisa retardos / horas extras</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            <a href="/exportar_asistencias" hx-boost="false" class="flex items-center gap-2 h-11 px-5 rounded-xl border-2 border-[#0e6ba8]/30 text-[#0e6ba8] text-sm font-bold hover:bg-[#0e6ba8]/5 transition-colors">
+                <i class="ri-file-excel-2-line"></i> Exportar Excel
+            </a>
+        </div>
+    </header>
+
+    <div class="flex-1 p-10 space-y-8">
+
+        <section>
+            <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
+                <div class="flex items-start justify-between gap-6 mb-6">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-blue-100 text-[#0e6ba8] rounded-xl flex items-center justify-center">
+                            <i class="ri-wifi-line text-lg"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-bold text-[#1d1d1f]">Sincronización con Checador ZKteco</h2>
+                            <p class="text-slate-500 text-xs mt-0.5">Conexión directa por red local al dispositivo</p>
+                        </div>
+                    </div>
+                    <span class="flex items-center gap-2 text-amber-700 text-xs font-bold bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg whitespace-nowrap">
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                        Pendiente de configurar
+                    </span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+                    <div class="border border-slate-200 rounded-xl p-4 bg-slate-50/40">
+                        <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">IP del Checador</p>
+                        <p class="text-[#1d1d1f] font-mono font-bold text-base">— sin configurar —</p>
+                    </div>
+                    <div class="border border-slate-200 rounded-xl p-4 bg-slate-50/40">
+                        <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">IP del Servidor</p>
+                        <p class="text-[#1d1d1f] font-mono font-bold text-base">— sin configurar —</p>
+                    </div>
+                    <div class="border border-slate-200 rounded-xl p-4 bg-slate-50/40">
+                        <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Última Sincronización</p>
+                        <p class="text-[#1d1d1f] font-bold text-base">—</p>
+                    </div>
+                </div>
+
+                <div class="bg-blue-50 border border-blue-100 rounded-xl p-5">
+                    <div class="flex items-start gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-white text-[#0e6ba8] flex items-center justify-center shrink-0">
+                            <i class="ri-information-line"></i>
+                        </div>
+                        <div class="flex-1 text-sm text-[#1d1d1f]">
+                            <p class="font-bold mb-1">Sincronización automática por red local</p>
+                            <p class="text-slate-600 text-xs leading-relaxed">
+                                El servidor se conectará al checador ZKteco por IP usando el protocolo nativo del fabricante.
+                                Una vez configuradas las IPs del dispositivo y del servidor, las checadas se descargarán
+                                automáticamente y se procesarán para calcular retardos y horas extras.
+                            </p>
+                            <p class="text-slate-500 text-xs mt-2">
+                                <i class="ri-arrow-right-line"></i>
+                                Pasa las IPs del ZKteco y del servidor para activar la integración.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="button" disabled class="mt-5 w-full h-12 bg-slate-100 text-slate-400 font-bold rounded-xl flex items-center justify-center gap-2 cursor-not-allowed">
+                    <i class="ri-refresh-line"></i> Sincronizar ahora <span class="text-xs font-normal">(requiere configuración)</span>
+                </button>
+            </div>
+        </section>
+
+        <section>
+            <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
+                <div class="flex items-center gap-3 mb-5">
+                    <div class="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center"><i class="ri-upload-cloud-2-line text-lg"></i></div>
+                    <div>
+                        <h2 class="text-lg font-bold text-[#1d1d1f]">Importar checadas (Excel del ZKteco)</h2>
+                        <p class="text-slate-500 text-xs mt-0.5">Mientras se configura la sincronización automática, sube aquí el Excel exportado del checador</p>
+                    </div>
+                </div>
+                <form action="/importar_zkteco" method="POST" enctype="multipart/form-data" hx-boost="false" class="flex flex-col sm:flex-row sm:items-center gap-3">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <label for="input-zkteco" class="flex-1 flex items-center gap-3 px-4 h-12 rounded-xl border-2 border-dashed border-slate-300 cursor-pointer hover:border-[#0e6ba8] hover:bg-[#0e6ba8]/10 transition-colors">
+                        <i class="ri-file-excel-2-line text-[#0e6ba8] text-xl shrink-0"></i>
+                        <span id="zkteco-label" class="text-sm font-medium text-[#1d1d1f] truncate">Selecciona el archivo Excel del ZKteco</span>
+                        <input id="input-zkteco" type="file" name="archivo_zkteco" accept=".xlsx,.xls" required class="hidden">
+                    </label>
+                    <button type="submit" class="h-12 px-6 bg-[#0e6ba8] text-white font-bold rounded-xl hover:bg-[#0b557f] transition-colors flex items-center justify-center gap-2 shadow-lg whitespace-nowrap">
+                        <i class="ri-upload-2-line"></i> Importar y procesar
+                    </button>
+                </form>
+                <p class="text-xs text-slate-500 mt-3 flex items-center gap-1.5"><i class="ri-information-line"></i> El Excel debe incluir las columnas: <strong>user_id, nombre, fecha, hora</strong>.</p>
+            </div>
+        </section>
+
+        <section>
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+
+                <div class="bg-white rounded-2xl border border-slate-200 p-6">
+                    <div class="flex items-center gap-3 mb-5">
+                        <div class="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-[#0e6ba8]">
+                            <i class="ri-file-excel-2-line"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-[#1d1d1f]">Exportar Excel (Datos Crudos)</h3>
+                            <p class="text-slate-500 text-xs">Para análisis en Excel/Google Sheets</p>
+                        </div>
+                    </div>
+                    <form action="/exportar_asistencias" method="GET" hx-boost="false" class="space-y-3">
+                        <div>
+                            <label class="text-xs font-bold text-slate-500 uppercase mb-1.5 block">Empleado</label>
+                            <select name="empleado_id" class="select-pro">
+                                <option value="">Todos los empleados</option>
+                                {% for emp in empleados %}
+                                    <option value="{{ emp.numero_empleado }}">{{ emp.nombre_completo }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-1.5 block">Desde</label>
+                                <input type="date" name="fecha_inicio" class="w-full h-12 px-4 rounded-xl border border-slate-200 bg-white focus:border-[#0e6ba8] outline-none text-sm">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-1.5 block">Hasta</label>
+                                <input type="date" name="fecha_fin" class="w-full h-12 px-4 rounded-xl border border-slate-200 bg-white focus:border-[#0e6ba8] outline-none text-sm">
+                            </div>
+                        </div>
+                        <button type="submit" class="w-full h-12 bg-[#0e6ba8] text-white font-bold rounded-xl hover:bg-[#0b557f] transition-colors flex items-center justify-center gap-2 shadow-lg">
+                            <i class="ri-download-2-line"></i> Descargar Excel
+                        </button>
+                    </form>
+                </div>
+
+                <div class="bg-white rounded-2xl border border-slate-200 p-6">
+                    <div class="flex items-center gap-3 mb-5">
+                        <div class="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-[#0e6ba8]">
+                            <i class="ri-printer-line"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-[#1d1d1f]">Reporte Individual Imprimible</h3>
+                            <p class="text-slate-500 text-xs">Para firma física del empleado</p>
+                        </div>
+                    </div>
+                    <form id="form-reporte-individual" hx-boost="false" class="space-y-3">
+                        <div>
+                            <label class="text-xs font-bold text-slate-500 uppercase mb-1.5 block">Empleado <span class="text-rose-500">*</span></label>
+                            <select id="ri-empleado" required class="select-pro">
+                                <option value="">Selecciona un empleado...</option>
+                                {% for emp in empleados %}
+                                    <option value="{{ emp.nombre_completo }}">{{ emp.nombre_completo }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-1.5 block">Desde <span class="text-rose-500">*</span></label>
+                                <input type="date" id="ri-fecha-inicio" required class="w-full h-12 px-4 rounded-xl border border-slate-200 bg-white focus:border-[#0e6ba8] outline-none text-sm">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-1.5 block">Hasta <span class="text-rose-500">*</span></label>
+                                <input type="date" id="ri-fecha-fin" required class="w-full h-12 px-4 rounded-xl border border-slate-200 bg-white focus:border-[#0e6ba8] outline-none text-sm">
+                            </div>
+                        </div>
+                        <button type="submit" class="w-full h-12 bg-[#0e6ba8] text-white font-bold rounded-xl hover:bg-[#1d1d1f] transition-colors flex items-center justify-center gap-2 shadow-lg">
+                            <i class="ri-printer-line"></i> Generar Reporte Imprimible
+                        </button>
+                        <p class="text-xs text-slate-500 text-center">Se abre en nueva pestaña con botón de imprimir y zona de firma.</p>
+                    </form>
+                    <script>
+                        (function(){
+                            const f = document.getElementById('form-reporte-individual');
+                            if(!f) return;
+                            f.addEventListener('submit', function(e){
+                                e.preventDefault();
+                                const emp = document.getElementById('ri-empleado').value;
+                                const ini = document.getElementById('ri-fecha-inicio').value;
+                                const fin = document.getElementById('ri-fecha-fin').value;
+                                if(!emp || !ini || !fin) return;
+                                const url = '/reporte_individual/' + encodeURIComponent(emp) +
+                                            '?fecha_inicio=' + ini + '&fecha_fin=' + fin;
+                                window.open(url, '_blank');
+                            });
+                        })();
+                    </script>
+                </div>
+
+            </div>
+        </section>
+
+        <section>
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="px-8 py-5 border-b border-slate-100 flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-[#0e6ba8]">
+                        <i class="ri-calendar-check-line"></i>
+                    </div>
+                    <h3 class="font-bold text-[#1d1d1f] text-lg">Resumen de Asistencias</h3>
+                    <span class="ml-auto text-xs font-bold px-3 py-1 rounded-md bg-slate-100 text-slate-600">{{ resumen|length }} registros</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead class="bg-slate-50/50">
+                            <tr>
+                                <th class="px-6 py-4 text-slate-500 text-xs font-bold uppercase">Nombre</th>
+                                <th class="px-6 py-4 text-slate-500 text-xs font-bold uppercase">Fecha</th>
+                                <th class="px-6 py-4 text-slate-500 text-xs font-bold uppercase">Entrada</th>
+                                <th class="px-6 py-4 text-slate-500 text-xs font-bold uppercase">Salida</th>
+                                <th class="px-6 py-4 text-slate-500 text-xs font-bold uppercase text-center">Retardo</th>
+                                <th class="px-6 py-4 text-slate-500 text-xs font-bold uppercase text-center">Hrs Extra</th>
+                                <th class="px-6 py-4 text-slate-500 text-xs font-bold uppercase text-center">Estatus</th>
+                                <th class="px-6 py-4 text-slate-500 text-xs font-bold uppercase text-right">Reporte</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            {% for r in resumen %}
+                            <tr class="hover:bg-slate-50/70 transition-colors">
+                                <td class="px-6 py-4 font-bold text-[#1d1d1f]">{{ r.nombre }}</td>
+                                <td class="px-6 py-4 text-sm text-slate-600">{{ r.fecha }}</td>
+                                <td class="px-6 py-4 text-sm text-slate-600 tabular-nums">{{ r.hora_entrada_real or '—' }}</td>
+                                <td class="px-6 py-4 text-sm text-slate-600 tabular-nums">{{ r.hora_salida_real or '—' }}</td>
+                                <td class="px-6 py-4 text-center">
+                                    {% if r.minutos_retardo and r.minutos_retardo > 0 %}
+                                    <span class="text-rose-600 font-bold text-sm tabular-nums">{{ r.minutos_retardo }} min</span>
+                                    {% else %}
+                                    <span class="text-slate-500 text-sm">—</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    {% if r.horas_extras and r.horas_extras > 0 %}
+                                    <span class="text-azul font-bold text-sm tabular-nums">{{ r.horas_extras }} h</span>
+                                    {% else %}
+                                    <span class="text-slate-500 text-sm">—</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    {% if r.estatus == 'Retardo' %}
+                                    <span class="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-md bg-amber-50 text-amber-700 border border-amber-100">
+                                        <div class="w-1.5 h-1.5 rounded-full bg-amber-500"></div>{{ r.estatus }}
+                                    </span>
+                                    {% else %}
+                                    <span class="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                        <div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>{{ r.estatus }}
+                                    </span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4 text-right">
+                                    <a href="/reporte_individual/{{ r.nombre }}?fecha_inicio={{ r.fecha }}&fecha_fin={{ r.fecha }}" target="_blank" title="Ver reporte individual" class="inline-flex items-center justify-center w-9 h-9 rounded-lg text-slate-400 hover:text-[#0e6ba8] hover:bg-[#0e6ba8]/10 transition-colors">
+                                        <i class="ri-printer-line text-lg"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="8" class="px-6 py-16 text-center">
+                                    <i class="ri-calendar-line text-4xl text-slate-300 block mb-3"></i>
+                                    <p class="text-slate-500 font-medium">Aún no hay asistencias procesadas.</p>
+                                    <p class="text-slate-500 text-sm mt-1">Importa un Excel del ZKteco para empezar.</p>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <div class="bg-white rounded-2xl border border-slate-200 p-6">
+                <div class="flex items-center gap-3 mb-5">
+                    <div class="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-[#0e6ba8]">
+                        <i class="ri-time-line"></i>
+                    </div>
+                    <h3 class="font-bold text-[#1d1d1f]">Horarios Configurados</h3>
+                    <span class="ml-auto text-xs text-slate-500">Edítalos desde <a href="/empleados" class="font-bold text-[#0e6ba8] hover:underline">Empleados</a></span>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {% for emp in empleados %}
+                    <div class="border border-slate-200 rounded-xl p-4 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-[#0e6ba8]/10 text-[#0e6ba8] flex items-center justify-center font-bold text-sm uppercase shrink-0">
+                            {{ emp.nombre_completo[:1] }}
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-[#1d1d1f] font-bold text-sm truncate">{{ emp.nombre_completo }}</p>
+                            <p class="text-xs text-slate-500 tabular-nums">{{ emp.hora_entrada }} → {{ emp.hora_salida }}</p>
+                        </div>
+                    </div>
+                    {% else %}
+                    <p class="col-span-full text-center text-slate-500 text-sm py-6">No hay empleados con rol distinto a admin.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+
+    </div>
+</div>
+
+<script>
+(function(){
+    const inp = document.getElementById('input-zkteco');
+    const lbl = document.getElementById('zkteco-label');
+    if (inp && lbl) {
+        inp.addEventListener('change', function(){
+            if (inp.files && inp.files[0]) {
+                lbl.textContent = '✓ ' + inp.files[0].name;
+                lbl.classList.add('text-[#0e6ba8]');
+                lbl.classList.remove('text-[#1d1d1f]');
+            } else {
+                lbl.textContent = 'Selecciona el archivo Excel del ZKteco';
+                lbl.classList.remove('text-[#0e6ba8]');
+                lbl.classList.add('text-[#1d1d1f]');
+            }
+        });
+    }
+})();
+</script>
+{% endblock %}

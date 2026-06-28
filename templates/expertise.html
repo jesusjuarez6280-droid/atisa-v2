@@ -1,0 +1,265 @@
+{% extends _layout|default("base.html") %}
+
+{% block title %}Matriz Expertise | ERP Atisa{% endblock %}
+
+{% block content %}
+<div class="p-10">
+
+    <!-- Encabezado -->
+    <header class="flex flex-wrap justify-between items-center gap-4 mb-8">
+        <div>
+            <h1 class="text-2xl font-bold text-[#1d1d1f]">Matriz de Expertise</h1>
+            <p class="text-slate-500 mt-1">Equipo Multifuncional · Producción — captura solo el % de dominio, el sistema calcula el resto</p>
+        </div>
+        <button type="button" onclick="document.getElementById('modal-tareas').classList.remove('hidden')"
+                class="bg-white border border-slate-200 text-slate-600 px-5 py-3 font-bold rounded-xl hover:border-[#0e6ba8] hover:text-[#0e6ba8] flex items-center gap-2 transition-colors">
+            <i class="ri-list-settings-line text-lg"></i> Gestionar tareas
+        </button>
+    </header>
+
+    {% if filas %}
+    <!-- KPIs -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-[#0e6ba8]/10 text-[#0e6ba8] flex items-center justify-center shrink-0"><i class="ri-group-line text-xl"></i></div>
+                <div><p class="text-2xl font-bold text-[#1d1d1f] leading-none">{{ total_empleados }}</p><p class="text-xs text-slate-500 font-medium mt-1">Colaboradores</p></div>
+            </div>
+        </div>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center shrink-0"><i class="ri-function-line text-xl"></i></div>
+                <div><p class="text-2xl font-bold text-[#1d1d1f] leading-none">{{ tareas|length }}</p><p class="text-xs text-slate-500 font-medium mt-1">Tareas evaluadas</p></div>
+            </div>
+        </div>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-blue-50 text-[#0e6ba8] flex items-center justify-center shrink-0"><i class="ri-bar-chart-grouped-line text-xl"></i></div>
+                <div><p class="text-2xl font-bold text-[#1d1d1f] leading-none">{{ prom_equipo }}%</p><p class="text-xs text-slate-500 font-medium mt-1">Promedio del equipo</p></div>
+            </div>
+        </div>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0"><i class="ri-award-line text-xl"></i></div>
+                <div><p class="text-2xl font-bold text-[#1d1d1f] leading-none">{{ total_expertos }}</p><p class="text-xs text-slate-500 font-medium mt-1">Dominios nivel Experto</p></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Radar de competencias -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+            <div>
+                <h2 class="text-lg font-bold text-[#1d1d1f]">Radar de Competencias</h2>
+                <p class="text-slate-500 text-sm">Dominio por tarea del colaborador seleccionado</p>
+            </div>
+            <div class="flex items-center gap-3 text-[11px] font-semibold text-slate-500">
+                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full" style="background:#e11d48"></span>N1</span>
+                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full" style="background:#d97706"></span>N2</span>
+                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full" style="background:#0e6ba8"></span>N3</span>
+                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full" style="background:#059669"></span>N4</span>
+            </div>
+        </div>
+
+        <!-- Chips de selección de persona -->
+        <div class="flex flex-wrap gap-2 mb-5">
+            {% for f in filas %}
+            <a hx-get="/expertise?ver={{ f.numero_empleado }}" hx-target="#content" hx-push-url="true"
+               hx-indicator="#barra-progreso, #content" preload="mouseover"
+               class="px-3 py-1.5 rounded-full text-xs font-semibold border cursor-pointer transition-colors
+                      {% if f.numero_empleado == ver %}bg-[#0e6ba8] text-white border-[#0e6ba8]{% else %}bg-white text-slate-600 border-slate-200 hover:border-[#0e6ba8] hover:text-[#0e6ba8]{% endif %}">
+                {{ f.corto }}
+            </a>
+            {% endfor %}
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-8 items-center">
+            <!-- SVG radar -->
+            <div class="flex justify-center">
+                {% if radar %}
+                <svg viewBox="0 0 {{ radar.size }} {{ radar.size }}" width="320" height="320" class="overflow-visible">
+                    {% for ring in radar.anillos %}
+                    <polygon points="{{ ring }}" fill="none" stroke="#eceef2" stroke-width="1"></polygon>
+                    {% endfor %}
+                    {% for e in radar.ejes %}
+                    <line x1="{{ radar.cx }}" y1="{{ radar.cy }}" x2="{{ '%.1f'|format(e.x2) }}" y2="{{ '%.1f'|format(e.y2) }}" stroke="#f0f0f3" stroke-width="1"></line>
+                    {% endfor %}
+                    <polygon points="{{ radar.poligono }}" fill="rgba(14,107,168,0.14)" stroke="#0e6ba8" stroke-width="2" stroke-linejoin="round"></polygon>
+                    {% for v in radar.vertices %}
+                    <circle cx="{{ '%.1f'|format(v.x) }}" cy="{{ '%.1f'|format(v.y) }}" r="3.2" fill="{{ v.hex }}" stroke="#ffffff" stroke-width="1.2"></circle>
+                    {% endfor %}
+                    {% for et in radar.etiquetas %}
+                    <text x="{{ '%.1f'|format(et.x) }}" y="{{ '%.1f'|format(et.y) }}" text-anchor="{{ et.anchor }}" dominant-baseline="middle"
+                          font-size="8.5" fill="#86868b" font-family="-apple-system,system-ui,sans-serif">{{ et.texto }}</text>
+                    {% endfor %}
+                </svg>
+                {% endif %}
+            </div>
+
+            <!-- Desglose por tarea del seleccionado -->
+            <div>
+                {% if radar_emp %}
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-11 h-11 rounded-full bg-[#0e6ba8]/10 text-[#0e6ba8] flex items-center justify-center font-bold uppercase shrink-0">{{ radar_emp.nombre_completo[0] }}</div>
+                    <div>
+                        <p class="font-bold text-[#1d1d1f] leading-tight">{{ radar_emp.nombre_completo }}</p>
+                        <span class="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded border mt-1 {{ radar_emp.nivel_prom.css }}">
+                            Promedio {{ radar_emp.promedio }}% · {{ radar_emp.nivel_prom.n }} {{ radar_emp.nivel_prom.etiqueta }}
+                        </span>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
+                    {% for cell in radar_emp.celdas %}
+                    {% set t = tareas[loop.index0] %}
+                    <div class="flex items-center gap-2.5">
+                        <span class="text-xs text-slate-500 truncate flex-1" title="{{ t.nombre }}">{{ t.nombre }}</span>
+                        <div class="w-24 h-1.5 rounded-full bg-slate-100 overflow-hidden shrink-0">
+                            <div class="h-full rounded-full" style="width:{{ cell.pct }}%; background:{{ cell.hex }}"></div>
+                        </div>
+                        <span class="text-[11px] font-bold w-8 text-right shrink-0" style="color:{{ cell.hex }}">{{ cell.pct }}%</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Matriz completa -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+            <h2 class="text-lg font-bold text-[#1d1d1f]">Matriz del Equipo</h2>
+            <span class="text-xs text-slate-500">Toca <i class="ri-edit-line"></i> para evaluar a un colaborador</span>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="border-b border-slate-100">
+                        <th class="px-4 py-3 sticky left-0 bg-white z-20 text-slate-500 text-xs font-bold uppercase w-64">Colaborador</th>
+                        {% for t in tareas %}
+                        <th class="px-1 py-2 align-bottom w-11">
+                            <div class="h-48 flex items-end justify-center">
+                                <span class="text-[11px] font-semibold text-slate-500 leading-tight whitespace-nowrap"
+                                      style="writing-mode:vertical-rl; transform:rotate(180deg);">{{ t.nombre }}</span>
+                            </div>
+                        </th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for fila in filas %}
+                    <tr class="border-b border-slate-50 hover:bg-slate-50/60 transition-colors group">
+                        <td class="px-4 py-2 sticky left-0 bg-white group-hover:bg-[#fafafb] z-10 border-r border-slate-100">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-8 h-8 rounded-full bg-[#0e6ba8]/10 text-[#0e6ba8] flex items-center justify-center font-bold text-xs uppercase shrink-0">{{ fila.nombre_completo[0] }}</div>
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-sm font-semibold text-slate-700 truncate">{{ fila.corto }}</p>
+                                    {% if fila.puesto %}<p class="text-[10px] text-slate-400 truncate -mt-0.5 mb-0.5">{{ fila.puesto }}</p>{% endif %}
+                                    <span class="inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded border {{ fila.nivel_prom.css }}">Prom {{ fila.promedio }}% · {{ fila.nivel_prom.n }}</span>
+                                </div>
+                                <button type="button" onclick="document.getElementById('modal-exp-{{ fila.numero_empleado }}').classList.remove('hidden')"
+                                        class="w-8 h-8 rounded-lg border border-slate-200 text-slate-500 hover:bg-[#0e6ba8]/10 hover:text-[#0e6ba8] hover:border-[#0e6ba8] transition-colors shrink-0" title="Evaluar">
+                                    <i class="ri-edit-line"></i>
+                                </button>
+                            </div>
+                        </td>
+                        {% for cell in fila.celdas %}
+                        <td class="px-1 py-2 text-center">
+                            <div class="mx-auto w-10 h-9 rounded-md border flex items-center justify-center text-[11px] font-bold {{ cell.css }}" title="{{ cell.etiqueta }} ({{ cell.n }})">{{ cell.pct }}</div>
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr class="bg-slate-50/70 border-t border-slate-200">
+                        <td class="px-4 py-3 sticky left-0 bg-slate-50 z-10 border-r border-slate-100 text-xs font-bold uppercase text-slate-500">Expertos (N4)</td>
+                        {% for t in tareas %}
+                        <td class="px-1 py-3 text-center text-sm font-bold {% if expertos_por_tarea[t.id] > 0 %}text-emerald-600{% else %}text-slate-400{% endif %}">{{ expertos_por_tarea[t.id] }}</td>
+                        {% endfor %}
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    {% else %}
+    <!-- Estado vacío -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-16 text-center">
+        <i class="ri-group-line text-5xl text-slate-300 block mb-3"></i>
+        <h3 class="text-lg font-bold text-[#1d1d1f]">Aún no hay colaboradores que evaluar</h3>
+        <p class="text-slate-500 mt-1 max-w-md mx-auto">Esta matriz usa la misma lista de empleados del sistema. Da de alta empleados en el módulo <strong>Empleados</strong> y aparecerán aquí automáticamente.</p>
+        <a href="/empleados" hx-get="/empleados" hx-target="#content" hx-push-url="true"
+           class="inline-flex items-center gap-2 mt-5 bg-[#0e6ba8] text-white px-5 py-3 font-bold rounded-xl hover:bg-[#1d1d1f] transition-colors">
+            <i class="ri-arrow-right-line"></i> Ir a Empleados
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Modales de evaluación por colaborador -->
+{% for fila in filas %}
+<div id="modal-exp-{{ fila.numero_empleado }}" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-8 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h3 class="text-xl font-bold text-[#1d1d1f]">Evaluar Expertise</h3>
+                <p class="text-slate-500 text-sm">{{ fila.nombre_completo }}</p>
+            </div>
+            <button type="button" onclick="document.getElementById('modal-exp-{{ fila.numero_empleado }}').classList.add('hidden')" class="text-slate-400 hover:text-slate-700"><i class="ri-close-line text-2xl"></i></button>
+        </div>
+        <form action="/expertise/guardar" method="POST" class="flex flex-col gap-4">
+            <input type="hidden" name="numero_empleado" value="{{ fila.numero_empleado }}">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+                {% for cell in fila.celdas %}
+                {% set t = tareas[loop.index0] %}
+                <div class="flex items-center gap-3">
+                    <label class="flex-1 text-sm text-slate-600 truncate" title="{{ t.nombre }}">{{ t.nombre }}</label>
+                    <input type="number" min="0" max="100" step="5" name="tarea_{{ t.id }}" value="{{ cell.pct }}"
+                           class="w-20 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-center font-semibold focus:border-[#0e6ba8] outline-none transition-all">
+                </div>
+                {% endfor %}
+            </div>
+            <p class="text-xs text-slate-500 bg-slate-50 rounded-lg px-3 py-2">Escala: <strong>0-25</strong> N1 Principiante · <strong>25-50</strong> N2 Básico · <strong>50-75</strong> N3 Competente · <strong>75-100</strong> N4 Experto. El nivel y el radar se calculan solos.</p>
+            <div class="flex gap-3 mt-1">
+                <button type="button" onclick="document.getElementById('modal-exp-{{ fila.numero_empleado }}').classList.add('hidden')" class="flex-1 py-3 font-bold rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50">Cancelar</button>
+                <button type="submit" class="flex-1 bg-[#0e6ba8] text-white py-3 font-bold rounded-xl hover:bg-[#1d1d1f]">Guardar evaluación</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endfor %}
+
+<!-- Modal: gestionar catálogo de tareas -->
+<div id="modal-tareas" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-8 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h3 class="text-xl font-bold text-[#1d1d1f]">Catálogo de Tareas</h3>
+                <p class="text-slate-500 text-sm">Las competencias que se evalúan en la matriz</p>
+            </div>
+            <button type="button" onclick="document.getElementById('modal-tareas').classList.add('hidden')" class="text-slate-400 hover:text-slate-700"><i class="ri-close-line text-2xl"></i></button>
+        </div>
+
+        <form action="/expertise/nueva_tarea" method="POST" class="flex gap-2 mb-5">
+            <input type="text" name="nombre" placeholder="Nueva tarea / competencia…" required
+                   class="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none">
+            <button type="submit" class="bg-[#0e6ba8] text-white px-4 py-2.5 font-bold rounded-xl hover:bg-[#1d1d1f] transition-colors flex items-center gap-1.5"><i class="ri-add-line"></i> Agregar</button>
+        </form>
+
+        <div class="divide-y divide-slate-100 border border-slate-100 rounded-xl">
+            {% for t in tareas %}
+            <div class="flex items-center justify-between px-4 py-2.5">
+                <span class="text-sm text-slate-700 font-medium">{{ loop.index }}. {{ t.nombre }}</span>
+                <form action="/expertise/eliminar_tarea" method="POST" onsubmit="return confirm('¿Ocultar «{{ t.nombre }}» de la matriz? El histórico se conserva.');">
+                    <input type="hidden" name="tarea_id" value="{{ t.id }}">
+                    <button type="submit" class="w-8 h-8 rounded-lg border border-slate-200 text-slate-400 hover:bg-rose-50 hover:text-rose-500 hover:border-rose-200 transition-colors" title="Quitar"><i class="ri-delete-bin-line"></i></button>
+                </form>
+            </div>
+            {% else %}
+            <p class="px-4 py-6 text-center text-slate-500 text-sm">No hay tareas en el catálogo.</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

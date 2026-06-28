@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends _layout|default("base.html") %}
 
 {% block title %}Empleados | ERP Atisa{% endblock %}
 
@@ -6,10 +6,10 @@
 <div class="p-10">
     <header class="flex justify-between items-center mb-10">
         <div>
-            <h1 class="text-2xl font-bold text-[#0f2744]">Directorio de Empleados</h1>
+            <h1 class="text-2xl font-bold text-[#1d1d1f]">Directorio de Empleados</h1>
             <p class="text-slate-500 mt-1">Gestión de personal y accesos al sistema</p>
         </div>
-        <button class="bg-[#1e6fd9] text-white px-6 py-3 font-bold rounded-xl hover:bg-blue-700 flex items-center gap-2 transition-colors">
+        <button type="button" onclick="document.getElementById('modal-nuevo').classList.remove('hidden')" class="bg-[#0e6ba8] text-white px-6 py-3 font-bold rounded-xl hover:bg-[#1d1d1f] flex items-center gap-2 transition-colors">
             <i class="ri-user-add-line text-lg"></i> Nuevo Empleado
         </button>
     </header>
@@ -18,34 +18,148 @@
         <table class="w-full text-left">
             <thead class="bg-slate-50 border-b border-slate-100">
                 <tr>
-                    <th class="px-6 py-4 text-slate-400 text-xs font-bold uppercase">ID Empleado</th>
-                    <th class="px-6 py-4 text-slate-400 text-xs font-bold uppercase">Nombre Completo</th>
-                    <th class="px-6 py-4 text-slate-400 text-xs font-bold uppercase">Rol en Sistema</th>
-                    <th class="px-6 py-4 text-slate-400 text-xs font-bold uppercase text-center">Estatus</th>
-                    <th class="px-6 py-4 text-slate-400 text-xs font-bold uppercase text-right">Acciones</th>
+                    <th class="px-6 py-4 text-slate-500 text-xs font-bold uppercase">ID Empleado</th>
+                    <th class="px-6 py-4 text-slate-500 text-xs font-bold uppercase">Nombre Completo</th>
+                    <th class="px-6 py-4 text-slate-500 text-xs font-bold uppercase">Puesto / Área</th>
+                    <th class="px-6 py-4 text-slate-500 text-xs font-bold uppercase">Antigüedad / Vac.</th>
+                    <th class="px-6 py-4 text-slate-500 text-xs font-bold uppercase">Rol en Sistema</th>
+                    <th class="px-6 py-4 text-slate-500 text-xs font-bold uppercase text-center">Estatus</th>
+                    <th class="px-6 py-4 text-slate-500 text-xs font-bold uppercase text-right">Acciones</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-50">
                 {% for emp in empleados %}
                 <tr class="hover:bg-slate-50/80 transition-colors">
-                    <td class="px-6 py-4 font-bold text-[#0f2744]">{{ emp.numero_empleado }}</td>
+                    <td class="px-6 py-4 font-bold text-[#1d1d1f]">{{ emp.numero_empleado }}</td>
                     <td class="px-6 py-4">
                         <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-full bg-[#1e6fd9]/10 text-[#1e6fd9] flex items-center justify-center font-bold text-xs uppercase">{{ emp.nombre_completo[0] }}</div>
+                            <div class="w-8 h-8 rounded-full bg-[#0e6ba8]/10 text-[#0e6ba8] flex items-center justify-center font-bold text-xs uppercase">{{ emp.nombre_completo[0] }}</div>
                             <span class="font-medium text-slate-700">{{ emp.nombre_completo }}</span>
                         </div>
                     </td>
+                    <td class="px-6 py-4">
+                        {% if emp.puesto %}<p class="text-sm font-medium text-slate-700">{{ emp.puesto }}</p>{% else %}<span class="text-slate-500 text-sm">—</span>{% endif %}
+                        {% if emp.area %}<p class="text-xs text-slate-500">{{ emp.area }}</p>{% endif %}
+                    </td>
+                    <td class="px-6 py-4">
+                        {% if emp.antiguedad is not none %}
+                        <p class="text-sm font-medium text-slate-700">{{ emp.antiguedad }} año{{ 's' if emp.antiguedad != 1 else '' }}</p>
+                        <p class="text-xs text-emerald-600 font-semibold flex items-center gap-1"><i class="ri-suitcase-2-line"></i> {{ emp.vacaciones }} días vac.</p>
+                        {% else %}
+                        <span class="text-slate-500 text-sm">—</span>
+                        {% endif %}
+                    </td>
                     <td class="px-6 py-4 text-sm text-slate-500 uppercase font-medium">{{ emp.rol }}</td>
                     <td class="px-6 py-4 text-center">
+                        {% if emp.estatus == 1 %}
                         <span class="px-3 py-1 rounded-md text-xs font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">Activo</span>
+                        {% else %}
+                        <span class="px-3 py-1 rounded-md text-xs font-bold bg-rose-50 text-rose-600 border border-rose-100">Baja</span>
+                        {% endif %}
                     </td>
                     <td class="px-6 py-4 text-right">
-                        <button class="text-slate-400 hover:text-[#1e6fd9] transition-colors" title="Editar empleado"><i class="ri-edit-line text-xl"></i></button>
+                        <div class="flex items-center justify-end gap-2">
+                            <button type="button" onclick="document.getElementById('modal-edit-{{ emp.id }}').classList.remove('hidden')" class="w-9 h-9 rounded-lg border border-slate-200 text-slate-500 hover:bg-[#0e6ba8]/10 hover:text-[#0e6ba8] hover:border-[#0e6ba8] transition-colors" title="Editar empleado">
+                                <i class="ri-edit-line"></i>
+                            </button>
+                            {% if emp.rol != 'admin' and emp.estatus == 1 %}
+                            <form action="/eliminar_empleado" method="POST" onsubmit="return confirm('¿Dar de baja a {{ emp.nombre_completo }}? El registro NO se borra, solo se desactiva.');" class="inline">
+                                <input type="hidden" name="user_id" value="{{ emp.id }}">
+                                <button type="submit" class="w-9 h-9 rounded-lg border border-slate-200 text-slate-500 hover:bg-rose-50 hover:text-rose-500 hover:border-rose-200 transition-colors" title="Dar de baja">
+                                    <i class="ri-user-unfollow-line"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
                     </td>
                 </tr>
+
+                <div id="modal-edit-{{ emp.id }}" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+                    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-xl font-bold text-[#1d1d1f]">Editar Empleado</h3>
+                            <button type="button" onclick="document.getElementById('modal-edit-{{ emp.id }}').classList.add('hidden')" class="text-slate-400 hover:text-slate-700"><i class="ri-close-line text-2xl"></i></button>
+                        </div>
+                        <form action="/editar_empleado" method="POST" class="flex flex-col gap-4">
+                            <input type="hidden" name="user_id" value="{{ emp.id }}">
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">No. Empleado <span class="font-normal lowercase text-slate-400">(no editable)</span></label>
+                                <input type="text" name="numero_empleado" value="{{ emp.numero_empleado }}" readonly title="El número de empleado es la llave del sistema y no se puede cambiar" class="w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl text-slate-500 cursor-not-allowed outline-none">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Nombre Completo</label>
+                                <input type="text" name="nombre_completo" value="{{ emp.nombre_completo }}" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none">
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="text-xs font-bold text-slate-500 uppercase mb-1.5 block">Rol</label>
+                                    <select name="rol" class="select-pro" required>
+                                        <option value="admin" {% if emp.rol == 'admin' %}selected{% endif %}>Admin</option>
+                                        <option value="rh" {% if emp.rol == 'rh' %}selected{% endif %}>RH</option>
+                                        <option value="operador" {% if emp.rol == 'operador' %}selected{% endif %}>Operador</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="text-xs font-bold text-slate-500 uppercase mb-1.5 block">Estatus</label>
+                                    <select name="estatus" class="select-pro">
+                                        <option value="1" {% if emp.estatus == 1 %}selected{% endif %}>Activo</option>
+                                        <option value="0" {% if emp.estatus == 0 %}selected{% endif %}>Baja</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="text-xs font-bold text-slate-500 uppercase mb-1.5 block">Puesto</label>
+                                    <input type="text" name="puesto" value="{{ emp.puesto or '' }}" placeholder="Ej. Op. Líquidos" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none">
+                                </div>
+                                <div>
+                                    <label class="text-xs font-bold text-slate-500 uppercase mb-1.5 block">Área</label>
+                                    <select name="area" class="select-pro">
+                                        <option value="">— Sin área —</option>
+                                        {% for ar in ['Producción','Calidad / Laboratorio','Ventas','Almacén / Logística','Administración','Mantenimiento'] %}
+                                        <option value="{{ ar }}" {% if emp.area == ar %}selected{% endif %}>{{ ar }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Cumpleaños</label>
+                                    <input type="date" name="cumpleanos" value="{{ emp.cumpleanos or '' }}" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none">
+                                </div>
+                                <div>
+                                    <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Talla calzado</label>
+                                    <input type="text" name="talla_calzado" value="{{ emp.talla_calzado or '' }}" placeholder="Ej. 7" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Fecha de ingreso <span class="font-normal lowercase text-slate-400">(calcula antigüedad y vacaciones)</span></label>
+                                <input type="date" name="fecha_ingreso" value="{{ emp.fecha_ingreso or '' }}" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none">
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Hora Entrada</label>
+                                    <input type="time" name="hora_entrada" value="{{ emp.hora_entrada or '08:30' }}" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none">
+                                </div>
+                                <div>
+                                    <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Hora Salida</label>
+                                    <input type="time" name="hora_salida" value="{{ emp.hora_salida or '18:00' }}" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Nueva Contraseña <span class="font-normal lowercase text-slate-400">(opcional)</span></label>
+                                <input type="password" name="password" placeholder="Dejar vacío para no cambiar" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none">
+                            </div>
+                            <div class="flex gap-3 mt-2">
+                                <button type="button" onclick="document.getElementById('modal-edit-{{ emp.id }}').classList.add('hidden')" class="flex-1 py-3 font-bold rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50">Cancelar</button>
+                                <button type="submit" class="flex-1 bg-[#0e6ba8] text-white py-3 font-bold rounded-xl hover:bg-[#1d1d1f]">Guardar</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
                 {% else %}
                 <tr>
-                    <td colspan="5" class="px-6 py-12 text-center">
+                    <td colspan="7" class="px-6 py-12 text-center">
                         <i class="ri-group-line text-4xl text-slate-300 block mb-2"></i>
                         <span class="text-slate-500 font-medium">No hay empleados registrados.</span>
                     </td>
@@ -53,6 +167,87 @@
                 {% endfor %}
             </tbody>
         </table>
+    </div>
+</div>
+
+<div id="modal-nuevo" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-xl font-bold text-[#1d1d1f]">Nuevo Empleado</h3>
+            <button type="button" onclick="document.getElementById('modal-nuevo').classList.add('hidden')" class="text-slate-400 hover:text-slate-700"><i class="ri-close-line text-2xl"></i></button>
+        </div>
+        <form action="/crear_empleado" method="POST" class="flex flex-col gap-4">
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase mb-1.5 block">No. Empleado</label>
+                    <input type="text" name="numero_empleado" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase mb-1.5 block">Rol</label>
+                    <select name="rol" class="select-pro" required>
+                        <option value="">Selecciona rol...</option>
+                        <option value="admin">Admin</option>
+                        <option value="rh">RH</option>
+                        <option value="operador">Operador</option>
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Nombre Completo</label>
+                <input type="text" name="nombre_completo" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none">
+            </div>
+            <div>
+                <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Usuario</label>
+                <input type="text" name="username" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none">
+            </div>
+            <div>
+                <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Contraseña</label>
+                <input type="password" name="password" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Puesto</label>
+                    <input type="text" name="puesto" placeholder="Ej. Op. Líquidos" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase mb-1.5 block">Área</label>
+                    <select name="area" class="select-pro">
+                        <option value="">— Sin área —</option>
+                        {% for ar in ['Producción','Calidad / Laboratorio','Ventas','Almacén / Logística','Administración','Mantenimiento'] %}
+                        <option value="{{ ar }}">{{ ar }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Cumpleaños</label>
+                    <input type="date" name="cumpleanos" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Talla calzado</label>
+                    <input type="text" name="talla_calzado" placeholder="Ej. 7" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none">
+                </div>
+            </div>
+            <div>
+                <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Fecha de ingreso <span class="font-normal lowercase text-slate-400">(calcula antigüedad y vacaciones)</span></label>
+                <input type="date" name="fecha_ingreso" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Hora Entrada</label>
+                    <input type="time" name="hora_entrada" value="08:30" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Hora Salida</label>
+                    <input type="time" name="hora_salida" value="18:00" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none">
+                </div>
+            </div>
+            <div class="flex gap-3 mt-2">
+                <button type="button" onclick="document.getElementById('modal-nuevo').classList.add('hidden')" class="flex-1 py-3 font-bold rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50">Cancelar</button>
+                <button type="submit" class="flex-1 bg-[#0e6ba8] text-white py-3 font-bold rounded-xl hover:bg-[#1d1d1f]">Crear</button>
+            </div>
+        </form>
     </div>
 </div>
 {% endblock %}

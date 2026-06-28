@@ -1,0 +1,108 @@
+{% extends _layout|default("base.html") %}
+
+{% block title %}Auditorías 5S | ERP Atisa{% endblock %}
+
+{% block content %}
+<div class="p-10">
+    <header class="flex flex-wrap justify-between items-center gap-4 mb-8">
+        <div>
+            <h1 class="text-2xl font-bold text-[#1d1d1f]">Auditorías 5S</h1>
+            <p class="text-slate-500 mt-1">Orden y limpieza por área — la calificación se calcula sola (100 − 5 por hallazgo)</p>
+        </div>
+        <button type="button" onclick="document.getElementById('modal-5s').classList.remove('hidden')"
+                class="bg-[#0e6ba8] text-white px-6 py-3 font-bold rounded-xl hover:bg-[#1d1d1f] flex items-center gap-2 transition-colors">
+            <i class="ri-add-line text-lg"></i> Nueva auditoría
+        </button>
+    </header>
+
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-[#0e6ba8]/10 text-[#0e6ba8] flex items-center justify-center shrink-0"><i class="ri-layout-grid-line text-xl"></i></div><div><p class="text-2xl font-bold text-[#1d1d1f] leading-none">{{ kpis.areas }}</p><p class="text-xs text-slate-500 font-medium mt-1">Áreas evaluadas</p></div></div></div>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0"><i class="ri-sparkling-2-line text-xl"></i></div><div><p class="text-2xl font-bold text-[#1d1d1f] leading-none">{{ kpis.prom }}</p><p class="text-xs text-slate-500 font-medium mt-1">Promedio general</p></div></div></div>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-rose-50 text-rose-500 flex items-center justify-center shrink-0"><i class="ri-alarm-warning-line text-xl"></i></div><div><p class="text-2xl font-bold text-[#1d1d1f] leading-none">{{ kpis.en_rojo }}</p><p class="text-xs text-slate-500 font-medium mt-1">Áreas en rojo</p></div></div></div>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center shrink-0"><i class="ri-history-line text-xl"></i></div><div><p class="text-2xl font-bold text-[#1d1d1f] leading-none">{{ kpis.total }}</p><p class="text-xs text-slate-500 font-medium mt-1">Auditorías totales</p></div></div></div>
+    </div>
+
+    {% if areas %}
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
+        <h2 class="text-lg font-bold text-[#1d1d1f] mb-4">Última calificación por área</h2>
+        <div class="flex flex-col gap-3">
+            {% for a in areas %}
+            <div class="flex items-center gap-3">
+                <span class="w-44 text-sm text-slate-600 truncate shrink-0" title="{{ a.area }}">{{ a.area }}</span>
+                <div class="flex-1 h-2.5 rounded-full bg-slate-100 overflow-hidden"><div class="h-full rounded-full" style="width:{{ a.sem.valor }}%; background:{{ a.sem.hex }}"></div></div>
+                <span class="text-sm font-bold w-12 text-right shrink-0" style="color:{{ a.sem.hex }}">{{ a.sem.valor }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-100"><h2 class="text-lg font-bold text-[#1d1d1f]">Historial de auditorías</h2></div>
+        <table class="w-full text-left">
+            <thead class="bg-slate-50 border-b border-slate-100">
+                <tr>
+                    <th class="px-6 py-4 text-slate-500 text-xs font-bold uppercase">Área</th>
+                    <th class="px-4 py-4 text-slate-500 text-xs font-bold uppercase">Líder</th>
+                    <th class="px-4 py-4 text-slate-500 text-xs font-bold uppercase">Fecha</th>
+                    <th class="px-4 py-4 text-slate-500 text-xs font-bold uppercase text-center">Hallazgos</th>
+                    <th class="px-4 py-4 text-slate-500 text-xs font-bold uppercase text-center">Calificación</th>
+                    <th class="px-6 py-4 text-slate-500 text-xs font-bold uppercase text-right">Acciones</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-50">
+                {% for a in auditorias %}
+                <tr class="hover:bg-slate-50/70 transition-colors">
+                    <td class="px-6 py-3 font-semibold text-slate-700">{{ a.area }}</td>
+                    <td class="px-4 py-3 text-sm text-slate-500">{{ a.lider or '—' }}</td>
+                    <td class="px-4 py-3 text-sm text-slate-500">{{ a.fecha }}</td>
+                    <td class="px-4 py-3 text-center text-sm font-medium text-slate-600">{{ a.hallazgos }}</td>
+                    <td class="px-4 py-3 text-center">
+                        {% set s = semaforo(a.calificacion) %}
+                        <span class="px-2.5 py-1 rounded-md text-xs font-bold border {{ s.css }}">{{ a.calificacion|round(0)|int }}</span>
+                    </td>
+                    <td class="px-6 py-3 text-right">
+                        <form action="/cinco_s/eliminar" method="POST" onsubmit="return confirm('¿Eliminar esta auditoría?');" class="inline">
+                            <input type="hidden" name="id" value="{{ a.id }}">
+                            <button type="submit" class="w-9 h-9 rounded-lg border border-slate-200 text-slate-500 hover:bg-rose-50 hover:text-rose-500 hover:border-rose-200 transition-colors" title="Eliminar"><i class="ri-delete-bin-line"></i></button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="6" class="px-6 py-12 text-center"><i class="ri-sparkling-2-line text-4xl text-slate-300 block mb-2"></i><span class="text-slate-500 font-medium">No hay auditorías registradas.</span></td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div id="modal-5s" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-xl font-bold text-[#1d1d1f]">Nueva auditoría 5S</h3>
+            <button type="button" onclick="document.getElementById('modal-5s').classList.add('hidden')" class="text-slate-400 hover:text-slate-700"><i class="ri-close-line text-2xl"></i></button>
+        </div>
+        <form action="/cinco_s/registrar" method="POST" class="flex flex-col gap-4">
+            <div>
+                <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Área</label>
+                <input type="text" name="area" list="lista-areas" required placeholder="Ej. Acondicionado" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none">
+                <datalist id="lista-areas"><option>Área común Producción</option><option>Esclusa producción</option><option>Utensilios de limpieza</option><option>Acondicionado</option><option>Pasillo de ingreso</option></datalist>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Líder</label><input type="text" name="lider" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none"></div>
+                <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Fecha</label><input type="date" name="fecha" value="{{ hoy }}" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none"></div>
+            </div>
+            <div>
+                <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Objetos fuera de lugar (hallazgos)</label>
+                <input type="number" name="hallazgos" min="0" value="0" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none">
+                <p class="text-xs text-slate-500 mt-1">La calificación se calcula sola: 100 − 5 por cada hallazgo.</p>
+            </div>
+            <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Nota <span class="font-normal lowercase text-slate-400">(opcional)</span></label><input type="text" name="nota" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none"></div>
+            <div class="flex gap-3 mt-1">
+                <button type="button" onclick="document.getElementById('modal-5s').classList.add('hidden')" class="flex-1 py-3 font-bold rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50">Cancelar</button>
+                <button type="submit" class="flex-1 bg-[#0e6ba8] text-white py-3 font-bold rounded-xl hover:bg-[#1d1d1f]">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
