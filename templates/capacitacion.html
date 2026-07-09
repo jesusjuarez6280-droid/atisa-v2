@@ -9,10 +9,16 @@
             <h1 class="text-2xl font-bold text-[#1d1d1f]">Capacitación y Desarrollo</h1>
             <p class="text-slate-500 mt-1">Programa de cursos — el avance por persona y por curso se calcula solo</p>
         </div>
-        <button type="button" onclick="document.getElementById('modal-cursos').classList.remove('hidden')"
-                class="bg-white border border-slate-200 text-slate-600 px-5 py-3 font-bold rounded-xl hover:border-[#0e6ba8] hover:text-[#0e6ba8] flex items-center gap-2 transition-colors">
-            <i class="ri-list-settings-line text-lg"></i> Gestionar cursos
-        </button>
+        <div class="flex items-center gap-2">
+            <a href="/capacitacion/dnc" hx-get="/capacitacion/dnc" hx-target="#content" hx-push-url="true"
+               class="bg-white border border-slate-200 text-slate-600 px-5 py-3 font-bold rounded-xl hover:border-[#0e6ba8] hover:text-[#0e6ba8] flex items-center gap-2 transition-colors">
+                <i class="ri-search-eye-line text-lg"></i> DNC
+            </a>
+            <button type="button" onclick="document.getElementById('modal-cursos').classList.remove('hidden')"
+                    class="bg-white border border-slate-200 text-slate-600 px-5 py-3 font-bold rounded-xl hover:border-[#0e6ba8] hover:text-[#0e6ba8] flex items-center gap-2 transition-colors">
+                <i class="ri-list-settings-line text-lg"></i> Gestionar cursos
+            </button>
+        </div>
     </header>
 
     {% if filas %}
@@ -93,8 +99,12 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
                 {% for cell in fila.celdas %}
                 {% set c = cursos[loop.index0] %}
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2">
                     <label class="flex-1 text-sm text-slate-600 truncate" title="{{ c.nombre }}">{{ c.nombre }}</label>
+                    {% if cell.estatus == 'Tomado' %}
+                    <a href="/capacitacion/constancia/{{ fila.numero_empleado }}/{{ c.id }}" hx-boost="false" target="_blank"
+                       class="w-8 h-8 shrink-0 rounded-lg border border-slate-200 text-[#0e6ba8] hover:bg-[#0e6ba8]/5 flex items-center justify-center" title="Emitir constancia"><i class="ri-award-line"></i></a>
+                    {% endif %}
                     <select name="curso_{{ c.id }}" class="w-32 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:border-[#0e6ba8] outline-none">
                         <option value="Pendiente" {% if cell.estatus == 'Pendiente' %}selected{% endif %}>Pendiente</option>
                         <option value="Programado" {% if cell.estatus == 'Programado' %}selected{% endif %}>Programado</option>

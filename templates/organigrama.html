@@ -1,0 +1,86 @@
+{% extends _layout|default("base.html") %}
+{% block title %}Organigrama | ERP Atisa{% endblock %}
+
+{% macro persona(p, jefe=false) %}
+<a href="/expediente/{{ p.numero_empleado }}" hx-get="/expediente/{{ p.numero_empleado }}" hx-target="#content" hx-push-url="true"
+   class="flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-colors {% if jefe %}border-[#0e6ba8]/40 bg-[#0e6ba8]/5{% else %}border-slate-100 hover:bg-slate-50{% endif %}">
+    <div class="w-9 h-9 rounded-full bg-[#0e6ba8] text-white flex items-center justify-center font-bold text-xs uppercase shrink-0">{{ p.nombre_completo[0] if p.nombre_completo else '?' }}</div>
+    <div class="min-w-0 flex-1">
+        <p class="text-sm font-semibold text-slate-700 truncate">{{ p.nombre_completo }}</p>
+        <p class="text-[11px] text-slate-500 truncate">{{ p.puesto or 'Sin puesto' }}</p>
+    </div>
+    {% if p.nivel %}<span class="shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 uppercase">{{ p.nivel }}</span>{% endif %}
+</a>
+{% endmacro %}
+
+{% block content %}
+<style>
+@media print {
+    aside, #barra-progreso, .no-print { display: none !important; }
+    main { margin-left: 0 !important; }
+    body { text-transform: none; }
+}
+</style>
+<div class="p-10">
+    <header class="flex flex-wrap justify-between items-center gap-4 mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-[#1d1d1f]">Organigrama</h1>
+            <p class="text-slate-500 mt-1">Estructura de ATISA — {{ total }} colaborador{{ 'es' if total != 1 else '' }}{% if total_vac %} · <span class="text-amber-600 font-semibold">{{ total_vac }} vacante{{ 's' if total_vac != 1 else '' }}</span>{% endif %}</p>
+        </div>
+        <button type="button" onclick="window.print()" class="no-print bg-white border border-slate-200 text-slate-600 px-5 py-2.5 font-bold rounded-xl hover:border-[#0e6ba8] hover:text-[#0e6ba8] flex items-center gap-2 transition-colors">
+            <i class="ri-printer-line"></i> Imprimir / PDF
+        </button>
+    </header>
+
+    {% if lideres %}
+    <section class="mb-8">
+        <div class="flex items-center gap-2 mb-3">
+            <span class="w-1.5 h-5 rounded-full bg-[#0e6ba8]"></span>
+            <h2 class="text-sm font-bold uppercase tracking-wide text-slate-600">Dirección</h2>
+        </div>
+        <div class="flex flex-wrap gap-4">
+            {% for l in lideres %}
+            <div class="bg-white rounded-2xl shadow-sm border-2 border-[#0e6ba8]/30 p-4 min-w-[240px]">
+                {{ persona(l, jefe=true) }}
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+        {% for area in areas_orden %}
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+            <div class="px-5 py-3.5 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between">
+                <h3 class="font-bold text-[#1d1d1f] text-sm uppercase tracking-wide">{{ area }}</h3>
+                <span class="text-xs font-bold text-slate-400">{{ por_area.get(area, [])|length }}</span>
+            </div>
+            <div class="p-3 flex flex-col gap-1.5">
+                {% for p in por_area.get(area, []) %}
+                {{ persona(p, jefe=(loop.first and p.nivel in ('Jefe','Coordinador'))) }}
+                {% endfor %}
+                {% for v in vac_por_area.get(area, []) %}
+                <div class="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-dashed border-amber-300 bg-amber-50/40">
+                    <div class="w-9 h-9 rounded-full border border-dashed border-amber-400 text-amber-500 flex items-center justify-center shrink-0"><i class="ri-user-add-line"></i></div>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-sm font-semibold text-amber-700 truncate">Vacante</p>
+                        <p class="text-[11px] text-amber-600/80 truncate">{{ v }}</p>
+                    </div>
+                    <span class="shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 uppercase">Por cubrir</span>
+                </div>
+                {% endfor %}
+                {% if not por_area.get(area) and not vac_por_area.get(area) %}
+                <p class="text-xs text-slate-400 text-center py-4">Sin personal asignado.</p>
+                {% endif %}
+            </div>
+        </section>
+        {% else %}
+        <div class="col-span-full bg-white rounded-2xl shadow-sm border border-slate-200 p-16 text-center">
+            <i class="ri-organization-chart text-5xl text-slate-300 block mb-3"></i>
+            <h3 class="text-lg font-bold text-[#1d1d1f]">Aún no hay estructura</h3>
+            <p class="text-slate-500 mt-1">Da de alta empleados con su puesto y área para ver el organigrama.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Constancia — {{ emp.nombre_completo }}</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/remixicon.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/estilos.css') }}">
+    <script src="{{ url_for('static', filename='js/tailwind.js') }}"></script>
+
+    <style>
+        body { font-family: Inter, sans-serif; background: #f5f5f7; }
+        .doc { font-family: 'Times New Roman', Times, serif; color: #1a1a1a; }
+        .doc .titulo { letter-spacing: .12em; }
+        .doc .nombre { font-family: 'Georgia', 'Times New Roman', serif; }
+        .firma-linea { border-top: 1.5px solid #000; margin-top: 60px; padding-top: 6px; }
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white !important; }
+            .doc { box-shadow: none !important; border: none !important; margin: 0 !important; }
+            @page { margin: 2cm; size: letter landscape; }
+        }
+    </style>
+</head>
+<body class="min-h-screen py-10">
+
+    <div class="no-print fixed top-6 right-6 flex items-center gap-3 z-50">
+        <a href="/capacitacion" class="flex items-center gap-2 h-11 px-5 rounded-xl border-2 border-slate-200 bg-white text-slate-600 text-sm font-bold hover:border-[#0e6ba8] hover:text-[#0e6ba8] transition-colors">
+            <i class="ri-arrow-left-line"></i> Volver
+        </a>
+        <button onclick="window.print()" class="flex items-center gap-2 h-11 px-5 rounded-xl bg-[#0e6ba8] text-white text-sm font-bold hover:bg-[#1d1d1f] transition-colors">
+            <i class="ri-printer-line"></i> Imprimir / PDF
+        </button>
+    </div>
+
+    <div class="doc bg-white max-w-4xl mx-auto shadow-lg" style="padding: 3rem 3.5rem; border: 6px double #0e6ba8;">
+        <div class="text-center">
+            <img src="{{ url_for('static', filename='img_sistema/isotipo.png') }}" alt="ATISA" style="height: 64px; margin: 0 auto 8px;">
+            <p class="text-sm font-bold" style="color:#0e6ba8; letter-spacing:.06em;">ATISA · ALTA TECNOLOGÍA INDUSTRIAL PARA LA SALUD ANIMAL, S.A. DE C.V.</p>
+        </div>
+
+        <div class="text-center" style="margin: 2.2rem 0 1.4rem;">
+            <p class="text-slate-500 text-sm">Otorga la presente</p>
+            <h1 class="titulo font-bold" style="font-size: 2.4rem; color:#1d1d1f; margin-top: .3rem;">CONSTANCIA DE PARTICIPACIÓN</h1>
+        </div>
+
+        <p class="text-center text-lg text-slate-600">a</p>
+        <p class="nombre text-center font-bold" style="font-size: 2rem; color:#0e6ba8; margin: .4rem 0 1.4rem;">{{ emp.nombre_completo }}</p>
+
+        <p class="text-center text-lg text-slate-700" style="line-height: 1.7; max-width: 640px; margin: 0 auto;">
+            Por haber acreditado satisfactoriamente el curso
+            <span class="font-bold">«{{ curso.nombre }}»</span>{% if curso.tipo %}, de tipo {{ curso.tipo }}{% endif %}{% if curso.duracion_horas %}, con duración de {{ curso.duracion_horas }} horas{% endif %},
+            como parte del Plan Anual de Capacitación y el Sistema de Buenas Prácticas de Manufactura (BPM) de ATISA.
+        </p>
+
+        {% if reg.calificacion is not none and reg.calificacion != '' %}
+        <p class="text-center text-slate-600 mt-4">Calificación obtenida: <span class="font-bold text-[#1d1d1f]">{{ reg.calificacion }}/100</span></p>
+        {% endif %}
+
+        <div class="flex justify-between items-end" style="margin-top: 3.5rem;">
+            <div class="text-center" style="width: 42%;">
+                <div class="firma-linea"></div>
+                <p class="font-bold text-sm">Recursos Humanos</p>
+                <p class="text-xs text-slate-500">ATISA</p>
+            </div>
+            <div class="text-center" style="width: 42%;">
+                <div class="firma-linea"></div>
+                <p class="font-bold text-sm">{% if curso.instructor %}{{ curso.instructor }}{% else %}Instructor / Facilitador{% endif %}</p>
+                <p class="text-xs text-slate-500">Instructor del curso</p>
+            </div>
+        </div>
+
+        <div class="flex justify-between items-center text-xs text-slate-400" style="margin-top: 2.5rem; border-top: 1px solid #e2e8f0; padding-top: .8rem;">
+            <span>Folio: {{ folio }}</span>
+            <span>{{ emp.puesto or '' }}{% if emp.area %} · {{ emp.area }}{% endif %}</span>
+            <span>Emitida el {{ hoy.strftime('%d/%m/%Y') }}{% if reg.fecha %} · Curso: {{ reg.fecha[:10] }}{% endif %}</span>
+        </div>
+    </div>
+</body>
+</html>

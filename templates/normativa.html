@@ -1,0 +1,153 @@
+{% extends _layout|default("base.html") %}
+{% block title %}Documentos Legales | ERP Atisa{% endblock %}
+
+{% set est_css = {'Vigente':'bg-emerald-50 text-emerald-700','En revisión':'bg-amber-50 text-amber-700','Obsoleto':'bg-slate-100 text-slate-500'} %}
+{% set cat_icon = {'Formatos RH':'ri-user-settings-line','Logística / Almacén':'ri-truck-line','Normatividad Laboral':'ri-scales-3-line','BPM SENASICA / SADER':'ri-shield-check-line'} %}
+
+{% block content %}
+<div class="p-10">
+    <header class="flex flex-wrap justify-between items-center gap-4 mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-[#1d1d1f]">Documentos Legales y Compliance</h1>
+            <p class="text-slate-500 mt-1">Formatos oficiales, normatividad STPS y BPM SENASICA</p>
+        </div>
+        <button type="button" onclick="abrirDoc()" class="bg-[#0e6ba8] text-white px-6 py-3 font-bold rounded-xl hover:bg-[#1d1d1f] flex items-center gap-2 transition-colors">
+            <i class="ri-add-line text-lg"></i> Nuevo documento
+        </button>
+    </header>
+
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5"><p class="text-2xl font-bold text-[#1d1d1f]">{{ kpis.total }}</p><p class="text-xs text-slate-500 font-medium mt-1">Documentos en el repositorio</p></div>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5"><p class="text-2xl font-bold text-emerald-600">{{ kpis.vigentes }}</p><p class="text-xs text-slate-500 font-medium mt-1">Vigentes</p></div>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5"><p class="text-2xl font-bold text-[#0e6ba8]">{{ kpis.con_archivo }}</p><p class="text-xs text-slate-500 font-medium mt-1">Con archivo adjunto</p></div>
+        <a href="/normativa/bpm" hx-get="/normativa/bpm" hx-target="#content" hx-push-url="true" class="bg-[#0e6ba8]/5 rounded-2xl border border-[#0e6ba8]/20 p-5 hover:border-[#0e6ba8]/50 transition-colors flex flex-col justify-between">
+            <div class="flex items-center justify-between"><p class="text-xs font-bold text-azul uppercase">Tracker BPM</p><i class="ri-arrow-right-line text-[#0e6ba8]"></i></div>
+            <p class="text-2xl font-bold text-[#1d1d1f] mt-1">{{ kpis.bpm_pct }}% <span class="text-sm font-medium text-slate-500">avance</span></p>
+        </a>
+    </div>
+
+    <div class="space-y-6">
+        {% for cat in categorias %}
+        {% set docs = por_categoria.get(cat, []) %}
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-lg bg-[#0e6ba8]/10 text-[#0e6ba8] flex items-center justify-center"><i class="{{ cat_icon.get(cat,'ri-file-list-3-line') }}"></i></div>
+                <h2 class="text-base font-bold text-[#1d1d1f]">{{ cat }}</h2>
+                <span class="ml-auto text-xs font-bold px-2.5 py-1 rounded-md bg-slate-100 text-slate-600">{{ docs|length }}</span>
+            </div>
+            <div class="divide-y divide-slate-100">
+                {% for d in docs %}
+                <div class="px-6 py-3.5 flex items-center gap-3 hover:bg-slate-50/60 transition-colors">
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <p class="font-semibold text-[#1d1d1f] text-sm">{{ d.nombre }}</p>
+                            <span class="text-[11px] font-bold px-2 py-0.5 rounded {{ est_css.get(d.estatus,'bg-slate-100 text-slate-500') }}">{{ d.estatus }}</span>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-0.5">
+                            {% if d.codigo %}<span class="font-mono">{{ d.codigo }}</span>{% endif %}
+                            {% if d.version %} · v{{ d.version }}{% endif %}
+                            {% if d.vigencia %} · vigencia {{ d.vigencia }}{% endif %}
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        {% if d.archivo %}
+                        <a href="/normativa/archivo/{{ d.id }}" hx-boost="false" target="_blank" class="w-8 h-8 rounded-lg border border-slate-200 text-[#0e6ba8] hover:bg-[#0e6ba8]/5 flex items-center justify-center" title="Ver archivo"><i class="ri-file-pdf-2-line"></i></a>
+                        {% endif %}
+                        <form action="/normativa/subir/{{ d.id }}" method="POST" enctype="multipart/form-data" class="inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <label class="w-8 h-8 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 flex items-center justify-center cursor-pointer" title="Adjuntar archivo">
+                                <i class="ri-attachment-2"></i>
+                                <input type="file" name="archivo" accept=".pdf,.jpg,.jpeg,.png" class="hidden" onchange="this.form.submit()">
+                            </label>
+                        </form>
+                        <button type="button" onclick='editarDoc({{ d|tojson }})' class="w-8 h-8 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 flex items-center justify-center" title="Editar"><i class="ri-pencil-line"></i></button>
+                        <form action="/normativa/eliminar" method="POST" onsubmit="return confirm('¿Eliminar {{ d.nombre }}?');" class="inline">
+                            <input type="hidden" name="id" value="{{ d.id }}">
+                            <button type="submit" class="w-8 h-8 rounded-lg border border-slate-200 text-slate-400 hover:bg-rose-50 hover:text-rose-500 hover:border-rose-200 flex items-center justify-center" title="Eliminar"><i class="ri-delete-bin-line"></i></button>
+                        </form>
+                    </div>
+                </div>
+                {% else %}
+                <p class="px-6 py-6 text-center text-slate-400 text-sm">Sin documentos en esta categoría.</p>
+                {% endfor %}
+            </div>
+        </section>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Modal: alta / edición de documento -->
+<div id="modal-doc" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-8">
+        <div class="flex items-center justify-between mb-6">
+            <h3 id="modal-doc-titulo" class="text-xl font-bold text-[#1d1d1f]">Nuevo documento</h3>
+            <button type="button" onclick="cerrarDoc()" class="text-slate-400 hover:text-slate-700"><i class="ri-close-line text-2xl"></i></button>
+        </div>
+        <form action="/normativa/guardar" method="POST" class="flex flex-col gap-4">
+            <input type="hidden" name="id" id="doc-id" value="">
+            <div>
+                <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Nombre del documento</label>
+                <input type="text" name="nombre" id="doc-nombre" required class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Código</label>
+                    <input type="text" name="codigo" id="doc-codigo" placeholder="F-RHC-..." class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Categoría</label>
+                    <select name="categoria" id="doc-categoria" class="select-pro" required>
+                        {% for c in categorias %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="grid grid-cols-3 gap-3">
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Versión</label>
+                    <input type="text" name="version" id="doc-version" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Vigencia</label>
+                    <input type="text" name="vigencia" id="doc-vigencia" placeholder="2026" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Estatus</label>
+                    <select name="estatus" id="doc-estatus" class="select-pro">
+                        {% for e in estatus_lista %}<option value="{{ e }}">{{ e }}</option>{% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Notas <span class="font-normal lowercase text-slate-400">(opcional)</span></label>
+                <textarea name="notas" id="doc-notas" rows="2" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none resize-none"></textarea>
+            </div>
+            <div class="flex gap-3 mt-1">
+                <button type="button" onclick="cerrarDoc()" class="flex-1 py-3 font-bold rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50">Cancelar</button>
+                <button type="submit" class="flex-1 bg-[#0e6ba8] text-white py-3 font-bold rounded-xl hover:bg-[#1d1d1f]">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function abrirDoc() {
+    document.getElementById('modal-doc-titulo').textContent = 'Nuevo documento';
+    document.getElementById('doc-id').value = '';
+    ['nombre','codigo','version','vigencia','notas'].forEach(function(k){ document.getElementById('doc-'+k).value=''; });
+    document.getElementById('modal-doc').classList.remove('hidden');
+}
+function editarDoc(d) {
+    document.getElementById('modal-doc-titulo').textContent = 'Editar documento';
+    document.getElementById('doc-id').value = d.id;
+    document.getElementById('doc-nombre').value = d.nombre || '';
+    document.getElementById('doc-codigo').value = d.codigo || '';
+    document.getElementById('doc-categoria').value = d.categoria || '';
+    document.getElementById('doc-version').value = d.version || '';
+    document.getElementById('doc-vigencia').value = d.vigencia || '';
+    document.getElementById('doc-estatus').value = d.estatus || 'Vigente';
+    document.getElementById('doc-notas').value = d.notas || '';
+    document.getElementById('modal-doc').classList.remove('hidden');
+}
+function cerrarDoc() { document.getElementById('modal-doc').classList.add('hidden'); }
+</script>
+{% endblock %}

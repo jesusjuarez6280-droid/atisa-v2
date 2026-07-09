@@ -1,0 +1,145 @@
+{% extends _layout|default("base.html") %}
+{% block title %}Tracker BPM | ERP Atisa{% endblock %}
+
+{% set est_css = {'Pendiente':'bg-rose-50 text-rose-600','En proceso':'bg-amber-50 text-amber-700','Cumplida':'bg-emerald-50 text-emerald-700','No aplica':'bg-slate-100 text-slate-500'} %}
+
+{% block content %}
+<div class="p-10">
+    <a href="/normativa" hx-get="/normativa" hx-target="#content" hx-push-url="true" class="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-[#0e6ba8] mb-4 transition-colors">
+        <i class="ri-arrow-left-line"></i> Documentos Legales
+    </a>
+
+    <header class="flex flex-wrap justify-between items-center gap-4 mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-[#1d1d1f]">Tracker de Actividades BPM</h1>
+            <p class="text-slate-500 mt-1">Semáforo de avance hacia la certificación SENASICA</p>
+        </div>
+        <button type="button" onclick="document.getElementById('modal-bpm-nuevo').classList.remove('hidden')" class="bg-[#0e6ba8] text-white px-6 py-3 font-bold rounded-xl hover:bg-[#1d1d1f] flex items-center gap-2 transition-colors">
+            <i class="ri-add-line text-lg"></i> Nueva actividad
+        </button>
+    </header>
+
+    <!-- Avance global -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
+        <div class="flex items-center justify-between mb-2">
+            <p class="text-sm font-bold text-slate-600 uppercase">Avance global</p>
+            <p class="text-2xl font-bold text-[#0e6ba8]">{{ kpis.pct }}%</p>
+        </div>
+        <div class="w-full h-3 bg-slate-100 rounded-full overflow-hidden"><div class="h-full rounded-full bg-emerald-500" style="width: {{ kpis.pct }}%"></div></div>
+        <div class="grid grid-cols-4 gap-3 mt-5 text-center">
+            <div><p class="text-xl font-bold text-[#1d1d1f]">{{ kpis.total }}</p><p class="text-xs text-slate-500">Actividades</p></div>
+            <div><p class="text-xl font-bold text-emerald-600">{{ kpis.cumplidas }}</p><p class="text-xs text-slate-500">Cumplidas</p></div>
+            <div><p class="text-xl font-bold text-amber-600">{{ kpis.proceso }}</p><p class="text-xs text-slate-500">En proceso</p></div>
+            <div><p class="text-xl font-bold text-rose-500">{{ kpis.pendientes }}</p><p class="text-xs text-slate-500">Pendientes</p></div>
+        </div>
+    </div>
+
+    <!-- Filtro por área -->
+    <div class="flex flex-wrap gap-2 mb-4">
+        <a href="/normativa/bpm" hx-get="/normativa/bpm" hx-target="#content" hx-push-url="true" class="px-3 py-1.5 text-xs font-bold rounded-lg border transition-colors {% if not area_actual %}bg-[#0e6ba8] text-white border-[#0e6ba8]{% else %}border-slate-200 text-slate-600 hover:border-[#0e6ba8]{% endif %}">Todas</a>
+        {% for a in areas %}
+        <a href="/normativa/bpm?area={{ a|urlencode }}" hx-get="/normativa/bpm?area={{ a|urlencode }}" hx-target="#content" hx-push-url="true" class="px-3 py-1.5 text-xs font-bold rounded-lg border transition-colors {% if area_actual == a %}bg-[#0e6ba8] text-white border-[#0e6ba8]{% else %}border-slate-200 text-slate-600 hover:border-[#0e6ba8]{% endif %}">{{ a }}</a>
+        {% endfor %}
+    </div>
+
+    <!-- Lista de actividades -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="divide-y divide-slate-100">
+            {% for a in acts %}
+            <div class="px-6 py-4 flex items-center gap-4 hover:bg-slate-50/60 transition-colors">
+                <span class="w-8 text-center text-xs font-bold text-slate-400 shrink-0">{{ a.numero }}</span>
+                <div class="min-w-0 flex-1">
+                    <p class="font-semibold text-[#1d1d1f] text-sm">{{ a.actividad }}</p>
+                    <p class="text-xs text-slate-500 mt-0.5">
+                        <span class="font-semibold">{{ a.area }}</span>
+                        {% if a.responsable %} · Resp: {{ a.responsable }}{% endif %}
+                        {% if a.fecha_compromiso %} · Compromiso: {{ a.fecha_compromiso }}{% endif %}
+                    </p>
+                    {% if a.notas %}<p class="text-xs text-slate-400 mt-0.5">{{ a.notas }}</p>{% endif %}
+                </div>
+                <span class="text-[11px] font-bold px-2.5 py-1 rounded-md shrink-0 {{ est_css.get(a.estatus,'bg-slate-100 text-slate-500') }}">{{ a.estatus }}</span>
+                <button type="button" onclick='editarBpm({{ a|tojson }})' class="w-8 h-8 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 flex items-center justify-center shrink-0" title="Actualizar"><i class="ri-pencil-line"></i></button>
+            </div>
+            {% else %}
+            <p class="px-6 py-10 text-center text-slate-400 text-sm">No hay actividades{{ ' en esta área' if area_actual else '' }}.</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal: actualizar actividad -->
+<div id="modal-bpm" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-8">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-xl font-bold text-[#1d1d1f]">Actualizar actividad</h3>
+            <button type="button" onclick="document.getElementById('modal-bpm').classList.add('hidden')" class="text-slate-400 hover:text-slate-700"><i class="ri-close-line text-2xl"></i></button>
+        </div>
+        <p id="bpm-actividad" class="text-sm text-slate-600 bg-slate-50 rounded-xl p-3 mb-4"></p>
+        <form action="/normativa/bpm/actualizar" method="POST" class="flex flex-col gap-4">
+            <input type="hidden" name="id" id="bpm-id" value="">
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Estatus</label>
+                    <select name="estatus" id="bpm-estatus" class="select-pro">
+                        {% for e in estatus_lista %}<option value="{{ e }}">{{ e }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Fecha compromiso</label>
+                    <input type="date" name="fecha_compromiso" id="bpm-fecha" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none">
+                </div>
+            </div>
+            <div>
+                <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Responsable</label>
+                <input type="text" name="responsable" id="bpm-responsable" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none">
+            </div>
+            <div>
+                <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Notas / evidencia</label>
+                <textarea name="notas" id="bpm-notas" rows="2" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none resize-none"></textarea>
+            </div>
+            <div class="flex gap-3 mt-1">
+                <button type="button" onclick="document.getElementById('modal-bpm').classList.add('hidden')" class="flex-1 py-3 font-bold rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50">Cancelar</button>
+                <button type="submit" class="flex-1 bg-[#0e6ba8] text-white py-3 font-bold rounded-xl hover:bg-[#1d1d1f]">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: nueva actividad -->
+<div id="modal-bpm-nuevo" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-8">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-xl font-bold text-[#1d1d1f]">Nueva actividad BPM</h3>
+            <button type="button" onclick="document.getElementById('modal-bpm-nuevo').classList.add('hidden')" class="text-slate-400 hover:text-slate-700"><i class="ri-close-line text-2xl"></i></button>
+        </div>
+        <form action="/normativa/bpm/agregar" method="POST" class="flex flex-col gap-4">
+            <div>
+                <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Actividad</label>
+                <input type="text" name="actividad" required class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none">
+            </div>
+            <div>
+                <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Área</label>
+                <select name="area" class="select-pro" required>
+                    {% for a in areas %}<option value="{{ a }}">{{ a }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="flex gap-3 mt-1">
+                <button type="button" onclick="document.getElementById('modal-bpm-nuevo').classList.add('hidden')" class="flex-1 py-3 font-bold rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50">Cancelar</button>
+                <button type="submit" class="flex-1 bg-[#0e6ba8] text-white py-3 font-bold rounded-xl hover:bg-[#1d1d1f]">Agregar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function editarBpm(a) {
+    document.getElementById('bpm-id').value = a.id;
+    document.getElementById('bpm-actividad').textContent = '#' + a.numero + ' · ' + a.actividad;
+    document.getElementById('bpm-estatus').value = a.estatus || 'Pendiente';
+    document.getElementById('bpm-fecha').value = a.fecha_compromiso || '';
+    document.getElementById('bpm-responsable').value = a.responsable || '';
+    document.getElementById('bpm-notas').value = a.notas || '';
+    document.getElementById('modal-bpm').classList.remove('hidden');
+}
+</script>
+{% endblock %}

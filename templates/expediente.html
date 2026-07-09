@@ -1,0 +1,149 @@
+{% extends _layout|default("base.html") %}
+{% block title %}Expediente | ERP Atisa{% endblock %}
+
+{% macro f(label, name, valor, tipo='text', extra='') %}
+<div>
+    <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">{{ label }}</label>
+    <input type="{{ tipo }}" name="{{ name }}" value="{{ valor or '' }}" {{ extra|safe }}
+           class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none">
+</div>
+{% endmacro %}
+
+{% macro sel(label, name, valor, opciones) %}
+<div>
+    <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">{{ label }}</label>
+    <select name="{{ name }}" class="select-pro">
+        <option value="">— Selecciona —</option>
+        {% for o in opciones %}<option value="{{ o }}" {% if valor == o %}selected{% endif %}>{{ o }}</option>{% endfor %}
+    </select>
+</div>
+{% endmacro %}
+
+{% block content %}
+<div class="p-10">
+    <a href="/empleados" hx-get="/empleados" hx-target="#content" hx-push-url="true"
+       class="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-[#0e6ba8] mb-4 transition-colors">
+        <i class="ri-arrow-left-line"></i> Empleados
+    </a>
+
+    <header class="flex flex-wrap justify-between items-start gap-5 mb-6">
+        <div class="flex items-center gap-4">
+            <div class="w-14 h-14 rounded-full bg-[#0e6ba8] text-white flex items-center justify-center font-bold text-xl uppercase shrink-0">{{ emp.nombre_completo[0] if emp.nombre_completo else '?' }}</div>
+            <div>
+                <h1 class="text-2xl font-bold text-[#1d1d1f]">{{ emp.nombre_completo }}</h1>
+                <p class="text-slate-500 mt-0.5"><span class="font-mono">{{ emp.numero_empleado }}</span> · {{ emp.puesto or 'Sin puesto' }} · {{ emp.area or 'Sin área' }}
+                {% if emp.antiguedad is not none %}· {{ emp.antiguedad }} año{{ 's' if emp.antiguedad != 1 else '' }} · {{ emp.vacaciones }} días vac.{% endif %}</p>
+            </div>
+        </div>
+        <div class="grid grid-cols-3 gap-3">
+            <div class="bg-white border border-slate-200 rounded-2xl px-5 py-3 text-center">
+                <p class="text-[10px] font-bold uppercase text-slate-500">Expediente</p>
+                <p class="text-2xl font-bold {% if pct_total >= 80 %}text-emerald-600{% elif pct_total >= 50 %}text-amber-600{% else %}text-rose-600{% endif %}">{{ pct_total }}%</p>
+            </div>
+            <div class="bg-white border border-slate-200 rounded-2xl px-5 py-3 text-center">
+                <p class="text-[10px] font-bold uppercase text-slate-500">Datos</p>
+                <p class="text-2xl font-bold text-[#1d1d1f]">{{ pct_campos }}%</p>
+            </div>
+            <div class="bg-white border border-slate-200 rounded-2xl px-5 py-3 text-center">
+                <p class="text-[10px] font-bold uppercase text-slate-500">Documentos</p>
+                <p class="text-2xl font-bold text-[#1d1d1f]">{{ docs_presentes }}/{{ total_docs }}</p>
+            </div>
+        </div>
+    </header>
+
+    <form action="/expediente/guardar" method="POST" class="space-y-6">
+        <input type="hidden" name="numero_empleado" value="{{ emp.numero_empleado }}">
+
+        <!-- Datos personales -->
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-lg bg-[#0e6ba8]/10 text-[#0e6ba8] flex items-center justify-center"><i class="ri-user-3-line"></i></div>
+                <h2 class="text-lg font-bold text-[#1d1d1f]">Datos personales</h2>
+            </div>
+            <div class="p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                {{ f('Fecha de nacimiento', 'fecha_nacimiento', emp.fecha_nacimiento, 'date') }}
+                {{ f('CURP', 'curp', emp.curp, 'text', 'maxlength=18 placeholder="18 caracteres"') }}
+                {{ f('RFC', 'rfc', emp.rfc, 'text', 'maxlength=13 placeholder="13 caracteres"') }}
+                {{ f('NSS (IMSS)', 'nss', emp.nss, 'text', 'maxlength=11 placeholder="11 dígitos"') }}
+                {{ f('Teléfono', 'telefono', emp.telefono, 'tel', 'maxlength=10') }}
+                {{ f('Correo electrónico', 'correo', emp.correo, 'email') }}
+                <div class="md:col-span-3">{{ f('Domicilio completo', 'domicilio', emp.domicilio, 'text', 'placeholder="Calle, número, colonia, municipio, estado, CP"') }}</div>
+                {{ sel('Estado civil', 'estado_civil', emp.estado_civil, catalogos.estado_civil) }}
+                {{ f('N.º de dependientes', 'num_dependientes', emp.num_dependientes, 'number', 'min=0') }}
+                {{ f('Escolaridad', 'escolaridad', emp.escolaridad, 'text', 'placeholder="Nivel + institución"') }}
+                {{ f('Cédula profesional', 'cedula_profesional', emp.cedula_profesional, 'text', 'placeholder="Si aplica"') }}
+                {{ f('Contacto de emergencia — nombre', 'emergencia_nombre', emp.emergencia_nombre) }}
+                {{ f('Parentesco', 'emergencia_parentesco', emp.emergencia_parentesco) }}
+                {{ f('Teléfono de emergencia', 'emergencia_telefono', emp.emergencia_telefono, 'tel', 'maxlength=10') }}
+            </div>
+        </section>
+
+        <!-- Datos laborales -->
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-lg bg-[#0e6ba8]/10 text-[#0e6ba8] flex items-center justify-center"><i class="ri-briefcase-4-line"></i></div>
+                <h2 class="text-lg font-bold text-[#1d1d1f]">Datos laborales</h2>
+            </div>
+            <div class="p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                {{ f('Puesto', 'puesto', emp.puesto) }}
+                {{ sel('Área / Departamento', 'area', emp.area, catalogos.area) }}
+                {{ f('Jefe inmediato', 'jefe_inmediato', emp.jefe_inmediato) }}
+                {{ f('Fecha de ingreso', 'fecha_ingreso', emp.fecha_ingreso, 'date') }}
+                {{ sel('Tipo de contrato', 'tipo_contrato', emp.tipo_contrato, catalogos.tipo_contrato) }}
+                {{ f('Fin de contrato', 'fecha_fin_contrato', emp.fecha_fin_contrato, 'date', 'placeholder="Si aplica"') }}
+                {{ f('Salario base diario ($)', 'salario_diario', emp.salario_diario, 'number', 'step=0.01 min=0') }}
+                {{ sel('Tipo de jornada', 'tipo_jornada', emp.tipo_jornada, catalogos.tipo_jornada) }}
+                {{ sel('Turno', 'turno', emp.turno, catalogos.turno) }}
+                {{ f('Banco / CLABE', 'banco_clabe', emp.banco_clabe, 'text', 'maxlength=18') }}
+                {{ f('N.º INFONAVIT', 'infonavit', emp.infonavit, 'text', 'placeholder="Si tiene crédito"') }}
+                {{ f('Clave FONACOT', 'fonacot', emp.fonacot, 'text', 'placeholder="Si tiene crédito"') }}
+            </div>
+        </section>
+
+        <div class="flex justify-end">
+            <button type="submit" class="bg-[#0e6ba8] text-white px-8 py-3 font-bold rounded-xl hover:bg-[#1d1d1f] flex items-center gap-2 transition-colors">
+                <i class="ri-save-3-line text-lg"></i> Guardar expediente
+            </button>
+        </div>
+    </form>
+
+    <!-- Documentos (checklist) -->
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mt-6">
+        <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-lg bg-[#0e6ba8]/10 text-[#0e6ba8] flex items-center justify-center"><i class="ri-folder-check-line"></i></div>
+                <h2 class="text-lg font-bold text-[#1d1d1f]">Documentos del expediente</h2>
+            </div>
+            <span class="text-xs font-bold px-3 py-1 rounded-md {% if docs_presentes == total_docs %}bg-emerald-50 text-emerald-700{% else %}bg-amber-50 text-amber-700{% endif %}">{{ docs_presentes }} de {{ total_docs }} · {{ pct_docs }}%</span>
+        </div>
+        <div class="divide-y divide-slate-100">
+            {% for c in checklist %}
+            <div class="flex items-center gap-3 px-6 py-3 hover:bg-slate-50/60 transition-colors">
+                {% if c.doc %}
+                <i class="ri-checkbox-circle-fill text-emerald-500 text-xl shrink-0"></i>
+                {% else %}
+                <i class="ri-checkbox-blank-circle-line text-slate-300 text-xl shrink-0"></i>
+                {% endif %}
+                <span class="flex-1 text-sm font-medium {% if c.doc %}text-slate-700{% else %}text-slate-500{% endif %}">{{ c.nombre }}</span>
+                {% if c.doc %}
+                <a href="/ver_documento/{{ c.doc.id }}" target="_blank" class="text-xs font-bold text-azul hover:underline mr-1">Ver</a>
+                {% else %}
+                <span class="text-xs font-semibold text-amber-600 mr-1">Pendiente</span>
+                {% endif %}
+                <form action="/subir_documento" method="POST" enctype="multipart/form-data" hx-boost="false" class="shrink-0">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="numero_empleado" value="{{ emp.numero_empleado }}">
+                    <input type="hidden" name="tipo_documento" value="{{ c.nombre }}">
+                    <input type="hidden" name="volver" value="/expediente/{{ emp.numero_empleado }}">
+                    <input type="file" name="archivo" accept=".pdf,.jpg,.jpeg,.png" required onchange="this.form.submit()" class="hidden" id="file-{{ loop.index }}">
+                    <label for="file-{{ loop.index }}" class="cursor-pointer inline-flex items-center gap-1.5 px-3 h-9 rounded-lg border border-slate-200 text-slate-600 text-xs font-bold hover:border-[#0e6ba8] hover:text-[#0e6ba8] transition-colors">
+                        <i class="ri-upload-2-line"></i> {% if c.doc %}Reemplazar{% else %}Subir{% endif %}
+                    </label>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+        <p class="px-6 py-3 text-xs text-slate-500 border-t border-slate-100"><i class="ri-information-line"></i> Solo PDF, JPG o PNG. El documento se guarda en el expediente del colaborador.</p>
+    </section>
+</div>
+{% endblock %}

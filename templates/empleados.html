@@ -59,6 +59,9 @@
                     </td>
                     <td class="px-6 py-4 text-right">
                         <div class="flex items-center justify-end gap-2">
+                            <a href="/expediente/{{ emp.numero_empleado }}" hx-get="/expediente/{{ emp.numero_empleado }}" hx-target="#content" hx-push-url="true" preload="mouseover" class="w-9 h-9 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-[#0e6ba8]/10 hover:text-[#0e6ba8] hover:border-[#0e6ba8] transition-colors" title="Ver expediente completo">
+                                <i class="ri-folder-user-line"></i>
+                            </a>
                             <button type="button" onclick="document.getElementById('modal-edit-{{ emp.id }}').classList.remove('hidden')" class="w-9 h-9 rounded-lg border border-slate-200 text-slate-500 hover:bg-[#0e6ba8]/10 hover:text-[#0e6ba8] hover:border-[#0e6ba8] transition-colors" title="Editar empleado">
                                 <i class="ri-edit-line"></i>
                             </button>

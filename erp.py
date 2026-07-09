@@ -13,9 +13,62 @@ import os
 import json
 import math
 import calendar
+import time
 
 app = Flask(__name__)
-app.secret_key = 'super_secreta_llave_atisa_2026'
+# Llave de sesión: en producción se toma de la variable de entorno ATISA_SECRET_KEY
+# (NUNCA se hornea en el código, porque el repo es público y quien la vea podría
+# falsificar cookies de sesión). El valor por defecto es solo para desarrollo local.
+app.secret_key = os.environ.get('ATISA_SECRET_KEY') or 'atisa-dev-key-CAMBIAR-en-produccion'
+
+# === BLINDAJE DE LA SESIÓN (cookies + expiración) ===
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,     # el cookie NO es legible por JavaScript (mitiga robo por XSS)
+    SESSION_COOKIE_SAMESITE='Lax',    # el navegador no manda el cookie en sitios cruzados (mitiga CSRF)
+    # Secure solo cuando se sirve por HTTPS (en local es HTTP, si lo forzara rompería el login).
+    SESSION_COOKIE_SECURE=os.environ.get('ATISA_HTTPS', '').lower() in ('1', 'true', 'yes'),
+    PERMANENT_SESSION_LIFETIME=timedelta(hours=8),   # la sesión expira a las 8 horas
+)
+
+# === Política de contraseñas y anti-fuerza-bruta en el login ===
+MIN_PASSWORD = 8
+def _password_debil(passw):
+    """Devuelve un mensaje si la contraseña es débil, o None si es aceptable."""
+    if not passw or len(passw) < MIN_PASSWORD:
+        return f'La contraseña debe tener al menos {MIN_PASSWORD} caracteres.'
+    return None
+
+# Rate-limit de login EN MEMORIA (suficiente para un proceso; documentado). Bloquea
+# una combinación (IP, usuario) tras varios intentos fallidos seguidos.
+_LOGIN_INTENTOS = {}
+_LOGIN_MAX = 5
+_LOGIN_VENTANA = 600      # segundos que se consideran los intentos (10 min)
+def _login_bloqueado(clave):
+    ahora = time.time()
+    intentos = [t for t in _LOGIN_INTENTOS.get(clave, []) if ahora - t < _LOGIN_VENTANA]
+    _LOGIN_INTENTOS[clave] = intentos
+    return len(intentos) >= _LOGIN_MAX
+def _login_registrar_fallo(clave):
+    _LOGIN_INTENTOS.setdefault(clave, []).append(time.time())
+def _login_limpiar(clave):
+    _LOGIN_INTENTOS.pop(clave, None)
+
+def _int_seguro(valor, default=0):
+    """Convierte a entero sin reventar: texto/None/vacío -> default. Evita que un
+    dato mal escrito (ej. 'abc' en 'minutos') tumbe toda la operación."""
+    try:
+        return int(float(str(valor).strip()))
+    except (TypeError, ValueError):
+        return default
+
+def _destino_interno(destino, default):
+    """Devuelve 'destino' SOLO si es una ruta interna de la propia app; si no, 'default'.
+    Bloquea open-redirect: URLs externas (http://…), protocolo-relativas (//host) y el
+    truco de backslash (/\\host, que algunos navegadores tratan como //host)."""
+    d = (destino or '').strip()
+    if not d.startswith('/') or d.replace('\\', '/').startswith('//'):
+        return default
+    return d
 
 # === CACHÉ EN MEMORIA (catálogos que casi no cambian) ===
 cache = Cache(config={'CACHE_TYPE': 'SimpleCache', 'CACHE_DEFAULT_TIMEOUT': 300})
@@ -77,12 +130,15 @@ EMPRESA_CIUDAD = 'Tlaquepaque, Jalisco'
 # Y el render del menú lateral (botones que no aplican, desaparecen).
 PERMISOS = {
     'dashboard':     ['admin', 'rh'],
+    'tablero':       ['admin', 'rh'],
     'recetas':       ['admin', 'operador'],
     'empleados':     ['admin', 'rh'],
     'documentos':    ['admin', 'rh'],
     'reportes':      ['admin', 'rh'],
     'asistencias':   ['admin', 'rh'],
     'expertise':     ['admin', 'rh'],
+    'perfiles':      ['admin', 'rh'],
+    'cardex':        ['admin', 'rh'],
     'bpd':           ['admin', 'rh'],
     'incidencias':   ['admin', 'rh'],
     'capacitacion':  ['admin', 'rh'],
@@ -90,8 +146,12 @@ PERMISOS = {
     'limpiezas':     ['admin', 'rh'],
     'produccion':    ['admin', 'rh'],
     'avisos':        ['admin', 'rh'],
+    'organigrama':   ['admin', 'rh'],
+    'reclutamiento': ['admin', 'rh'],
+    'normativa':     ['admin', 'rh'],
     'activos':       ['admin', 'rh'],
     'gasolina':      ['admin', 'rh'],
+    'auditoria':     ['admin'],
     'configuracion': ['admin'],
 }
 
@@ -104,8 +164,10 @@ PERMISOS = {
 # Para mover un módulo de departamento, basta con cambiarlo de lista aquí.
 NAV_DEPARTAMENTOS = [
     {'key': 'general', 'nombre': 'General', 'icono': 'ri-home-5-line', 'modulos': [
-        ('/dashboard', 'Dashboard', 'ri-dashboard-3-line', ''),
-        ('/avisos',    'Avisos',    'ri-megaphone-line',   ''),
+        ('/dashboard',   'Dashboard',        'ri-dashboard-3-line',    ''),
+        ('/tablero',     'Tablero Gerencial','ri-line-chart-line',     ''),
+        ('/organigrama', 'Organigrama',      'ri-organization-chart',  ''),
+        ('/avisos',      'Avisos',           'ri-megaphone-line',      ''),
     ]},
     {'key': 'rh', 'nombre': 'Recursos Humanos', 'icono': 'ri-group-line', 'modulos': [
         ('/empleados',    'Empleados',        'ri-id-card-line',        ''),
@@ -113,6 +175,9 @@ NAV_DEPARTAMENTOS = [
         ('/asistencias',  'Asistencias',      'ri-time-line',           '/reporte_individual'),
         ('/capacitacion', 'Capacitación',     'ri-graduation-cap-line', ''),
         ('/expertise',    'Matriz Expertise', 'ri-medal-line',          ''),
+        ('/perfiles',     'Perfiles de Puesto','ri-profile-line',       ''),
+        ('/reclutamiento','Reclutamiento',    'ri-user-search-line',    ''),
+        ('/cardex',       'Cardex & Madurez', 'ri-profile-line',        ''),
         ('/bpd',          'Desempeño BPD',    'ri-speed-up-line',       ''),
         ('/reportes',     'Reportes',         'ri-bar-chart-2-line',    ''),
     ]},
@@ -121,16 +186,18 @@ NAV_DEPARTAMENTOS = [
         ('/recetas',    'Procesos',   'ri-list-check-3',         ''),
     ]},
     {'key': 'calidad', 'nombre': 'Calidad', 'icono': 'ri-shield-check-line', 'modulos': [
-        ('/cinco_s',    'Auditorías 5S',  'ri-sparkling-2-line',  ''),
-        ('/limpiezas',  'Rol Limpiezas',  'ri-brush-line',        ''),
-        ('/documentos', 'Documentos BPM', 'ri-folder-open-line',  ''),
-        ('/activos',    'Activos y EPP',  'ri-shield-check-line', ''),
+        ('/cinco_s',    'Auditorías 5S',      'ri-sparkling-2-line',  ''),
+        ('/limpiezas',  'Rol Limpiezas',      'ri-brush-line',        ''),
+        ('/documentos', 'Documentos BPM',     'ri-folder-open-line',  ''),
+        ('/normativa',  'Documentos Legales', 'ri-scales-3-line',     '/normativa/bpm'),
+        ('/activos',    'Activos y EPP',      'ri-shield-check-line', ''),
     ]},
     {'key': 'logistica', 'nombre': 'Logística', 'icono': 'ri-truck-line', 'modulos': [
         ('/gasolina', 'Tarjeta Gasolina', 'ri-gas-station-fill', ''),
     ]},
     {'key': 'administracion', 'nombre': 'Administración', 'icono': 'ri-building-line', 'modulos': [
-        ('/configuracion', 'Configuración', 'ri-settings-4-line', ''),
+        ('/auditoria',     'Auditoría y Catálogos', 'ri-file-shield-2-line', ''),
+        ('/configuracion', 'Configuración',         'ri-settings-4-line',    ''),
     ]},
     {'key': 'comercial',         'nombre': 'Comercial',                  'icono': 'ri-line-chart-line',   'modulos': []},
     {'key': 'id',                'nombre': 'Investigación y Desarrollo', 'icono': 'ri-microscope-line',   'modulos': []},
@@ -213,6 +280,44 @@ def _cerrar_conexiones_db(exc):
             except Exception:
                 pass
 
+# === M10 · AUDITORÍA: registro de trazabilidad (nunca debe romper el request) ===
+def _auditar(tipo, accion, ruta='', detalle='', usuario=None, rol=None):
+    """Inserta una línea en el registro de auditoría. A prueba de fallos:
+    si algo sale mal (BD ocupada, tabla vieja), se ignora en silencio."""
+    try:
+        conn = sqlite3.connect('base_planta.db', timeout=3.0)
+        try:
+            ip = request.remote_addr if request else None
+        except Exception:
+            ip = None
+        conn.execute(
+            "INSERT INTO auditoria (usuario, rol, tipo, accion, ruta, detalle, ip) VALUES (?,?,?,?,?,?,?)",
+            (usuario or session.get('nombre') or session.get('username'),
+             rol or session.get('rol'), tipo, accion, ruta, detalle, ip))
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
+
+# Rutas cuyo POST NO se registra como 'cambio' de datos:
+#  - /login ya se registra aparte como 'acceso' (evita el doble registro).
+_AUDIT_POST_IGNORAR = {'/login'}
+
+@app.after_request
+def _auditar_cambios(response):
+    """Registra automáticamente cada operación de escritura (POST) exitosa como
+    un 'cambio', sin tener que tocar ruta por ruta. Los accesos (login/logout) se
+    registran explícitamente en sus rutas."""
+    try:
+        if (request.method == 'POST' and 'user_id' in session
+                and response.status_code < 400
+                and request.path not in _AUDIT_POST_IGNORAR
+                and not request.path.startswith('/static')):
+            _auditar('cambio', 'Modificación de datos', request.path)
+    except Exception:
+        pass
+    return response
+
 def _festivos_mexico(anio):
     """Días festivos oficiales de México (LFT Art. 74): fijos + lunes conmemorativos.
     Devuelve lista de (fecha 'YYYY-MM-DD', nombre)."""
@@ -253,6 +358,65 @@ def dias_vacaciones_lft(anios):
         return base[anios]
     return 22 + ((anios - 6) // 5) * 2
 
+# === M4 · Módulos de inducción ATISA (matriz M4: IND-01 a IND-11) ===
+MODULOS_INDUCCION = [
+    'Inducción 1 · Historia y Misión ATISA',
+    'Inducción 2 · Productos ATISA',
+    'Inducción 3 · Reglamento Interior de Trabajo',
+    'Inducción 4 · Descripción de Puesto',
+    'Inducción 5 · Política de Calidad',
+    'Inducción 6 · Código de Conducta',
+    'Inducción 7 · Reglamento de Casilleros',
+    'Inducción 8 · Higiene BPM',
+    'Inducción 9 · Lavado de Manos (9 pasos)',
+    'Inducción 10 · Conducta en Producción',
+    'Inducción 11 · Equipo de Protección Personal',
+]
+
+# === M8 · Catálogo semilla de documentos legales y normatividad (matriz oficial ATISA) ===
+DOC_CATEGORIAS = ['Formatos RH', 'Logística / Almacén', 'Normatividad Laboral', 'BPM SENASICA / SADER']
+DOC_ESTATUS = ['Vigente', 'En revisión', 'Obsoleto']
+DOCUMENTOS_LEGALES_SEED = [
+    # (código, nombre, categoría, versión)
+    ('F-RHC-SE-01',   'Solicitud de empleo',                'Formatos RH', ''),
+    ('F-RHC-3.1-3',   'Acta de conformidad de inducción',   'Formatos RH', 'v02'),
+    ('F-RHC-3.1-4',   'Acta de recepción de puesto',        'Formatos RH', ''),
+    ('F-RHC-EXP-01',  'Checklist de expediente personal',   'Formatos RH', ''),
+    ('F-RHC-MEM-01',  'Memorándum (sanciones / amonestaciones)', 'Formatos RH', ''),
+    ('F-RHC-CONF-01', 'Acuerdo de confidencialidad',        'Formatos RH', ''),
+    ('P-ALM-LOG-01',  'Procedimiento logístico',            'Logística / Almacén', ''),
+    ('F-ALM-LOG-01/08','Formatos operativos de almacén',    'Logística / Almacén', ''),
+    ('RIT-2025',      'Reglamento Interior de Trabajo ATISA','Normatividad Laboral', '2025'),
+    ('COD-CONDUCTA',  'Código de Conducta ATISA',           'Normatividad Laboral', ''),
+    ('POL-LFPDPPP',   'Política de Privacidad (LFPDPPP)',    'Normatividad Laboral', ''),
+    ('POL-SGCI',      'Política de Calidad e Inocuidad',     'Normatividad Laboral', ''),
+    ('NOM-035-STPS',  'NOM-035-STPS · Riesgo psicosocial',  'Normatividad Laboral', ''),
+    ('NOM-017-STPS',  'NOM-017-STPS · Equipo de protección personal', 'Normatividad Laboral', ''),
+    ('MAN-BPM-01',    'Manual BPM SENASICA vigente',         'BPM SENASICA / SADER', ''),
+    ('F-BPM-MIN-01',  'Minutas de reunión BPM',              'BPM SENASICA / SADER', ''),
+    ('F-BPM-LIMP-01', 'Registros de limpieza y exclusa',     'BPM SENASICA / SADER', ''),
+    ('NOM-ZOO',       'NOMs veterinarias (012, 022, 024, 025, 026, 064-ZOO)', 'BPM SENASICA / SADER', ''),
+]
+BPM_AREAS = ['Instalaciones', 'Personal', 'Producción', 'Documentación', 'Almacén', 'Limpieza y sanidad']
+BPM_ESTATUS = ['Pendiente', 'En proceso', 'Cumplida', 'No aplica']
+# Muestra representativa del maestro de 113 actividades BPM (el maestro completo se carga después).
+BPM_ACTIVIDADES_SEED = [
+    ('Rótulos e identificación de áreas por función', 'Instalaciones'),
+    ('Control de plagas con programa documentado', 'Instalaciones'),
+    ('Superficies lavables en zona de producción', 'Instalaciones'),
+    ('Exámenes médicos de ingreso al personal', 'Personal'),
+    ('Uniforme y EPP completo por área', 'Personal'),
+    ('Capacitación BPM anual documentada', 'Personal'),
+    ('Registro de lotes y trazabilidad de producto', 'Producción'),
+    ('Control de temperatura y condiciones de proceso', 'Producción'),
+    ('Procedimientos operativos vigentes y firmados', 'Documentación'),
+    ('Bitácoras de producción completas y legibles', 'Documentación'),
+    ('Control de entradas y salidas de almacén', 'Almacén'),
+    ('Materia prima con orden PEPS y estatus de calidad', 'Almacén'),
+    ('Programa de limpieza y sanitización por área', 'Limpieza y sanidad'),
+    ('Registro de acceso por exclusa a producción', 'Limpieza y sanidad'),
+]
+
 def inicializar_bd():
     conn = get_db_connection()
 
@@ -277,7 +441,17 @@ def inicializar_bd():
     # ahora son parte del empleado y todos los módulos los leen de aquí.
     cols_usuarios = {row[1] for row in conn.execute('PRAGMA table_info(usuarios)').fetchall()}
     for col, tipo in [('puesto', 'TEXT'), ('area', 'TEXT'), ('cumpleanos', 'TEXT'),
-                      ('talla_calzado', 'TEXT'), ('fecha_ingreso', 'TEXT')]:
+                      ('talla_calzado', 'TEXT'), ('fecha_ingreso', 'TEXT'),
+                      # M1 · Expediente digital completo del colaborador
+                      ('fecha_nacimiento', 'TEXT'), ('curp', 'TEXT'), ('rfc', 'TEXT'), ('nss', 'TEXT'),
+                      ('domicilio', 'TEXT'), ('telefono', 'TEXT'), ('correo', 'TEXT'),
+                      ('estado_civil', 'TEXT'), ('num_dependientes', 'TEXT'),
+                      ('emergencia_nombre', 'TEXT'), ('emergencia_parentesco', 'TEXT'),
+                      ('emergencia_telefono', 'TEXT'), ('escolaridad', 'TEXT'), ('cedula_profesional', 'TEXT'),
+                      ('jefe_inmediato', 'TEXT'), ('tipo_contrato', 'TEXT'), ('fecha_fin_contrato', 'TEXT'),
+                      ('salario_diario', 'TEXT'), ('tipo_jornada', 'TEXT'), ('turno', 'TEXT'),
+                      ('infonavit', 'TEXT'), ('fonacot', 'TEXT'), ('banco_clabe', 'TEXT'),
+                      ('fecha_baja', 'TEXT'), ('motivo_baja', 'TEXT')]:
         if col not in cols_usuarios:
             try:
                 conn.execute(f'ALTER TABLE usuarios ADD COLUMN {col} {tipo}')
@@ -566,6 +740,30 @@ def inicializar_bd():
         for i, nom in enumerate(cursos_base, start=1):
             conn.execute("INSERT INTO cursos (nombre, tipo, orden, activo) VALUES (?, 'BPM', ?, 1)", (nom, i))
 
+    # M4 · Enriquecer el catálogo de cursos (Plan Anual: metadatos) y el registro (calificación)
+    cols_cursos = {row[1] for row in conn.execute('PRAGMA table_info(cursos)').fetchall()}
+    for col, tipo in [('categoria', "TEXT DEFAULT 'Plan Anual'"), ('modalidad', 'TEXT'),
+                      ('instructor', 'TEXT'), ('fecha_programada', 'TEXT'),
+                      ('duracion_horas', 'TEXT'), ('destinatarios', 'TEXT'), ('costo', 'TEXT')]:
+        if col not in cols_cursos:
+            try:
+                conn.execute(f'ALTER TABLE cursos ADD COLUMN {col} {tipo}')
+            except sqlite3.OperationalError:
+                pass
+    cols_capreg = {row[1] for row in conn.execute('PRAGMA table_info(capacitacion_registro)').fetchall()}
+    if 'calificacion' not in cols_capreg:
+        try:
+            conn.execute('ALTER TABLE capacitacion_registro ADD COLUMN calificacion INTEGER')
+        except sqlite3.OperationalError:
+            pass
+    # Sembrar los 11 módulos de INDUCCIÓN ATISA (una sola vez)
+    if conn.execute("SELECT COUNT(*) AS n FROM cursos WHERE categoria='Inducción'").fetchone()['n'] == 0:
+        base_ord = conn.execute("SELECT COALESCE(MAX(orden),0) AS o FROM cursos").fetchone()['o']
+        for i, nom in enumerate(MODULOS_INDUCCION, start=1):
+            conn.execute(
+                "INSERT INTO cursos (nombre, tipo, categoria, orden, activo) VALUES (?, 'Inducción', 'Inducción', ?, 1)",
+                (nom, base_ord + i))
+
     # === MÓDULO 5S (auditorías de orden y limpieza por área) ===
     conn.execute('''
         CREATE TABLE IF NOT EXISTS cinco_s_auditorias (
@@ -631,6 +829,216 @@ def inicializar_bd():
             INSERT INTO usuarios (numero_empleado, nombre_completo, username, password_hash, rol) 
             VALUES (?, ?, ?, ?, ?)
         ''', ('0001', 'Ing. Jesús Armando Juárez Cabrera', 'admin', hash_pass, 'admin'))
+
+    # === MÓDULO M3 · PERFIL DE PUESTO & KPIs ===
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS puestos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            codigo TEXT, nombre TEXT NOT NULL, area TEXT, nivel TEXT,
+            objetivo TEXT, escolaridad TEXT, experiencia TEXT, conocimientos TEXT,
+            habilidades TEXT, responsabilidades_bpm TEXT, epp TEXT, riesgos TEXT,
+            activo INTEGER DEFAULT 1
+        )
+    ''')
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS puesto_kpis (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            puesto_id INTEGER NOT NULL,
+            nombre TEXT NOT NULL, meta TEXT, frecuencia TEXT DEFAULT 'Mensual',
+            peso INTEGER DEFAULT 0, orden INTEGER DEFAULT 0,
+            FOREIGN KEY(puesto_id) REFERENCES puestos(id) ON DELETE CASCADE
+        )
+    ''')
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_kpi_puesto ON puesto_kpis(puesto_id)")
+    # Semilla (primera vez): puestos ATISA + KPIs medibles (de la matriz de evaluación por puesto)
+    if conn.execute("SELECT COUNT(*) AS n FROM puestos").fetchone()['n'] == 0:
+        seed_puestos = [
+            ('PROD-OPE', 'Operador', 'Producción', 'Operativo', 'Pesa, mezcla y envasa producto conforme a la fórmula.',
+             [('Volumen de producción (unidades/lotes vs meta)', 'Cumple meta', 'Mensual'),
+              ('Calidad — mermas y reprocesos', 'Merma mínima', 'Mensual'),
+              ('Apego a la fórmula (desviaciones)', 'Sin desviaciones', 'Por lote')]),
+            ('PROD-PES', 'Pesador', 'Producción', 'Operativo', 'Pesa e identifica las materias primas para producción.',
+             [('Exactitud del pesaje (errores detectados)', 'Cero errores', 'Por lote'),
+              ('Identificación correcta de materiales', 'Sin confusiones', 'Diario'),
+              ('Oportunidad (entrega al ritmo de producción)', 'No detiene la planta', 'Diario')]),
+            ('PROD-SUP', 'Supervisor', 'Producción', 'Coordinador', 'Coordina el turno y al personal operativo.',
+             [('Cumplimiento del programa del turno', 'Plan cumplido', 'Diario'),
+              ('Calidad del turno (rechazos/no conformidades)', 'Índices bajos', 'Mensual'),
+              ('Arranque del turno a tiempo', 'Sin retrasos', 'Diario')]),
+            ('PROD-JEF', 'Jefe de Producción', 'Producción', 'Jefe', 'Planea y responde por la producción de la planta.',
+             [('Cumplimiento del plan (lotes vs programa)', 'Programa cumplido', 'Mensual'),
+              ('Eficiencia del área (producción vs capacidad, merma)', 'Alta, baja merma', 'Mensual'),
+              ('Continuidad operativa (paros evitables)', 'Mínimos paros', 'Mensual')]),
+            ('MANT-FOG', 'Fogonero / Mantenimiento', 'Mantenimiento', 'Técnico', 'Opera la caldera y atiende el mantenimiento de equipos.',
+             [('Operación estable de caldera (paros no programados)', 'Sin paros imprevistos', 'Mensual'),
+              ('Parámetros en norma (presión/temperatura/agua)', 'Siempre en rango', 'Diario'),
+              ('Mantenimiento preventivo (hechos vs programados)', 'Programa al corriente', 'Mensual')]),
+            ('CAL-ANA', 'Analista', 'Calidad / Laboratorio', 'Técnico', 'Realiza los análisis de laboratorio a materias y producto.',
+             [('Oportunidad de análisis (dentro del tiempo)', 'No retrasa liberación', 'Semanal'),
+              ('Confiabilidad (reanálisis o errores)', 'Sin errores', 'Mensual'),
+              ('Registro oportuno de bitácoras', 'Registros completos', 'Diario')]),
+            ('CAL-INS', 'Inspector de Calidad', 'Calidad / Laboratorio', 'Técnico', 'Verifica en piso el cumplimiento de las buenas prácticas.',
+             [('Cobertura de recepciones inspeccionadas', 'Nada entra sin revisión', 'Diario'),
+              ('Oportunidad de liberación (acepta/rechaza)', 'Ágil y correcto', 'Diario'),
+              ('Detección en piso (desviaciones BPM)', 'Detecta y reporta', 'Mensual')]),
+            ('CAL-JEF', 'Jefe de Calidad', 'Calidad / Laboratorio', 'Jefe', 'Responde por el control de calidad y el laboratorio.',
+             [('Liberaciones a tiempo (certificados en plazo)', 'Sin cuello de botella', 'Semanal'),
+              ('Cierre de desviaciones en tiempo', 'Sin acumulación', 'Mensual'),
+              ('Capacidad del laboratorio vs demanda', 'No limita a producción', 'Mensual')]),
+            ('VEN-VEN', 'Vendedor', 'Ventas', 'Técnico', 'Vende y coloca producto en su zona o cartera.',
+             [('Ventas contra meta ($ o unidades)', 'Alcanza o supera meta', 'Mensual'),
+              ('Cobranza / cartera vencida', 'Cobranza oportuna', 'Mensual'),
+              ('Cobertura (visitas vs planeadas)', 'Cumple su ruta', 'Semanal'),
+              ('Desarrollo de cartera (clientes nuevos)', 'Cartera en crecimiento', 'Mensual')]),
+            ('VEN-PRO', 'Promotor de Venta', 'Ventas', 'Operativo', 'Promueve e impulsa la venta en puntos de venta.',
+             [('Ventas contra meta', 'Alcanza meta', 'Mensual'),
+              ('Cobertura (visitas vs plan)', 'Cumple su ruta', 'Semanal'),
+              ('Material publicitario colocado', 'Puntos activados', 'Mensual')]),
+            ('VEN-DIS', 'Distribuidor', 'Ventas', 'Técnico', 'Distribuye y coloca producto en su zona asignada.',
+             [('Ventas contra meta', 'Alcanza meta', 'Mensual'),
+              ('Cobranza / cartera vencida', 'Cartera baja', 'Mensual'),
+              ('Rotación y caducidades en punto de venta', 'Sin caducados', 'Mensual')]),
+            ('VEN-AST', 'Asesor Técnico', 'Ventas', 'Técnico', 'Brinda soporte técnico de los productos a clientes y equipo.',
+             [('Casos técnicos resueltos', 'Resuelve oportunamente', 'Mensual'),
+              ('Capacitación técnica impartida', 'Capacita con regularidad', 'Mensual'),
+              ('Apoyo a la venta (cierres asistidos)', 'Se traduce en ventas', 'Mensual')]),
+            ('VEN-JEF', 'Jefe de Ventas y MKT', 'Ventas', 'Jefe', 'Dirige al equipo comercial y la estrategia.',
+             [('Meta global del equipo', 'El equipo cumple', 'Mensual'),
+              ('Cobranza global del equipo', 'Cartera sana', 'Mensual'),
+              ('Crecimiento (clientes nuevos, cobertura)', 'La marca crece', 'Trimestral')]),
+            ('IYD-DES', 'Desarrollo de Producto', 'Investigación y Desarrollo', 'Técnico', 'Formula y mejora productos nuevos y existentes.',
+             [('Cumplimiento de proyectos (vs plan)', 'Cumple fechas', 'Mensual'),
+              ('Calidad del desarrollo (lotes piloto)', 'Pocos rechazos en piloto', 'Mensual')]),
+            ('IYD-JEF', 'Jefe de I&D', 'Investigación y Desarrollo', 'Jefe', 'Dirige los proyectos de desarrollo y regulatorios.',
+             [('Avance del portafolio (proyectos a tiempo)', 'En tiempo', 'Mensual'),
+              ('Registros regulatorios avanzados', 'Registros avanzando', 'Trimestral'),
+              ('Validación de métodos analíticos', 'Métodos validados', 'Mensual')]),
+            ('ALM-ENC', 'Encargado de Almacén', 'Almacén / Logística', 'Coordinador', 'Recibe, resguarda y entrega materiales y producto.',
+             [('Exactitud de inventario (sistema vs físico)', 'Siempre cuadra', 'Mensual'),
+              ('Control de caducidades', 'Sin caducados', 'Mensual'),
+              ('Oportunidad de entrega a producción', 'No frena la planta', 'Diario')]),
+            ('ALM-CHO', 'Chofer Auxiliar', 'Almacén / Logística', 'Operativo', 'Transporta y entrega mercancía y materiales.',
+             [('Entregas a tiempo y completas', 'Cliente recibe bien y a tiempo', 'Diario'),
+              ('Incidencias (siniestros, multas, faltantes)', 'Sin incidentes', 'Mensual'),
+              ('Cuidado del vehículo y consumo de combustible', 'Buen estado, consumo razonable', 'Mensual')]),
+            ('ADM-CON', 'Asistente Contable', 'Administración', 'Técnico', 'Registra y controla las operaciones contables diarias.',
+             [('Registro oportuno y exacto (pólizas)', 'Sin atrasos ni errores', 'Diario'),
+              ('Conciliaciones a tiempo', 'Puntuales y cuadradas', 'Mensual'),
+              ('Documentación completa (CFDI, soportes)', 'Documentación íntegra', 'Mensual')]),
+            ('ADM-JEF', 'Jefe de Administración', 'Administración', 'Jefe', 'Responde por las finanzas y la administración.',
+             [('Cierres en fecha (contables y fiscales)', 'Siempre en fecha', 'Mensual'),
+              ('Salud financiera (cuentas por cobrar/pagar)', 'Flujo sano', 'Mensual'),
+              ('Cumplimiento normativo (sin multas)', 'Cumplimiento pleno', 'Trimestral')]),
+            ('ADM-ASC', 'Asistente de Compras', 'Administración', 'Técnico', 'Apoya las compras: requisiciones, cotizaciones y órdenes.',
+             [('Oportunidad (requisiciones en plazo)', 'Sin acumulación', 'Semanal'),
+              ('Exactitud (cotizaciones/órdenes sin error)', 'Sin errores costosos', 'Mensual')]),
+            ('ADM-AUC', 'Auxiliar de Compras', 'Administración', 'Operativo', 'Ejecuta el seguimiento operativo de compras.',
+             [('Oportunidad (requisiciones en plazo)', 'Sin acumulación', 'Semanal'),
+              ('Cotizaciones gestionadas', 'A tiempo', 'Semanal')]),
+            ('ADM-JCO', 'Jefe de Compras', 'Administración', 'Jefe', 'Asegura el abasto de materiales e insumos a la planta.',
+             [('Abasto oportuno (sin desabasto)', 'Sin desabasto que frene', 'Mensual'),
+              ('Negociación (precios y condiciones)', 'Genera ahorro', 'Trimestral'),
+              ('Proveedores confiables (entregas y calidad)', 'Proveedores que cumplen', 'Mensual')]),
+            ('RH-EXT', 'Externo RH', 'Administración', 'Técnico', 'Recluta, selecciona y contrata al personal.',
+             [('Tiempo de cobertura de vacantes', 'Cobertura ágil', 'Mensual'),
+              ('Permanencia del personal contratado', 'El personal permanece', 'Trimestral'),
+              ('Expediente de ingreso completo', 'Expediente íntegro', 'Mensual')]),
+            ('DIR-GER', 'Gerente General', 'Dirección', 'Gerente', 'Dirige la operación integral de la empresa.',
+             [('Índice global de la empresa', 'La empresa en verde', 'Mensual')]),
+            ('DIR-DIR', 'Director General', 'Dirección', 'Dirección', 'Dirige estratégicamente a la empresa.',
+             [('Resultado de la empresa (ventas, utilidad, producción, calidad)', 'Metas globales cumplidas', 'Trimestral')]),
+        ]
+        for cod, nom, area, niv, obj, kpis in seed_puestos:
+            cur = conn.execute(
+                'INSERT INTO puestos (codigo, nombre, area, nivel, objetivo) VALUES (?, ?, ?, ?, ?)',
+                (cod, nom, area, niv, obj))
+            pid = cur.lastrowid
+            for i, (kn, km, kf) in enumerate(kpis, start=1):
+                conn.execute(
+                    'INSERT INTO puesto_kpis (puesto_id, nombre, meta, frecuencia, orden) VALUES (?, ?, ?, ?, ?)',
+                    (pid, kn, km, kf, i))
+
+    # === MÓDULO M7 · RECLUTAMIENTO & ONBOARDING ===
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS vacantes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            puesto TEXT NOT NULL, area TEXT, justificacion TEXT, canal TEXT,
+            fecha_apertura TEXT DEFAULT (date('now','localtime')),
+            fecha_cierre TEXT, estatus TEXT DEFAULT 'Abierta', creado_por TEXT
+        )
+    ''')
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS candidatos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            vacante_id INTEGER NOT NULL,
+            nombre TEXT NOT NULL, telefono TEXT, correo TEXT, notas TEXT,
+            puntuacion INTEGER DEFAULT 0, recomendacion TEXT DEFAULT 'En espera',
+            fecha TEXT DEFAULT (date('now','localtime')),
+            FOREIGN KEY(vacante_id) REFERENCES vacantes(id) ON DELETE CASCADE
+        )
+    ''')
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_cand_vacante ON candidatos(vacante_id)")
+
+    # === MÓDULO M8 · DOCUMENTOS LEGALES Y COMPLIANCE ===
+    # Repositorio central de formatos oficiales y normatividad (metadatos + archivo opcional).
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS documentos_legales (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            codigo TEXT, nombre TEXT NOT NULL, categoria TEXT NOT NULL,
+            version TEXT, vigencia TEXT, archivo TEXT, notas TEXT,
+            estatus TEXT DEFAULT 'Vigente',
+            actualizado TEXT DEFAULT (date('now','localtime'))
+        )
+    ''')
+    # Maestro BPM SENASICA: 113 actividades con semáforo de avance (BPM-02 del Excel).
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS bpm_actividades (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            numero INTEGER, actividad TEXT NOT NULL, area TEXT,
+            responsable TEXT, estatus TEXT DEFAULT 'Pendiente',
+            fecha_compromiso TEXT, evidencia TEXT, notas TEXT
+        )
+    ''')
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_doclegal_cat ON documentos_legales(categoria)")
+    # Semilla del repositorio de documentos legales (catálogo oficial ATISA de la matriz M8)
+    if conn.execute("SELECT COUNT(*) AS n FROM documentos_legales").fetchone()['n'] == 0:
+        for cod, nom, cat, ver in DOCUMENTOS_LEGALES_SEED:
+            conn.execute(
+                "INSERT INTO documentos_legales (codigo, nombre, categoria, version, estatus) VALUES (?, ?, ?, ?, 'Vigente')",
+                (cod, nom, cat, ver))
+    # Semilla del tracker BPM (actividades de muestra por área; el maestro real se carga después)
+    if conn.execute("SELECT COUNT(*) AS n FROM bpm_actividades").fetchone()['n'] == 0:
+        for i, (act, area) in enumerate(BPM_ACTIVIDADES_SEED, start=1):
+            conn.execute(
+                "INSERT INTO bpm_actividades (numero, actividad, area, estatus) VALUES (?, ?, ?, 'Pendiente')",
+                (i, act, area))
+
+    # === MÓDULO M10 · AUDITORÍA (trazabilidad de accesos y cambios) ===
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS auditoria (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ts TEXT DEFAULT (datetime('now','localtime')),
+            usuario TEXT, rol TEXT, tipo TEXT,
+            accion TEXT, ruta TEXT, detalle TEXT, ip TEXT
+        )
+    ''')
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_auditoria_ts ON auditoria(ts)")
+
+    # === MÓDULO M6 · CARDEX: eventos de trayectoria (promociones, reconocimientos, amonestaciones) ===
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS cardex_eventos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            numero_empleado TEXT NOT NULL,
+            tipo TEXT NOT NULL,
+            fecha TEXT NOT NULL,
+            titulo TEXT NOT NULL,
+            detalle TEXT,
+            registrado_por TEXT,
+            creado_en DATETIME DEFAULT (datetime('now','localtime')),
+            FOREIGN KEY(numero_empleado) REFERENCES usuarios(numero_empleado)
+        )
+    ''')
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_cardex_emp ON cardex_eventos(numero_empleado)")
 
     # --- Índices en columnas calientes (acelera SELECT/JOIN/WHERE) ---
     indices = [
@@ -753,21 +1161,37 @@ def login():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
+        clave = (request.remote_addr or '?', (username or '').strip().lower())
+        # Anti-fuerza-bruta: si esta (IP, usuario) acumuló demasiados fallos, no se
+        # revisa la contraseña (evita adivinar a base de miles de intentos).
+        if _login_bloqueado(clave):
+            _auditar('acceso', 'Bloqueo por intentos fallidos', '/login',
+                     detalle=f'usuario: {username}', usuario=username or '—', rol='—')
+            flash('Demasiados intentos fallidos. Espera unos minutos e intenta de nuevo.', 'error')
+            return full_page('login.html')
         conn = get_db_connection()
         usuario = conn.execute('SELECT * FROM usuarios WHERE username = ? AND estatus = 1', (username,)).fetchone()
         conn.close()
         if usuario and check_password_hash(usuario['password_hash'], password):
+            _login_limpiar(clave)
+            session.permanent = True          # activa la expiración de 8 h
             session['user_id'] = usuario['id']
             session['username'] = usuario['username']
             session['nombre'] = usuario['nombre_completo']
             session['rol'] = usuario['rol']
+            _auditar('acceso', 'Inicio de sesión', '/login',
+                     usuario=usuario['nombre_completo'], rol=usuario['rol'])
             return hx_redirect(url_for(landing_endpoint()))
         else:
+            _login_registrar_fallo(clave)
+            _auditar('acceso', 'Intento de acceso fallido', '/login',
+                     detalle=f'usuario: {username}', usuario=username or '—', rol='—')
             flash('Datos incorrectos', 'error')
     return full_page('login.html')
 
 @app.route('/logout')
 def logout():
+    _auditar('acceso', 'Cierre de sesión', '/logout')
     session.clear()
     return hx_redirect(url_for('login'))
 
@@ -836,6 +1260,11 @@ def crear_empleado():
     if not (num_emp and nombre and user and passw and rol):
         flash('Faltan datos obligatorios para crear el empleado.', 'error')
         return hx_redirect(url_for('empleados'))
+    # Contraseña mínima (evita cuentas con claves triviales tipo "123").
+    err_pass = _password_debil(passw)
+    if err_pass:
+        flash(err_pass, 'error')
+        return hx_redirect(url_for('empleados'))
     # El rol debe ser uno válido; si no, el usuario quedaría sin acceso a nada.
     if rol not in ('admin', 'rh', 'operador'):
         flash('El rol seleccionado no es válido.', 'error')
@@ -889,6 +1318,12 @@ def editar_empleado():
         flash('El rol seleccionado no es válido.', 'error')
         return hx_redirect(url_for('empleados'))
     passw = request.form.get('password')
+    # Si se captura una nueva contraseña, debe cumplir el mínimo (vacío = no se cambia).
+    if passw:
+        err_pass = _password_debil(passw)
+        if err_pass:
+            flash(err_pass, 'error')
+            return hx_redirect(url_for('empleados'))
     hora_entrada = request.form.get('hora_entrada') or '08:30'
     hora_salida = request.form.get('hora_salida') or '18:00'
     puesto = (request.form.get('puesto') or '').strip() or None
@@ -1069,7 +1504,7 @@ def actualizar_receta(receta_id):
             instruccion = request.form.get(f'paso_{paso_num}_instruccion')
             if not instruccion:
                 break
-            minutos = int(request.form.get(f'paso_{paso_num}_minutos') or 0)
+            minutos = max(0, _int_seguro(request.form.get(f'paso_{paso_num}_minutos'), 0))
             tiene_tiempo = 1 if minutos > 0 else 0
             paso_existente_id = request.form.get(f'paso_{paso_num}_id')
             imagen = request.files.get(f'paso_{paso_num}_imagen')
@@ -1123,7 +1558,7 @@ def crear_receta():
         while True:
             instruccion = request.form.get(f'paso_{paso_num}_instruccion')
             if not instruccion: break
-            minutos = int(request.form.get(f'paso_{paso_num}_minutos') or 0)
+            minutos = max(0, _int_seguro(request.form.get(f'paso_{paso_num}_minutos'), 0))
             tiene_tiempo = 1 if minutos > 0 else 0
             imagen = request.files.get(f'paso_{paso_num}_imagen')
             ruta_imagen = ""
@@ -1304,21 +1739,36 @@ def asignar_gasolina():
         conn.close()
     return hx_redirect(url_for('gasolina'))
 
+ESTATUS_TARJETA_VALIDOS = {'Disponible', 'Asignada', 'Bloqueada'}
+
 @app.route('/editar_tarjeta', methods=['POST'])
 @login_required
 @requiere_modulo('gasolina')
 def editar_tarjeta():
     tarjeta_id = request.form.get('tarjeta_id')
-    saldo = request.form.get('saldo')
-    estatus = request.form.get('estatus')
+    estatus = (request.form.get('estatus') or '').strip()
+    try:
+        saldo_f = float(request.form.get('saldo'))
+    except (TypeError, ValueError):
+        flash('El saldo debe ser un número válido.', 'error')
+        return hx_redirect(url_for('gasolina'))
+    if saldo_f < 0:
+        flash('El saldo no puede ser negativo.', 'error')
+        return hx_redirect(url_for('gasolina'))
+    if estatus not in ESTATUS_TARJETA_VALIDOS:
+        flash('Estatus de tarjeta no válido.', 'error')
+        return hx_redirect(url_for('gasolina'))
     conn = get_db_connection()
     try:
-        conn.execute(
+        cur = conn.execute(
             'UPDATE tarjetas_gasolina SET saldo = ?, estatus = ? WHERE id = ?',
-            (float(saldo), estatus, tarjeta_id)
+            (saldo_f, estatus, tarjeta_id)
         )
         conn.commit()
-        flash('Tarjeta actualizada correctamente', 'success')
+        if cur.rowcount == 0:
+            flash('Tarjeta no encontrada.', 'error')
+        else:
+            flash('Tarjeta actualizada correctamente', 'success')
     except Exception:
         flash('Error al actualizar tarjeta', 'error')
     finally:
@@ -1345,6 +1795,11 @@ def registrar_carga():
         return hx_redirect(url_for('gasolina'))
     conn = get_db_connection()
     try:
+        # La tarjeta debe existir ANTES de registrar la carga (si no, quedaría una
+        # bitácora huérfana y un "registrado correctamente" engañoso sin descontar nada).
+        if not conn.execute('SELECT 1 FROM tarjetas_gasolina WHERE id = ?', (tarjeta_id,)).fetchone():
+            flash('La tarjeta seleccionada no existe.', 'error')
+            return hx_redirect(url_for('gasolina'))
         conn.execute(
             'INSERT INTO bitacora_gasolina (nombre_empleado, no_estacion, monto) VALUES (?, ?, ?)',
             (nombre_empleado, no_estacion, monto_f)
@@ -1524,20 +1979,29 @@ def devolver_activo():
     conn = get_db_connection()
     try:
         row = conn.execute(
-            'SELECT activo_id FROM asignaciones_activos WHERE id = ?',
+            'SELECT activo_id, estatus FROM asignaciones_activos WHERE id = ?',
             (asignacion_id,)
         ).fetchone()
-        if row:
+        if row and row['estatus'] == 'Activo':
             conn.execute(
                 "UPDATE asignaciones_activos SET estatus = 'Devuelto' WHERE id = ?",
                 (asignacion_id,)
             )
-            conn.execute(
-                "UPDATE inventario_activos SET estatus = 'Disponible' WHERE id = ?",
-                (row['activo_id'],)
-            )
+            # Solo liberar el activo si NO tiene otra asignación vigente (evita desincronizar
+            # el inventario si el activo ya fue re-asignado a otra persona).
+            otra = conn.execute(
+                "SELECT 1 FROM asignaciones_activos WHERE activo_id = ? AND estatus = 'Activo' AND id != ? LIMIT 1",
+                (row['activo_id'], asignacion_id)
+            ).fetchone()
+            if not otra:
+                conn.execute(
+                    "UPDATE inventario_activos SET estatus = 'Disponible' WHERE id = ?",
+                    (row['activo_id'],)
+                )
             conn.commit()
             flash('Activo devuelto correctamente', 'success')
+        elif row:
+            flash('Esta asignación ya había sido devuelta.', 'error')
         else:
             flash('Asignación no encontrada', 'error')
     except Exception:
@@ -1546,16 +2010,34 @@ def devolver_activo():
         conn.close()
     return hx_redirect(url_for('activos'))
 
+ESTATUS_ACTIVO_VALIDOS = {'Disponible', 'Asignado', 'Baja', 'Mantenimiento'}
+
 @app.route('/editar_activo', methods=['POST'])
 @login_required
 @requiere_modulo('activos')
 def editar_activo():
     activo_id = request.form.get('activo_id')
-    categoria = request.form.get('categoria')
-    descripcion = request.form.get('descripcion')
-    estatus = request.form.get('estatus')
+    categoria = (request.form.get('categoria') or '').strip()
+    descripcion = (request.form.get('descripcion') or '').strip()
+    estatus = (request.form.get('estatus') or '').strip()
+    if not (categoria and descripcion):
+        flash('La categoría y la descripción del activo no pueden quedar vacías.', 'error')
+        return hx_redirect(url_for('activos'))
+    if estatus not in ESTATUS_ACTIVO_VALIDOS:
+        flash('Estatus de activo no válido.', 'error')
+        return hx_redirect(url_for('activos'))
     conn = get_db_connection()
     try:
+        # Candado anti-desync: no marcar 'Disponible' un activo que sigue asignado
+        # (si no, se podría volver a asignar y quedar prestado a dos personas a la vez).
+        if estatus == 'Disponible':
+            asignado = conn.execute(
+                "SELECT 1 FROM asignaciones_activos WHERE activo_id = ? AND estatus = 'Activo' LIMIT 1",
+                (activo_id,)
+            ).fetchone()
+            if asignado:
+                flash('No puedes marcar como Disponible un activo que sigue asignado. Devuélvelo primero.', 'error')
+                return hx_redirect(url_for('activos'))
         conn.execute(
             'UPDATE inventario_activos SET categoria = ?, descripcion = ?, estatus = ? WHERE id = ?',
             (categoria, descripcion, estatus, activo_id)
@@ -1608,12 +2090,15 @@ def subir_documento():
     numero_empleado = request.form.get('numero_empleado')
     tipo_documento = request.form.get('tipo_documento')
     archivo = request.files.get('archivo')
+    # Regreso: si la subida viene de la ficha de expediente, vuelve ahí.
+    # Solo se permiten rutas internas (evita open-redirect a sitios externos).
+    destino = _destino_interno(request.form.get('volver'), url_for('documentos'))
     if not archivo or not archivo.filename:
         flash('Debe seleccionar un archivo', 'error')
-        return hx_redirect(url_for('documentos'))
+        return hx_redirect(destino)
     if not extension_permitida(archivo.filename):
         flash('Formato no permitido. Solo se aceptan archivos PDF, JPG o PNG.', 'error')
-        return hx_redirect(url_for('documentos'))
+        return hx_redirect(destino)
     filename = secure_filename(archivo.filename)
     nombre_unico = f"doc_{numero_empleado}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{filename}"
     ruta_fisica = os.path.join(app.config['UPLOAD_CONTRATOS'], nombre_unico)
@@ -1630,7 +2115,856 @@ def subir_documento():
         flash('Error al subir documento', 'error')
     finally:
         conn.close()
-    return hx_redirect(url_for('documentos'))
+    return hx_redirect(destino)
+
+
+# --- M1 · EXPEDIENTE DIGITAL DEL COLABORADOR ---
+# Documentos requeridos del expediente (checklist BPM/SENASICA). El nombre se usa
+# como 'tipo_documento' al subir el archivo, para casar cada archivo con su casilla.
+DOCS_EXPEDIENTE = [
+    'Solicitud de empleo', 'Contrato de trabajo', 'INE / IFE', 'CURP oficial',
+    'Comprobante de domicilio', 'Acta de nacimiento', 'RFC (constancia fiscal)', 'Alta IMSS',
+    'Cartilla IMSS', 'Comprobante escolar', 'Cédula profesional',
+    'Carta de no antecedentes penales', 'Licencia de manejo', 'Acuerdo de confidencialidad',
+    'Acta de inducción', 'Acta de recepción de puesto', 'Examen médico de ingreso',
+    'Fotos para credencial', 'Constancias de capacitación',
+]
+# Campos del expediente que edita RH (columnas REALES de 'usuarios'; lista FIJA en código).
+EXPEDIENTE_CAMPOS = [
+    'fecha_nacimiento', 'curp', 'rfc', 'nss', 'domicilio', 'telefono', 'correo', 'estado_civil',
+    'num_dependientes', 'emergencia_nombre', 'emergencia_parentesco', 'emergencia_telefono',
+    'escolaridad', 'cedula_profesional', 'puesto', 'area', 'fecha_ingreso', 'jefe_inmediato',
+    'tipo_contrato', 'fecha_fin_contrato', 'salario_diario', 'tipo_jornada', 'turno',
+    'infonavit', 'fonacot', 'banco_clabe',
+]
+# Campos que cuentan para el % de completitud del expediente.
+EXPEDIENTE_CLAVE = [
+    'fecha_nacimiento', 'curp', 'rfc', 'nss', 'domicilio', 'telefono', 'correo',
+    'contacto_emergencia', 'escolaridad', 'puesto', 'area', 'fecha_ingreso', 'jefe_inmediato',
+    'tipo_contrato', 'salario_diario', 'tipo_jornada', 'banco_clabe',
+]
+EXP_CATALOGOS = {
+    'estado_civil': ['Soltero(a)', 'Casado(a)', 'Divorciado(a)', 'Unión libre', 'Viudo(a)'],
+    'tipo_contrato': ['Indefinido', 'Temporal', 'Por obra determinada', 'Prueba', 'Honorarios'],
+    'tipo_jornada': ['Diurna', 'Nocturna', 'Mixta', 'Por obra'],
+    'turno': ['Matutino', 'Vespertino', 'Nocturno', 'Rotativo'],
+    'area': ['Producción', 'Calidad / Laboratorio', 'Ventas', 'Almacén / Logística',
+             'Administración', 'Mantenimiento'],
+}
+
+
+@app.route('/expediente/<numero_empleado>')
+@login_required
+@requiere_modulo('empleados')
+def expediente(numero_empleado):
+    conn = get_db_connection()
+    row = conn.execute('''
+        SELECT u.*, h.hora_entrada, h.hora_salida
+        FROM usuarios u
+        LEFT JOIN horarios_empleados h ON u.numero_empleado = h.numero_empleado
+        WHERE u.numero_empleado = ?
+    ''', (numero_empleado,)).fetchone()
+    if not row:
+        conn.close()
+        flash('Empleado no encontrado.', 'error')
+        return hx_redirect(url_for('empleados'))
+    emp = dict(row)
+    docs = conn.execute(
+        'SELECT id, tipo_documento, nombre_archivo, fecha_subida FROM documentos_empleados '
+        'WHERE numero_empleado = ? ORDER BY fecha_subida DESC',
+        (numero_empleado,)
+    ).fetchall()
+    conn.close()
+
+    # Casar cada documento requerido con el archivo más reciente de ese tipo
+    por_tipo = {}
+    for d in docs:
+        por_tipo.setdefault(d['tipo_documento'], d)
+    checklist = [{'nombre': t, 'doc': por_tipo.get(t)} for t in DOCS_EXPEDIENTE]
+    docs_presentes = sum(1 for c in checklist if c['doc'])
+    pct_docs = round(docs_presentes / len(DOCS_EXPEDIENTE) * 100)
+
+    def lleno(campo):
+        if campo == 'contacto_emergencia':
+            return bool((emp.get('emergencia_nombre') or '').strip()
+                        and (emp.get('emergencia_telefono') or '').strip())
+        return bool(str(emp.get(campo) or '').strip())
+    campos_llenos = sum(1 for c in EXPEDIENTE_CLAVE if lleno(c))
+    pct_campos = round(campos_llenos / len(EXPEDIENTE_CLAVE) * 100)
+    pct_total = round((pct_campos + pct_docs) / 2)
+
+    ant = antiguedad_anios(emp.get('fecha_ingreso'))
+    emp['antiguedad'] = ant
+    emp['vacaciones'] = dias_vacaciones_lft(ant) if ant is not None else None
+    return render_page('expediente.html', emp=emp, checklist=checklist,
+                       docs_presentes=docs_presentes, total_docs=len(DOCS_EXPEDIENTE),
+                       pct_docs=pct_docs, pct_campos=pct_campos, pct_total=pct_total,
+                       catalogos=EXP_CATALOGOS)
+
+
+@app.route('/expediente/guardar', methods=['POST'])
+@login_required
+@requiere_modulo('empleados')
+def expediente_guardar():
+    num = (request.form.get('numero_empleado') or '').strip()
+    if not num:
+        flash('Falta el empleado.', 'error')
+        return hx_redirect(url_for('empleados'))
+    # SET dinámico, pero con nombres de columna de una lista FIJA en código (no inyectable).
+    sets = ', '.join(f'{c} = ?' for c in EXPEDIENTE_CAMPOS)
+    valores = [(request.form.get(c) or '').strip() or None for c in EXPEDIENTE_CAMPOS]
+    conn = get_db_connection()
+    try:
+        conn.execute(f'UPDATE usuarios SET {sets} WHERE numero_empleado = ?', (*valores, num))
+        conn.commit()
+        cache.delete('empleados_activos')
+        flash('Expediente guardado correctamente.', 'success')
+    except Exception:
+        flash('No se pudo guardar el expediente.', 'error')
+    finally:
+        conn.close()
+    return hx_redirect(url_for('expediente', numero_empleado=num))
+
+
+# --- M3 · PERFIL DE PUESTO & KPIs ---
+PUESTO_CAMPOS = ['codigo', 'nombre', 'area', 'nivel', 'objetivo', 'escolaridad',
+                 'experiencia', 'conocimientos', 'habilidades', 'responsabilidades_bpm',
+                 'epp', 'riesgos']
+PUESTO_NIVELES = ['Operativo', 'Técnico', 'Coordinador', 'Jefe', 'Gerente', 'Dirección']
+PUESTO_AREAS = ['Producción', 'Calidad / Laboratorio', 'Ventas', 'Almacén / Logística',
+                'Administración', 'Mantenimiento', 'Investigación y Desarrollo', 'Dirección']
+KPI_FRECUENCIAS = ['Diario', 'Semanal', 'Quincenal', 'Mensual', 'Trimestral', 'Anual', 'Por lote']
+
+
+@app.route('/perfiles')
+@login_required
+@requiere_modulo('perfiles')
+def perfiles():
+    conn = get_db_connection()
+    rows = conn.execute('''
+        SELECT p.*,
+               (SELECT COUNT(*) FROM puesto_kpis k WHERE k.puesto_id = p.id) AS n_kpis,
+               (SELECT COUNT(*) FROM usuarios u WHERE u.estatus = 1 AND u.puesto = p.nombre) AS n_personas
+        FROM puestos p WHERE p.activo = 1 ORDER BY p.area ASC, p.nombre ASC
+    ''').fetchall()
+    conn.close()
+    por_area = {}
+    for r in rows:
+        por_area.setdefault(r['area'] or 'Sin área', []).append(dict(r))
+    total_kpis = sum(r['n_kpis'] for r in rows)
+    return render_page('perfiles.html', por_area=por_area, total_puestos=len(rows),
+                       total_kpis=total_kpis, niveles=PUESTO_NIVELES, areas=PUESTO_AREAS)
+
+
+@app.route('/perfiles/<int:pid>')
+@login_required
+@requiere_modulo('perfiles')
+def perfil_detalle(pid):
+    conn = get_db_connection()
+    p = conn.execute('SELECT * FROM puestos WHERE id = ?', (pid,)).fetchone()
+    if not p:
+        conn.close()
+        flash('Puesto no encontrado.', 'error')
+        return hx_redirect(url_for('perfiles'))
+    kpis = conn.execute('SELECT * FROM puesto_kpis WHERE puesto_id = ? ORDER BY orden, id', (pid,)).fetchall()
+    personas = conn.execute(
+        'SELECT numero_empleado, nombre_completo FROM usuarios WHERE estatus = 1 AND puesto = ? ORDER BY nombre_completo',
+        (p['nombre'],)).fetchall()
+    conn.close()
+    return render_page('perfil_detalle.html', p=dict(p), kpis=kpis, personas=personas,
+                       niveles=PUESTO_NIVELES, areas=PUESTO_AREAS, frecuencias=KPI_FRECUENCIAS)
+
+
+@app.route('/perfiles/guardar', methods=['POST'])
+@login_required
+@requiere_modulo('perfiles')
+def perfil_guardar():
+    pid = (request.form.get('id') or '').strip()
+    if not (request.form.get('nombre') or '').strip():
+        flash('El nombre del puesto es obligatorio.', 'error')
+        return hx_redirect(url_for('perfiles'))
+    # Nombres de columna de una lista FIJA en código (no inyectable).
+    valores = [(request.form.get(c) or '').strip() or None for c in PUESTO_CAMPOS]
+    conn = get_db_connection()
+    try:
+        if pid:
+            sets = ', '.join(f'{c} = ?' for c in PUESTO_CAMPOS)
+            conn.execute(f'UPDATE puestos SET {sets} WHERE id = ?', (*valores, pid))
+            destino = url_for('perfil_detalle', pid=pid)
+        else:
+            cols = ', '.join(PUESTO_CAMPOS)
+            ph = ', '.join('?' for _ in PUESTO_CAMPOS)
+            cur = conn.execute(f'INSERT INTO puestos ({cols}) VALUES ({ph})', valores)
+            destino = url_for('perfil_detalle', pid=cur.lastrowid)
+        conn.commit()
+        flash('Puesto guardado correctamente.', 'success')
+    except Exception:
+        flash('No se pudo guardar el puesto.', 'error')
+        destino = url_for('perfiles')
+    finally:
+        conn.close()
+    return hx_redirect(destino)
+
+
+@app.route('/perfiles/eliminar', methods=['POST'])
+@login_required
+@requiere_modulo('perfiles')
+def perfil_eliminar():
+    pid = (request.form.get('id') or '').strip()
+    conn = get_db_connection()
+    try:
+        conn.execute('UPDATE puestos SET activo = 0 WHERE id = ?', (pid,))
+        conn.commit()
+        flash('Puesto archivado.', 'success')
+    except Exception:
+        flash('No se pudo archivar el puesto.', 'error')
+    finally:
+        conn.close()
+    return hx_redirect(url_for('perfiles'))
+
+
+@app.route('/perfiles/kpi/agregar', methods=['POST'])
+@login_required
+@requiere_modulo('perfiles')
+def perfil_kpi_agregar():
+    pid = (request.form.get('puesto_id') or '').strip()
+    nombre = (request.form.get('nombre') or '').strip()
+    if not (pid and nombre):
+        flash('Falta el nombre del KPI.', 'error')
+        return hx_redirect(url_for('perfiles'))
+    meta = (request.form.get('meta') or '').strip() or None
+    frecuencia = (request.form.get('frecuencia') or 'Mensual').strip()
+    conn = get_db_connection()
+    try:
+        orden = conn.execute('SELECT COALESCE(MAX(orden), 0) + 1 AS o FROM puesto_kpis WHERE puesto_id = ?', (pid,)).fetchone()['o']
+        conn.execute('INSERT INTO puesto_kpis (puesto_id, nombre, meta, frecuencia, orden) VALUES (?, ?, ?, ?, ?)',
+                     (pid, nombre, meta, frecuencia, orden))
+        conn.commit()
+        flash('KPI agregado.', 'success')
+    except Exception:
+        flash('No se pudo agregar el KPI.', 'error')
+    finally:
+        conn.close()
+    return hx_redirect(url_for('perfil_detalle', pid=pid))
+
+
+@app.route('/perfiles/kpi/eliminar', methods=['POST'])
+@login_required
+@requiere_modulo('perfiles')
+def perfil_kpi_eliminar():
+    kid = (request.form.get('id') or '').strip()
+    pid = (request.form.get('puesto_id') or '').strip()
+    conn = get_db_connection()
+    try:
+        conn.execute('DELETE FROM puesto_kpis WHERE id = ?', (kid,))
+        conn.commit()
+    except Exception:
+        pass
+    finally:
+        conn.close()
+    return hx_redirect(url_for('perfil_detalle', pid=pid))
+
+
+# --- M5 · ORGANIGRAMA INTERACTIVO ---
+NIVEL_RANK = {'Dirección': 0, 'Gerente': 1, 'Jefe': 2, 'Coordinador': 3, 'Técnico': 4, 'Operativo': 5}
+
+
+@app.route('/organigrama')
+@login_required
+@requiere_modulo('organigrama')
+def organigrama():
+    conn = get_db_connection()
+    filas = conn.execute('''
+        SELECT u.numero_empleado, u.nombre_completo, u.puesto, u.area,
+               COALESCE(p.nivel, '') AS nivel
+        FROM usuarios u
+        LEFT JOIN puestos p ON p.nombre = u.puesto AND p.activo = 1
+        WHERE u.estatus = 1
+        ORDER BY u.nombre_completo
+    ''').fetchall()
+    vacantes = conn.execute('''
+        SELECT nombre, area FROM puestos
+        WHERE activo = 1 AND nombre NOT IN (
+            SELECT puesto FROM usuarios WHERE estatus = 1 AND puesto IS NOT NULL AND puesto != ''
+        ) ORDER BY area, nombre
+    ''').fetchall()
+    conn.close()
+
+    filas = [dict(r) for r in filas]
+    # Liderazgo (Dirección / Gerente) va arriba, el resto agrupado por área
+    lideres = sorted([r for r in filas if r['nivel'] in ('Dirección', 'Gerente')],
+                     key=lambda x: NIVEL_RANK.get(x['nivel'], 9))
+    lideres_ids = {l['numero_empleado'] for l in lideres}
+    por_area = {}
+    for r in filas:
+        if r['numero_empleado'] in lideres_ids:
+            continue
+        por_area.setdefault(r['area'] or 'Sin área', []).append(r)
+    for a in por_area:
+        por_area[a].sort(key=lambda x: (NIVEL_RANK.get(x['nivel'], 9), x['nombre_completo']))
+    vac_por_area = {}
+    for v in vacantes:
+        vac_por_area.setdefault(v['area'] or 'Sin área', []).append(v['nombre'])
+    areas_orden = sorted(set(por_area) | set(vac_por_area))
+    return render_page('organigrama.html', lideres=lideres, por_area=por_area,
+                       vac_por_area=vac_por_area, areas_orden=areas_orden,
+                       total=len(filas), total_vac=len(vacantes))
+
+
+# --- M7 · RECLUTAMIENTO & ONBOARDING ---
+VACANTE_ESTATUS = ['Abierta', 'En proceso', 'Cubierta', 'Cancelada']
+RECOMENDACIONES = ['Contratar', 'Citar', 'En espera', 'Descartar']
+
+
+@app.route('/reclutamiento')
+@login_required
+@requiere_modulo('reclutamiento')
+def reclutamiento():
+    conn = get_db_connection()
+    rows = conn.execute('''
+        SELECT v.*, (SELECT COUNT(*) FROM candidatos c WHERE c.vacante_id = v.id) AS n_cand
+        FROM vacantes v ORDER BY
+          CASE v.estatus WHEN 'Abierta' THEN 0 WHEN 'En proceso' THEN 1 WHEN 'Cubierta' THEN 2 ELSE 3 END,
+          v.fecha_apertura DESC, v.id DESC
+    ''').fetchall()
+    puestos = conn.execute('SELECT nombre, area FROM puestos WHERE activo = 1 ORDER BY nombre').fetchall()
+    conn.close()
+    vacantes = [dict(r) for r in rows]
+    kpis = {
+        'abiertas': sum(1 for v in vacantes if v['estatus'] == 'Abierta'),
+        'proceso': sum(1 for v in vacantes if v['estatus'] == 'En proceso'),
+        'cubiertas': sum(1 for v in vacantes if v['estatus'] == 'Cubierta'),
+    }
+    return render_page('reclutamiento.html', vacantes=vacantes, puestos=puestos, kpis=kpis,
+                       areas=PUESTO_AREAS)
+
+
+@app.route('/reclutamiento/<int:vid>')
+@login_required
+@requiere_modulo('reclutamiento')
+def vacante_detalle(vid):
+    conn = get_db_connection()
+    v = conn.execute('SELECT * FROM vacantes WHERE id = ?', (vid,)).fetchone()
+    if not v:
+        conn.close()
+        flash('Vacante no encontrada.', 'error')
+        return hx_redirect(url_for('reclutamiento'))
+    cands = conn.execute('SELECT * FROM candidatos WHERE vacante_id = ? ORDER BY puntuacion DESC, id DESC', (vid,)).fetchall()
+    conn.close()
+    return render_page('vacante_detalle.html', v=dict(v), candidatos=cands,
+                       estatus_lista=VACANTE_ESTATUS, recomendaciones=RECOMENDACIONES)
+
+
+@app.route('/reclutamiento/vacante/guardar', methods=['POST'])
+@login_required
+@requiere_modulo('reclutamiento')
+def vacante_guardar():
+    vid = (request.form.get('id') or '').strip()
+    puesto = (request.form.get('puesto') or '').strip()
+    if not puesto:
+        flash('Selecciona el puesto de la vacante.', 'error')
+        return hx_redirect(url_for('reclutamiento'))
+    area = (request.form.get('area') or '').strip() or None
+    justif = (request.form.get('justificacion') or '').strip() or None
+    canal = (request.form.get('canal') or '').strip() or None
+    conn = get_db_connection()
+    try:
+        if vid:
+            conn.execute('UPDATE vacantes SET puesto=?, area=?, justificacion=?, canal=? WHERE id=?',
+                         (puesto, area, justif, canal, vid))
+            destino = url_for('vacante_detalle', vid=vid)
+        else:
+            cur = conn.execute('INSERT INTO vacantes (puesto, area, justificacion, canal, creado_por) VALUES (?,?,?,?,?)',
+                               (puesto, area, justif, canal, session.get('nombre')))
+            destino = url_for('vacante_detalle', vid=cur.lastrowid)
+        conn.commit()
+        flash('Vacante guardada.', 'success')
+    except Exception:
+        flash('No se pudo guardar la vacante.', 'error')
+        destino = url_for('reclutamiento')
+    finally:
+        conn.close()
+    return hx_redirect(destino)
+
+
+@app.route('/reclutamiento/vacante/estatus', methods=['POST'])
+@login_required
+@requiere_modulo('reclutamiento')
+def vacante_estatus():
+    vid = (request.form.get('id') or '').strip()
+    est = (request.form.get('estatus') or '').strip()
+    if est not in VACANTE_ESTATUS:
+        return hx_redirect(url_for('vacante_detalle', vid=vid))
+    cierre = datetime.now().strftime('%Y-%m-%d') if est in ('Cubierta', 'Cancelada') else None
+    conn = get_db_connection()
+    try:
+        conn.execute('UPDATE vacantes SET estatus=?, fecha_cierre=? WHERE id=?', (est, cierre, vid))
+        conn.commit()
+        flash(f'Vacante marcada como {est}.', 'success')
+    except Exception:
+        flash('No se pudo actualizar.', 'error')
+    finally:
+        conn.close()
+    return hx_redirect(url_for('vacante_detalle', vid=vid))
+
+
+@app.route('/reclutamiento/candidato/agregar', methods=['POST'])
+@login_required
+@requiere_modulo('reclutamiento')
+def candidato_agregar():
+    vid = (request.form.get('vacante_id') or '').strip()
+    nombre = (request.form.get('nombre') or '').strip()
+    if not (vid and nombre):
+        flash('Falta el nombre del candidato.', 'error')
+        return hx_redirect(url_for('reclutamiento'))
+    try:
+        punt = max(0, min(5, int(request.form.get('puntuacion') or 0)))
+    except ValueError:
+        punt = 0
+    rec = (request.form.get('recomendacion') or 'En espera').strip()
+    if rec not in RECOMENDACIONES:
+        rec = 'En espera'
+    conn = get_db_connection()
+    try:
+        conn.execute('INSERT INTO candidatos (vacante_id, nombre, telefono, correo, notas, puntuacion, recomendacion) VALUES (?,?,?,?,?,?,?)',
+                     (vid, nombre, (request.form.get('telefono') or '').strip() or None,
+                      (request.form.get('correo') or '').strip() or None,
+                      (request.form.get('notas') or '').strip() or None, punt, rec))
+        conn.commit()
+        flash('Candidato agregado.', 'success')
+    except Exception:
+        flash('No se pudo agregar el candidato.', 'error')
+    finally:
+        conn.close()
+    return hx_redirect(url_for('vacante_detalle', vid=vid))
+
+
+@app.route('/reclutamiento/candidato/recomendacion', methods=['POST'])
+@login_required
+@requiere_modulo('reclutamiento')
+def candidato_recomendacion():
+    cid = (request.form.get('id') or '').strip()
+    vid = (request.form.get('vacante_id') or '').strip()
+    rec = (request.form.get('recomendacion') or '').strip()
+    if rec in RECOMENDACIONES:
+        conn = get_db_connection()
+        try:
+            conn.execute('UPDATE candidatos SET recomendacion=? WHERE id=?', (rec, cid))
+            conn.commit()
+        except Exception:
+            pass
+        finally:
+            conn.close()
+    return hx_redirect(url_for('vacante_detalle', vid=vid))
+
+
+@app.route('/reclutamiento/candidato/eliminar', methods=['POST'])
+@login_required
+@requiere_modulo('reclutamiento')
+def candidato_eliminar():
+    cid = (request.form.get('id') or '').strip()
+    vid = (request.form.get('vacante_id') or '').strip()
+    conn = get_db_connection()
+    try:
+        conn.execute('DELETE FROM candidatos WHERE id=?', (cid,))
+        conn.commit()
+    except Exception:
+        pass
+    finally:
+        conn.close()
+    return hx_redirect(url_for('vacante_detalle', vid=vid))
+
+
+# ============================================================
+# === M9 · TABLERO GERENCIAL (dashboards + alertas) ==========
+# ============================================================
+def _semaforo(pct, bueno=90, regular=70):
+    """Verde/Amarillo/Rojo según un porcentaje de cumplimiento."""
+    if pct >= bueno:
+        return 'verde'
+    if pct >= regular:
+        return 'amarillo'
+    return 'rojo'
+
+@app.route('/tablero')
+@login_required
+@requiere_modulo('tablero')
+def tablero():
+    conn = get_db_connection()
+    hoy = datetime.now()
+    anio = hoy.year
+    mes_pref = hoy.strftime('%Y-%m')
+
+    # --- Headcount por área (colaboradores activos) ---
+    filas_area = conn.execute('''
+        SELECT COALESCE(NULLIF(TRIM(area), ''), 'Sin área') AS area, COUNT(*) AS n
+        FROM usuarios WHERE estatus = 1 AND rol != 'admin'
+        GROUP BY area ORDER BY n DESC, area
+    ''').fetchall()
+    por_area = [dict(r) for r in filas_area]
+    headcount = sum(r['n'] for r in por_area)
+    max_area = max((r['n'] for r in por_area), default=0)
+
+    # --- Rotación del año (altas / bajas) ---
+    altas = conn.execute("SELECT COUNT(*) n FROM usuarios WHERE fecha_ingreso LIKE ?", (f'{anio}%',)).fetchone()['n']
+    bajas = conn.execute("SELECT COUNT(*) n FROM usuarios WHERE fecha_baja LIKE ?", (f'{anio}%',)).fetchone()['n']
+    rotacion = round(bajas / headcount * 100, 1) if headcount else 0.0
+
+    # --- Ausentismo del mes en curso (faltas 'F') ---
+    faltas_mes = conn.execute(
+        "SELECT COUNT(*) n FROM incidencias_dia WHERE codigo = 'F' AND fecha LIKE ?", (f'{mes_pref}%',)
+    ).fetchone()['n']
+    dias_registrados = conn.execute(
+        "SELECT COUNT(DISTINCT fecha) n FROM resumen_asistencias WHERE fecha LIKE ?", (f'{mes_pref}%',)
+    ).fetchone()['n']
+    base_ausentismo = headcount * dias_registrados
+    ausentismo = round(faltas_mes / base_ausentismo * 100, 1) if base_ausentismo else 0.0
+
+    # --- Avance de capacitación (celdas 'Tomado' sobre matriz completa) ---
+    n_cursos = conn.execute("SELECT COUNT(*) n FROM cursos WHERE activo = 1").fetchone()['n']
+    tomados = conn.execute("SELECT COUNT(*) n FROM capacitacion_registro WHERE estatus = 'Tomado'").fetchone()['n']
+    total_celdas = headcount * n_cursos
+    avance_cap = round(tomados / total_celdas * 100) if total_celdas else 0
+
+    # --- Cumplimiento documental (expedientes con todos sus documentos) ---
+    total_docs_req = len(DOCS_EXPEDIENTE)
+    docs_por_emp = dict(conn.execute('''
+        SELECT numero_empleado, COUNT(DISTINCT tipo_documento) n
+        FROM documentos_empleados GROUP BY numero_empleado
+    ''').fetchall())
+    activos = conn.execute(
+        "SELECT numero_empleado FROM usuarios WHERE estatus = 1 AND rol != 'admin'"
+    ).fetchall()
+    completos = sum(1 for a in activos if docs_por_emp.get(a['numero_empleado'], 0) >= total_docs_req)
+    cumpl_doc = round(completos / len(activos) * 100) if activos else 0
+
+    kpis = {
+        'headcount': headcount, 'altas': altas, 'bajas': bajas, 'rotacion': rotacion,
+        'ausentismo': ausentismo, 'faltas_mes': faltas_mes,
+        'avance_cap': avance_cap, 'cumpl_doc': cumpl_doc,
+        'sem_cap': _semaforo(avance_cap), 'sem_doc': _semaforo(cumpl_doc),
+    }
+
+    # ---------- ALERTAS AUTOMÁTICAS ----------
+    alertas = []
+    # RPT-16 · Contratos temporales por vencer (≤ 30 días)
+    contratos = conn.execute('''
+        SELECT numero_empleado, nombre_completo, puesto, area, fecha_fin_contrato
+        FROM usuarios
+        WHERE estatus = 1 AND fecha_fin_contrato IS NOT NULL AND TRIM(fecha_fin_contrato) != ''
+          AND date(fecha_fin_contrato) BETWEEN date('now') AND date('now', '+30 day')
+        ORDER BY fecha_fin_contrato
+    ''').fetchall()
+    for c in contratos:
+        alertas.append({'tipo': 'Contrato por vencer', 'icono': 'ri-file-warning-line', 'nivel': 'rojo',
+                        'nombre': c['nombre_completo'], 'area': c['area'],
+                        'detalle': f"Vence el {c['fecha_fin_contrato']}", 'ref': c['numero_empleado']})
+    # RPT-18 · 3+ faltas acumuladas (últimos 90 días)
+    faltones = conn.execute('''
+        SELECT i.numero_empleado, u.nombre_completo, u.area, COUNT(*) n
+        FROM incidencias_dia i JOIN usuarios u ON u.numero_empleado = i.numero_empleado
+        WHERE i.codigo = 'F' AND i.fecha >= date('now', '-90 day') AND u.estatus = 1
+        GROUP BY i.numero_empleado HAVING n >= 3 ORDER BY n DESC
+    ''').fetchall()
+    for f in faltones:
+        alertas.append({'tipo': 'Faltas acumuladas', 'icono': 'ri-calendar-close-line', 'nivel': 'rojo',
+                        'nombre': f['nombre_completo'], 'area': f['area'],
+                        'detalle': f"{f['n']} faltas en los últimos 90 días", 'ref': f['numero_empleado']})
+    # RPT-11 · Expedientes documentales incompletos
+    for a in activos:
+        num = a['numero_empleado']
+        tiene = docs_por_emp.get(num, 0)
+        if tiene < total_docs_req:
+            u = conn.execute("SELECT nombre_completo, area FROM usuarios WHERE numero_empleado = ?", (num,)).fetchone()
+            faltan = total_docs_req - tiene
+            alertas.append({'tipo': 'Expediente incompleto', 'icono': 'ri-folder-warning-line', 'nivel': 'amarillo',
+                            'nombre': u['nombre_completo'] if u else num, 'area': u['area'] if u else '',
+                            'detalle': f"Faltan {faltan} de {total_docs_req} documentos", 'ref': num})
+
+    # Ordena: rojos primero, luego amarillos
+    orden_nivel = {'rojo': 0, 'amarillo': 1, 'verde': 2}
+    alertas.sort(key=lambda x: orden_nivel.get(x['nivel'], 3))
+    resumen_alertas = {
+        'rojas': sum(1 for a in alertas if a['nivel'] == 'rojo'),
+        'amarillas': sum(1 for a in alertas if a['nivel'] == 'amarillo'),
+        'total': len(alertas),
+    }
+    conn.close()
+    return render_page('tablero.html', kpis=kpis, por_area=por_area, max_area=max_area,
+                       alertas=alertas, resumen_alertas=resumen_alertas,
+                       mes_actual=hoy.strftime('%B %Y').capitalize(), anio=anio)
+
+
+# ============================================================
+# === M8 · DOCUMENTOS LEGALES Y COMPLIANCE ===================
+# ============================================================
+UPLOAD_LEGALES = os.path.join('static', 'documentos_legales')
+
+@app.route('/normativa')
+@login_required
+@requiere_modulo('normativa')
+def normativa():
+    conn = get_db_connection()
+    docs = [dict(r) for r in conn.execute(
+        "SELECT * FROM documentos_legales ORDER BY categoria, codigo, nombre").fetchall()]
+    # Agrupa por categoría respetando el orden del catálogo
+    por_categoria = {cat: [] for cat in DOC_CATEGORIAS}
+    for d in docs:
+        por_categoria.setdefault(d['categoria'], []).append(d)
+    # Resumen del tracker BPM (para la tarjeta de acceso)
+    bpm = conn.execute("SELECT estatus, COUNT(*) n FROM bpm_actividades GROUP BY estatus").fetchall()
+    bpm_conteo = {r['estatus']: r['n'] for r in bpm}
+    bpm_total = sum(bpm_conteo.values())
+    bpm_cumplidas = bpm_conteo.get('Cumplida', 0)
+    bpm_pct = round(bpm_cumplidas / bpm_total * 100) if bpm_total else 0
+    conn.close()
+    kpis = {
+        'total': len(docs),
+        'vigentes': sum(1 for d in docs if d['estatus'] == 'Vigente'),
+        'con_archivo': sum(1 for d in docs if d['archivo']),
+        'bpm_pct': bpm_pct, 'bpm_total': bpm_total, 'bpm_cumplidas': bpm_cumplidas,
+    }
+    return render_page('normativa.html', por_categoria=por_categoria, categorias=DOC_CATEGORIAS,
+                       estatus_lista=DOC_ESTATUS, kpis=kpis)
+
+@app.route('/normativa/guardar', methods=['POST'])
+@login_required
+@requiere_modulo('normativa')
+def normativa_guardar():
+    did = (request.form.get('id') or '').strip()
+    nombre = (request.form.get('nombre') or '').strip()
+    categoria = (request.form.get('categoria') or '').strip()
+    if not nombre or categoria not in DOC_CATEGORIAS:
+        flash('Falta el nombre o la categoría del documento.', 'error')
+        return hx_redirect(url_for('normativa'))
+    codigo = (request.form.get('codigo') or '').strip()
+    version = (request.form.get('version') or '').strip()
+    vigencia = (request.form.get('vigencia') or '').strip()
+    notas = (request.form.get('notas') or '').strip()
+    estatus = request.form.get('estatus')
+    if estatus not in DOC_ESTATUS:
+        estatus = 'Vigente'
+    conn = get_db_connection()
+    try:
+        if did:
+            conn.execute('''UPDATE documentos_legales SET codigo=?, nombre=?, categoria=?, version=?,
+                            vigencia=?, notas=?, estatus=?, actualizado=date('now','localtime') WHERE id=?''',
+                         (codigo, nombre, categoria, version, vigencia, notas, estatus, did))
+        else:
+            conn.execute('''INSERT INTO documentos_legales (codigo, nombre, categoria, version, vigencia, notas, estatus)
+                            VALUES (?,?,?,?,?,?,?)''',
+                         (codigo, nombre, categoria, version, vigencia, notas, estatus))
+        conn.commit()
+        flash('Documento guardado.', 'success')
+    except Exception:
+        flash('No se pudo guardar el documento.', 'error')
+    finally:
+        conn.close()
+    return hx_redirect(url_for('normativa'))
+
+@app.route('/normativa/subir/<int:did>', methods=['POST'])
+@login_required
+@requiere_modulo('normativa')
+def normativa_subir(did):
+    archivo = request.files.get('archivo')
+    if not archivo or not archivo.filename:
+        flash('Selecciona un archivo.', 'error')
+        return hx_redirect(url_for('normativa'))
+    if not extension_permitida(archivo.filename):
+        flash('Solo se permiten archivos PDF, JPG o PNG.', 'error')
+        return hx_redirect(url_for('normativa'))
+    conn = get_db_connection()
+    doc = conn.execute("SELECT id FROM documentos_legales WHERE id=?", (did,)).fetchone()
+    if not doc:
+        conn.close()
+        flash('Documento no encontrado.', 'error')
+        return hx_redirect(url_for('normativa'))
+    os.makedirs(UPLOAD_LEGALES, exist_ok=True)
+    ext = archivo.filename.rsplit('.', 1)[1].lower()
+    nombre_fs = f'legal_{did}_{secure_filename(archivo.filename)}'
+    ruta = os.path.join(UPLOAD_LEGALES, nombre_fs)
+    try:
+        archivo.save(ruta)
+        conn.execute("UPDATE documentos_legales SET archivo=?, actualizado=date('now','localtime') WHERE id=?",
+                     (nombre_fs, did))
+        conn.commit()
+        flash('Archivo adjuntado.', 'success')
+    except Exception:
+        flash('No se pudo guardar el archivo.', 'error')
+    finally:
+        conn.close()
+    return hx_redirect(url_for('normativa'))
+
+@app.route('/normativa/archivo/<int:did>')
+@login_required
+@requiere_modulo('normativa')
+def normativa_archivo(did):
+    conn = get_db_connection()
+    doc = conn.execute("SELECT archivo FROM documentos_legales WHERE id=?", (did,)).fetchone()
+    conn.close()
+    if not doc or not doc['archivo']:
+        flash('Ese documento no tiene archivo adjunto.', 'error')
+        return hx_redirect(url_for('normativa'))
+    ruta = os.path.join(UPLOAD_LEGALES, doc['archivo'])
+    if not os.path.exists(ruta):
+        flash('Archivo no disponible.', 'error')
+        return hx_redirect(url_for('normativa'))
+    resp = make_response(send_file(ruta))
+    resp.headers['X-Content-Type-Options'] = 'nosniff'
+    return resp
+
+@app.route('/normativa/eliminar', methods=['POST'])
+@login_required
+@requiere_modulo('normativa')
+def normativa_eliminar():
+    did = (request.form.get('id') or '').strip()
+    conn = get_db_connection()
+    try:
+        row = conn.execute("SELECT archivo FROM documentos_legales WHERE id=?", (did,)).fetchone()
+        conn.execute("DELETE FROM documentos_legales WHERE id=?", (did,))
+        conn.commit()
+        if row and row['archivo']:
+            try:
+                os.remove(os.path.join(UPLOAD_LEGALES, row['archivo']))
+            except OSError:
+                pass
+        flash('Documento eliminado.', 'success')
+    except Exception:
+        flash('No se pudo eliminar.', 'error')
+    finally:
+        conn.close()
+    return hx_redirect(url_for('normativa'))
+
+@app.route('/normativa/bpm')
+@login_required
+@requiere_modulo('normativa')
+def normativa_bpm():
+    area_f = (request.args.get('area') or '').strip()
+    conn = get_db_connection()
+    if area_f and area_f in BPM_AREAS:
+        acts = conn.execute("SELECT * FROM bpm_actividades WHERE area=? ORDER BY numero", (area_f,)).fetchall()
+    else:
+        area_f = ''
+        acts = conn.execute("SELECT * FROM bpm_actividades ORDER BY numero").fetchall()
+    acts = [dict(a) for a in acts]
+    conteo = conn.execute("SELECT estatus, COUNT(*) n FROM bpm_actividades GROUP BY estatus").fetchall()
+    conn.close()
+    c = {r['estatus']: r['n'] for r in conteo}
+    total = sum(c.values())
+    cumplidas = c.get('Cumplida', 0)
+    kpis = {
+        'total': total, 'cumplidas': cumplidas,
+        'proceso': c.get('En proceso', 0), 'pendientes': c.get('Pendiente', 0),
+        'pct': round(cumplidas / total * 100) if total else 0,
+    }
+    return render_page('normativa_bpm.html', acts=acts, areas=BPM_AREAS, estatus_lista=BPM_ESTATUS,
+                       area_actual=area_f, kpis=kpis)
+
+@app.route('/normativa/bpm/actualizar', methods=['POST'])
+@login_required
+@requiere_modulo('normativa')
+def normativa_bpm_actualizar():
+    aid = (request.form.get('id') or '').strip()
+    estatus = request.form.get('estatus')
+    responsable = (request.form.get('responsable') or '').strip()
+    fecha = (request.form.get('fecha_compromiso') or '').strip()
+    notas = (request.form.get('notas') or '').strip()
+    if estatus not in BPM_ESTATUS:
+        flash('Estatus no válido.', 'error')
+        return hx_redirect(url_for('normativa_bpm'))
+    conn = get_db_connection()
+    try:
+        conn.execute("UPDATE bpm_actividades SET estatus=?, responsable=?, fecha_compromiso=?, notas=? WHERE id=?",
+                     (estatus, responsable, fecha, notas, aid))
+        conn.commit()
+        flash('Actividad BPM actualizada.', 'success')
+    except Exception:
+        flash('No se pudo actualizar.', 'error')
+    finally:
+        conn.close()
+    return hx_redirect(url_for('normativa_bpm'))
+
+@app.route('/normativa/bpm/agregar', methods=['POST'])
+@login_required
+@requiere_modulo('normativa')
+def normativa_bpm_agregar():
+    actividad = (request.form.get('actividad') or '').strip()
+    area = (request.form.get('area') or '').strip()
+    if not actividad or area not in BPM_AREAS:
+        flash('Falta la actividad o el área.', 'error')
+        return hx_redirect(url_for('normativa_bpm'))
+    conn = get_db_connection()
+    try:
+        maxn = conn.execute("SELECT COALESCE(MAX(numero),0)+1 AS n FROM bpm_actividades").fetchone()['n']
+        conn.execute("INSERT INTO bpm_actividades (numero, actividad, area, estatus) VALUES (?,?,?,'Pendiente')",
+                     (maxn, actividad, area))
+        conn.commit()
+        flash('Actividad agregada al tracker BPM.', 'success')
+    except Exception:
+        flash('No se pudo agregar.', 'error')
+    finally:
+        conn.close()
+    return hx_redirect(url_for('normativa_bpm'))
+
+
+# ============================================================
+# === M10 · AUDITORÍA Y CATÁLOGOS MAESTROS ===================
+# ============================================================
+ROLES_INFO = {
+    'admin':    {'nombre': 'Administrador del sistema', 'icono': 'ri-shield-star-line',
+                 'desc': 'Configuración total: usuarios, catálogos, auditoría y todos los módulos.'},
+    'rh':       {'nombre': 'Recursos Humanos',          'icono': 'ri-team-line',
+                 'desc': 'Expedientes, incidencias, capacitación, desempeño, reclutamiento y reportes.'},
+    'operador': {'nombre': 'Operador de Producción',    'icono': 'ri-user-line',
+                 'desc': 'Acceso a procesos de producción y recetas asignadas.'},
+}
+
+@app.route('/auditoria')
+@login_required
+@requiere_modulo('auditoria')
+def auditoria():
+    tipo_f = (request.args.get('tipo') or '').strip()
+    conn = get_db_connection()
+
+    # --- Roles del sistema (con nº de módulos accesibles, calculado de PERMISOS) ---
+    roles = []
+    for rol, info in ROLES_INFO.items():
+        n_mod = sum(1 for m, permitidos in PERMISOS.items() if rol in permitidos)
+        n_users = conn.execute("SELECT COUNT(*) n FROM usuarios WHERE rol=? AND estatus=1", (rol,)).fetchone()['n']
+        roles.append({'clave': rol, **info, 'modulos': n_mod, 'usuarios': n_users})
+
+    # --- Catálogos maestros (conteo en vivo + acceso a su módulo de gestión) ---
+    def _cnt(sql):
+        try:
+            return conn.execute(sql).fetchone()['n']
+        except sqlite3.Error:
+            return 0
+    catalogos = [
+        {'nombre': 'Puestos',              'icono': 'ri-profile-line',        'conteo': _cnt("SELECT COUNT(*) n FROM puestos WHERE activo=1"),       'ruta': '/perfiles'},
+        {'nombre': 'Departamentos / áreas','icono': 'ri-building-4-line',     'conteo': len(PUESTO_AREAS),                                          'ruta': '/organigrama'},
+        {'nombre': 'Tipos de contrato',    'icono': 'ri-file-text-line',      'conteo': len(EXP_CATALOGOS.get('tipo_contrato', [])),                'ruta': None},
+        {'nombre': 'Tipos de incidencia',  'icono': 'ri-calendar-event-line', 'conteo': len(CODIGOS_INCIDENCIA),                                    'ruta': '/incidencias'},
+        {'nombre': 'Cursos de capacitación','icono': 'ri-graduation-cap-line','conteo': _cnt("SELECT COUNT(*) n FROM cursos WHERE activo=1"),        'ruta': '/capacitacion'},
+        {'nombre': 'Competencias / tareas','icono': 'ri-medal-line',          'conteo': _cnt("SELECT COUNT(*) n FROM competencias_tareas WHERE activo=1"), 'ruta': '/expertise'},
+        {'nombre': 'Documentos legales',   'icono': 'ri-scales-3-line',       'conteo': _cnt("SELECT COUNT(*) n FROM documentos_legales"),          'ruta': '/normativa'},
+        {'nombre': 'Actividades BPM',      'icono': 'ri-shield-check-line',   'conteo': _cnt("SELECT COUNT(*) n FROM bpm_actividades"),             'ruta': '/normativa/bpm'},
+        {'nombre': 'Días festivos',        'icono': 'ri-calendar-2-line',     'conteo': _cnt("SELECT COUNT(*) n FROM dias_festivos"),               'ruta': '/incidencias'},
+    ]
+
+    # --- Registro de auditoría (últimos 200, con filtro por tipo) ---
+    if tipo_f in ('acceso', 'cambio'):
+        registros = conn.execute("SELECT * FROM auditoria WHERE tipo=? ORDER BY id DESC LIMIT 200", (tipo_f,)).fetchall()
+    else:
+        tipo_f = ''
+        registros = conn.execute("SELECT * FROM auditoria ORDER BY id DESC LIMIT 200").fetchall()
+    registros = [dict(r) for r in registros]
+    conteo = conn.execute("SELECT tipo, COUNT(*) n FROM auditoria GROUP BY tipo").fetchall()
+    conn.close()
+    ct = {r['tipo']: r['n'] for r in conteo}
+    resumen = {'accesos': ct.get('acceso', 0), 'cambios': ct.get('cambio', 0), 'total': sum(ct.values())}
+    return render_page('auditoria.html', roles=roles, catalogos=catalogos,
+                       registros=registros, resumen=resumen, tipo_actual=tipo_f)
+
 
 @app.route('/configuracion')
 @login_required
@@ -2623,6 +3957,308 @@ def capacitacion_eliminar_curso():
         conn.close()
     return hx_redirect(url_for('capacitacion'))
 
+# --- M4 · Detección de Necesidades de Capacitación (DNC) ---
+DNC_TARGET = 80   # nivel de competencia objetivo (%) para considerar la brecha cubierta
+
+@app.route('/capacitacion/dnc')
+@login_required
+@requiere_modulo('capacitacion')
+def capacitacion_dnc():
+    """Deriva la DNC de la Matriz de Expertise: por área y competencia calcula el nivel
+    promedio real, la brecha contra el objetivo y una prioridad medible (sin criterio a dedo)."""
+    conn = get_db_connection()
+    tareas = conn.execute(
+        "SELECT id, nombre, area FROM competencias_tareas WHERE activo = 1 ORDER BY area, orden, id").fetchall()
+    evals = conn.execute("SELECT tarea_id, nivel_pct FROM expertise_evaluaciones").fetchall()
+    conn.close()
+
+    niveles = {}
+    for e in evals:
+        niveles.setdefault(e['tarea_id'], []).append(e['nivel_pct'] or 0)
+
+    por_area = {}
+    resumen = {'alta': 0, 'media': 0, 'baja': 0, 'sin': 0}
+    for t in tareas:
+        vals = niveles.get(t['id'], [])
+        n = len(vals)
+        prom = round(sum(vals) / n) if n else 0
+        if n == 0:
+            prio, css, brecha = 'Sin datos', 'bg-slate-100 text-slate-500', DNC_TARGET
+            resumen['sin'] += 1
+        elif prom < 60:
+            prio, css, brecha = 'Alta', 'bg-rose-50 text-rose-600', DNC_TARGET - prom
+            resumen['alta'] += 1
+        elif prom < DNC_TARGET:
+            prio, css, brecha = 'Media', 'bg-amber-50 text-amber-700', DNC_TARGET - prom
+            resumen['media'] += 1
+        else:
+            prio, css, brecha = 'Baja', 'bg-emerald-50 text-emerald-700', 0
+            resumen['baja'] += 1
+        por_area.setdefault(t['area'] or 'General', []).append({
+            'nombre': t['nombre'], 'evaluados': n, 'promedio': prom,
+            'brecha': brecha, 'prioridad': prio, 'css': css})
+    for a in por_area:
+        por_area[a].sort(key=lambda x: -x['brecha'])
+    return render_page('capacitacion_dnc.html', por_area=por_area, resumen=resumen, target=DNC_TARGET)
+
+@app.route('/capacitacion/constancia/<numero_empleado>/<int:curso_id>')
+@login_required
+@requiere_modulo('capacitacion')
+def capacitacion_constancia(numero_empleado, curso_id):
+    """Constancia de participación imprimible (PDF vía navegador) de un curso ya tomado."""
+    conn = get_db_connection()
+    emp = conn.execute(
+        "SELECT numero_empleado, nombre_completo, puesto, area FROM usuarios WHERE numero_empleado = ?",
+        (numero_empleado,)).fetchone()
+    curso = conn.execute(
+        "SELECT nombre, tipo, duracion_horas, instructor FROM cursos WHERE id = ?", (curso_id,)).fetchone()
+    reg = conn.execute(
+        "SELECT estatus, fecha, calificacion FROM capacitacion_registro WHERE numero_empleado = ? AND curso_id = ?",
+        (numero_empleado, curso_id)).fetchone()
+    conn.close()
+    if not emp or not curso:
+        flash('No se encontró al colaborador o el curso.', 'error')
+        return hx_redirect(url_for('capacitacion'))
+    if not reg or reg['estatus'] != 'Tomado':
+        flash('Solo se puede emitir constancia de un curso ya tomado.', 'error')
+        return hx_redirect(url_for('capacitacion'))
+    folio = f'ATISA-CAP-{emp["numero_empleado"]}-{curso_id}'
+    return full_page('constancia.html', emp=emp, curso=curso, reg=reg, hoy=datetime.now(), folio=folio)
+
+# ============================================================
+# === M6 · CARDEX & NIVEL DE MADUREZ =========================
+# ============================================================
+NIVELES_MADUREZ = {
+    1: {'label': 'Nuevo',         'css': 'bg-slate-100 text-slate-500'},
+    2: {'label': 'En aprendizaje','css': 'bg-sky-50 text-[#0e6ba8]'},
+    3: {'label': 'Competente',    'css': 'bg-blue-50 text-azul'},
+    4: {'label': 'Avanzado',      'css': 'bg-emerald-50 text-emerald-600'},
+    5: {'label': 'Experto',       'css': 'bg-emerald-100 text-emerald-700'},
+}
+CARDEX_TIPOS = {
+    'promocion':      {'label': 'Promoción',        'icono': 'ri-arrow-up-circle-line', 'css': 'bg-emerald-50 text-emerald-600'},
+    'reconocimiento': {'label': 'Reconocimiento',   'icono': 'ri-medal-line',           'css': 'bg-amber-50 text-amber-600'},
+    'amonestacion':   {'label': 'Amonestación',     'icono': 'ri-error-warning-line',   'css': 'bg-rose-50 text-rose-600'},
+    'puesto':         {'label': 'Cambio de puesto', 'icono': 'ri-briefcase-4-line',     'css': 'bg-sky-50 text-[#0e6ba8]'},
+}
+
+def _antiguedad(fecha_ingreso):
+    """Antigüedad legible y años totales desde la fecha de ingreso (automático)."""
+    if not fecha_ingreso:
+        return {'texto': '—', 'anios': 0, 'dias': 0}
+    try:
+        ing = datetime.strptime(str(fecha_ingreso)[:10], '%Y-%m-%d')
+    except ValueError:
+        return {'texto': '—', 'anios': 0, 'dias': 0}
+    dias = (datetime.now() - ing).days
+    if dias < 0:
+        return {'texto': '—', 'anios': 0, 'dias': 0}
+    anios, meses = dias // 365, (dias % 365) // 30
+    partes = []
+    if anios:
+        partes.append(f"{anios} año{'s' if anios != 1 else ''}")
+    if meses:
+        partes.append(f"{meses} mes{'es' if meses != 1 else ''}")
+    return {'texto': ' y '.join(partes) or 'Menos de 1 mes', 'anios': anios, 'dias': dias}
+
+def _nivel_madurez(pct_expertise, n_evals, anios_antiguedad=0):
+    """Nivel 1-5 medible, sin criterio a dedo:
+    - Si hay evaluación de competencias, manda el promedio real (más preciso):
+      1 Nuevo (<20%), 2 Aprendizaje (<40), 3 Competente (<60), 4 Avanzado (<80), 5 Experto (>=80).
+    - Si NO hay competencias evaluadas (áreas fuera de la Matriz de Expertise), se estima por
+      antigüedad: 1 (<1 año), 2 (<2), 3 (<4), 4 (<7), 5 (>=7). Así un veterano no aparece como 'Nuevo'."""
+    if n_evals:
+        p = pct_expertise
+        if p < 20: return 1
+        if p < 40: return 2
+        if p < 60: return 3
+        if p < 80: return 4
+        return 5
+    a = anios_antiguedad or 0
+    if a < 1: return 1
+    if a < 2: return 2
+    if a < 4: return 3
+    if a < 7: return 4
+    return 5
+
+@app.route('/cardex')
+@login_required
+@requiere_modulo('cardex')
+def cardex():
+    conn = get_db_connection()
+    empleados = _empleados_activos_no_admin(conn)
+    exp_rows = conn.execute(
+        "SELECT numero_empleado, AVG(nivel_pct) prom, COUNT(*) n FROM expertise_evaluaciones GROUP BY numero_empleado").fetchall()
+    exp = {r['numero_empleado']: (r['prom'] or 0, r['n']) for r in exp_rows}
+    bpd_last = {}
+    for r in conn.execute("SELECT numero_empleado, calificacion FROM bpd_evaluaciones ORDER BY fecha ASC, id ASC").fetchall():
+        bpd_last[r['numero_empleado']] = r['calificacion']
+    conn.close()
+
+    filas = []
+    reparto = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+    for emp in empleados:
+        num = emp['numero_empleado']
+        prom_exp, n_exp = exp.get(num, (0, 0))
+        nivel = _nivel_madurez(prom_exp, n_exp, _antiguedad(emp['fecha_ingreso'])['anios'])
+        reparto[nivel] += 1
+        scores = []
+        if num in bpd_last:
+            scores.append(bpd_last[num])
+        if n_exp:
+            scores.append(prom_exp)
+        general = round(sum(scores) / len(scores)) if scores else 0
+        partes = emp['nombre_completo'].split()
+        filas.append({
+            'numero_empleado': num,
+            'nombre_completo': emp['nombre_completo'],
+            'corto': ' '.join(partes[:2]) if partes else emp['nombre_completo'],
+            'puesto': emp['puesto'], 'area': emp['area'],
+            'nivel': nivel, 'nivel_info': NIVELES_MADUREZ[nivel],
+            'expertise': round(prom_exp), 'n_exp': n_exp,
+            'sem': semaforo_valor(general) if scores else None,
+        })
+    filas.sort(key=lambda f: (-f['nivel'], f['nombre_completo']))
+    kpis = {'colaboradores': len(filas), 'reparto': reparto,
+            'expertos': reparto[5] + reparto[4],
+            'sin_eval': sum(1 for f in filas if f['sem'] is None)}
+    return render_page('cardex.html', filas=filas, kpis=kpis, niveles=NIVELES_MADUREZ)
+
+@app.route('/cardex/<numero_empleado>')
+@login_required
+@requiere_modulo('cardex')
+def cardex_detalle(numero_empleado):
+    conn = get_db_connection()
+    emp = conn.execute("SELECT * FROM usuarios WHERE numero_empleado = ?", (numero_empleado,)).fetchone()
+    if not emp:
+        conn.close()
+        flash('Colaborador no encontrado.', 'error')
+        return hx_redirect(url_for('cardex'))
+    emp = dict(emp)
+
+    # Expertise + radar
+    tareas = conn.execute("SELECT id, nombre, area FROM competencias_tareas WHERE activo = 1 ORDER BY orden, id").fetchall()
+    ev = conn.execute("SELECT tarea_id, nivel_pct FROM expertise_evaluaciones WHERE numero_empleado = ?", (numero_empleado,)).fetchall()
+    valores = {r['tarea_id']: r['nivel_pct'] for r in ev}
+    prom_exp = round(sum(valores.values()) / len(valores)) if valores else 0
+    n_exp = len(valores)
+    radar = _radar_expertise(tareas, valores) if (tareas and valores) else None
+
+    # Desempeño (BPD)
+    serie = [r['calificacion'] for r in conn.execute(
+        "SELECT calificacion FROM bpd_evaluaciones WHERE numero_empleado = ? ORDER BY fecha ASC, id ASC", (numero_empleado,)).fetchall()]
+    desempeno = {'n': len(serie), 'ultima': round(serie[-1], 1) if serie else 0,
+                 'promedio': round(sum(serie) / len(serie), 1) if serie else 0,
+                 'spark': _sparkline(serie) if serie else None}
+
+    # Asistencia (faltas / retardos últimos 90 días)
+    faltas90 = conn.execute(
+        "SELECT COUNT(*) n FROM incidencias_dia WHERE numero_empleado = ? AND codigo = 'F' AND fecha >= date('now','-90 day')",
+        (numero_empleado,)).fetchone()['n']
+    asistencia_score = max(0, 100 - faltas90 * 15)
+
+    # Capacitación (cursos tomados / activos)
+    n_cursos = conn.execute("SELECT COUNT(*) n FROM cursos WHERE activo = 1").fetchone()['n']
+    tomados = conn.execute(
+        "SELECT COUNT(*) n FROM capacitacion_registro WHERE numero_empleado = ? AND estatus = 'Tomado'",
+        (numero_empleado,)).fetchone()['n']
+    avance_cap = round(tomados / n_cursos * 100) if n_cursos else 0
+
+    # Expediente (documentos cargados / requeridos)
+    docs_cargados = conn.execute(
+        "SELECT COUNT(DISTINCT tipo_documento) n FROM documentos_empleados WHERE numero_empleado = ?",
+        (numero_empleado,)).fetchone()['n']
+    total_docs = len(DOCS_EXPEDIENTE)
+    pct_docs = round(docs_cargados / total_docs * 100) if total_docs else 0
+
+    # Eventos de trayectoria
+    eventos = [dict(r) for r in conn.execute(
+        "SELECT * FROM cardex_eventos WHERE numero_empleado = ? ORDER BY fecha DESC, id DESC", (numero_empleado,)).fetchall()]
+    for e in eventos:
+        e['info'] = CARDEX_TIPOS.get(e['tipo'], {'label': e['tipo'], 'icono': 'ri-bookmark-line', 'css': 'bg-slate-100 text-slate-500'})
+    conn.close()
+
+    # Nivel de madurez y semáforo general (compuesto de lo disponible)
+    antiguedad = _antiguedad(emp.get('fecha_ingreso'))
+    nivel = _nivel_madurez(prom_exp, n_exp, antiguedad['anios'])
+    scores = [asistencia_score, avance_cap, pct_docs]
+    if serie:
+        scores.append(desempeno['ultima'])
+    if n_exp:
+        scores.append(prom_exp)
+    general = round(sum(scores) / len(scores)) if scores else 0
+
+    # Alertas activas del colaborador
+    alertas = []
+    if faltas90 >= 3:
+        alertas.append({'texto': f'{faltas90} faltas en los últimos 90 días', 'css': 'text-rose-600', 'icono': 'ri-calendar-close-line'})
+    if pct_docs < 100:
+        alertas.append({'texto': f'Expediente incompleto ({docs_cargados}/{total_docs} documentos)', 'css': 'text-amber-600', 'icono': 'ri-folder-warning-line'})
+    ffin = emp.get('fecha_fin_contrato')
+    if ffin:
+        try:
+            dias_fin = (datetime.strptime(str(ffin)[:10], '%Y-%m-%d') - datetime.now()).days
+            if 0 <= dias_fin <= 30:
+                alertas.append({'texto': f'Contrato vence en {dias_fin} días ({ffin})', 'css': 'text-rose-600', 'icono': 'ri-file-warning-line'})
+        except ValueError:
+            pass
+    if avance_cap < 60:
+        alertas.append({'texto': f'Capacitación por debajo del plan ({avance_cap}%)', 'css': 'text-amber-600', 'icono': 'ri-graduation-cap-line'})
+
+    metricas = {
+        'desempeno': desempeno, 'asistencia_score': asistencia_score, 'faltas90': faltas90,
+        'avance_cap': avance_cap, 'tomados': tomados, 'n_cursos': n_cursos,
+        'pct_docs': pct_docs, 'docs_cargados': docs_cargados, 'total_docs': total_docs,
+        'expertise': prom_exp, 'n_exp': n_exp,
+    }
+    return render_page('cardex_detalle.html', emp=emp, antiguedad=antiguedad,
+                       nivel=nivel, nivel_info=NIVELES_MADUREZ[nivel], niveles=NIVELES_MADUREZ,
+                       general=general, sem_general=semaforo_valor(general), radar=radar,
+                       metricas=metricas, eventos=eventos, alertas=alertas, tipos=CARDEX_TIPOS)
+
+@app.route('/cardex/evento/agregar', methods=['POST'])
+@login_required
+@requiere_modulo('cardex')
+def cardex_evento_agregar():
+    num = (request.form.get('numero_empleado') or '').strip()
+    tipo = request.form.get('tipo')
+    titulo = (request.form.get('titulo') or '').strip()
+    fecha = (request.form.get('fecha') or '').strip()
+    detalle = (request.form.get('detalle') or '').strip()
+    if not num or tipo not in CARDEX_TIPOS or not titulo:
+        flash('Faltan datos del evento (tipo o título).', 'error')
+        return hx_redirect(url_for('cardex_detalle', numero_empleado=num or '0'))
+    if not fecha:
+        fecha = datetime.now().strftime('%Y-%m-%d')
+    conn = get_db_connection()
+    try:
+        conn.execute(
+            "INSERT INTO cardex_eventos (numero_empleado, tipo, fecha, titulo, detalle, registrado_por) VALUES (?,?,?,?,?,?)",
+            (num, tipo, fecha, titulo, detalle, session.get('nombre')))
+        conn.commit()
+        flash('Evento agregado al cardex.', 'success')
+    except Exception:
+        flash('No se pudo agregar el evento.', 'error')
+    finally:
+        conn.close()
+    return hx_redirect(url_for('cardex_detalle', numero_empleado=num))
+
+@app.route('/cardex/evento/eliminar', methods=['POST'])
+@login_required
+@requiere_modulo('cardex')
+def cardex_evento_eliminar():
+    eid = (request.form.get('id') or '').strip()
+    num = (request.form.get('numero_empleado') or '').strip()
+    conn = get_db_connection()
+    try:
+        conn.execute("DELETE FROM cardex_eventos WHERE id = ?", (eid,))
+        conn.commit()
+    except Exception:
+        pass
+    finally:
+        conn.close()
+    return hx_redirect(url_for('cardex_detalle', numero_empleado=num))
+
 # ============================================================
 # === 10. MÓDULO: AUDITORÍAS 5S ==============================
 # ============================================================
@@ -2916,4 +4552,8 @@ def avisos_eliminar():
 
 if __name__ == '__main__':
     inicializar_bd()
-    app.run(debug=True, host='0.0.0.0', port=5001)
+    # El modo debug expone el depurador de Werkzeug (ejecución de código) y trazas de
+    # error: peligroso en producción. En local queda activo por comodidad; para
+    # producción, define la variable de entorno ATISA_DEBUG=false.
+    debug = os.environ.get('ATISA_DEBUG', 'true').lower() in ('1', 'true', 'yes')
+    app.run(debug=debug, host='0.0.0.0', port=5001)

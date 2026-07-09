@@ -1,0 +1,114 @@
+{% extends _layout|default("base.html") %}
+{% block title %}Auditoría y Catálogos | ERP Atisa{% endblock %}
+
+{% block content %}
+<div class="p-10">
+    <header class="mb-6">
+        <h1 class="text-2xl font-bold text-[#1d1d1f]">Auditoría y Catálogos Maestros</h1>
+        <p class="text-slate-500 mt-1">Roles, catálogos base del sistema y trazabilidad de accesos y cambios</p>
+    </header>
+
+    <!-- Roles del sistema -->
+    <section class="mb-8">
+        <div class="flex items-center gap-2 mb-3">
+            <span class="w-1.5 h-5 rounded-full bg-[#0e6ba8]"></span>
+            <h2 class="text-sm font-bold uppercase tracking-wide text-slate-600">Roles del sistema</h2>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {% for r in roles %}
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="w-10 h-10 rounded-xl bg-[#0e6ba8]/10 text-[#0e6ba8] flex items-center justify-center shrink-0"><i class="{{ r.icono }} text-xl"></i></div>
+                    <div>
+                        <p class="font-bold text-[#1d1d1f] leading-tight">{{ r.nombre }}</p>
+                        <p class="text-[11px] font-mono text-slate-400">{{ r.clave }}</p>
+                    </div>
+                </div>
+                <p class="text-xs text-slate-500 leading-relaxed">{{ r.desc }}</p>
+                <div class="flex items-center gap-4 mt-3 pt-3 border-t border-slate-100 text-xs font-semibold">
+                    <span class="text-[#0e6ba8]">{{ r.modulos }} módulos</span>
+                    <span class="text-slate-500">{{ r.usuarios }} usuario{{ 's' if r.usuarios != 1 else '' }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <!-- Catálogos maestros -->
+    <section class="mb-8">
+        <div class="flex items-center gap-2 mb-3">
+            <span class="w-1.5 h-5 rounded-full bg-[#0e6ba8]"></span>
+            <h2 class="text-sm font-bold uppercase tracking-wide text-slate-600">Catálogos maestros</h2>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-4">
+            {% for c in catalogos %}
+            {% if c.ruta %}
+            <a href="{{ c.ruta }}" hx-get="{{ c.ruta }}" hx-target="#content" hx-push-url="true" preload="mouseover"
+               class="bg-white rounded-2xl border border-slate-200 p-5 hover:border-[#0e6ba8]/40 hover:shadow-md transition-all flex items-center gap-4 group">
+                <div class="w-11 h-11 rounded-xl bg-slate-50 text-[#0e6ba8] flex items-center justify-center shrink-0 group-hover:bg-[#0e6ba8]/10"><i class="{{ c.icono }} text-xl"></i></div>
+                <div class="min-w-0">
+                    <p class="text-2xl font-bold text-[#1d1d1f] leading-none">{{ c.conteo }}</p>
+                    <p class="text-xs text-slate-500 font-medium mt-1 truncate">{{ c.nombre }}</p>
+                </div>
+                <i class="ri-arrow-right-line text-slate-300 ml-auto group-hover:text-[#0e6ba8]"></i>
+            </a>
+            {% else %}
+            <div class="bg-white rounded-2xl border border-slate-200 p-5 flex items-center gap-4">
+                <div class="w-11 h-11 rounded-xl bg-slate-50 text-slate-400 flex items-center justify-center shrink-0"><i class="{{ c.icono }} text-xl"></i></div>
+                <div class="min-w-0">
+                    <p class="text-2xl font-bold text-[#1d1d1f] leading-none">{{ c.conteo }}</p>
+                    <p class="text-xs text-slate-500 font-medium mt-1 truncate">{{ c.nombre }}</p>
+                </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </section>
+
+    <!-- Registro de auditoría -->
+    <section>
+        <div class="flex items-center gap-2 mb-3">
+            <span class="w-1.5 h-5 rounded-full bg-[#0e6ba8]"></span>
+            <h2 class="text-sm font-bold uppercase tracking-wide text-slate-600">Registro de auditoría</h2>
+        </div>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex flex-wrap items-center gap-2">
+                <a href="/auditoria" hx-get="/auditoria" hx-target="#content" hx-push-url="true" class="px-3 py-1.5 text-xs font-bold rounded-lg border transition-colors {% if not tipo_actual %}bg-[#0e6ba8] text-white border-[#0e6ba8]{% else %}border-slate-200 text-slate-600 hover:border-[#0e6ba8]{% endif %}">Todo ({{ resumen.total }})</a>
+                <a href="/auditoria?tipo=acceso" hx-get="/auditoria?tipo=acceso" hx-target="#content" hx-push-url="true" class="px-3 py-1.5 text-xs font-bold rounded-lg border transition-colors {% if tipo_actual == 'acceso' %}bg-[#0e6ba8] text-white border-[#0e6ba8]{% else %}border-slate-200 text-slate-600 hover:border-[#0e6ba8]{% endif %}">Accesos ({{ resumen.accesos }})</a>
+                <a href="/auditoria?tipo=cambio" hx-get="/auditoria?tipo=cambio" hx-target="#content" hx-push-url="true" class="px-3 py-1.5 text-xs font-bold rounded-lg border transition-colors {% if tipo_actual == 'cambio' %}bg-[#0e6ba8] text-white border-[#0e6ba8]{% else %}border-slate-200 text-slate-600 hover:border-[#0e6ba8]{% endif %}">Cambios ({{ resumen.cambios }})</a>
+                <span class="ml-auto text-xs text-slate-400">Últimos 200 registros</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-left text-xs font-bold text-slate-500 uppercase border-b border-slate-100">
+                            <th class="px-6 py-3">Fecha y hora</th>
+                            <th class="px-6 py-3">Usuario</th>
+                            <th class="px-6 py-3">Tipo</th>
+                            <th class="px-6 py-3">Acción</th>
+                            <th class="px-6 py-3">Ruta</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        {% for r in registros %}
+                        <tr class="hover:bg-slate-50/60">
+                            <td class="px-6 py-2.5 text-slate-500 whitespace-nowrap">{{ r.ts }}</td>
+                            <td class="px-6 py-2.5 font-semibold text-[#1d1d1f]">{{ r.usuario or '—' }}{% if r.rol %} <span class="text-[10px] text-slate-400 font-mono">{{ r.rol }}</span>{% endif %}</td>
+                            <td class="px-6 py-2.5">
+                                {% if r.tipo == 'acceso' %}<span class="text-[11px] font-bold px-2 py-0.5 rounded bg-sky-50 text-[#0e6ba8]">Acceso</span>
+                                {% else %}<span class="text-[11px] font-bold px-2 py-0.5 rounded bg-violet-50 text-violet-600">Cambio</span>{% endif %}
+                            </td>
+                            <td class="px-6 py-2.5 text-slate-600">{{ r.accion }}{% if r.detalle %} <span class="text-slate-400">— {{ r.detalle }}</span>{% endif %}</td>
+                            <td class="px-6 py-2.5 font-mono text-xs text-slate-400">{{ r.ruta }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="5" class="px-6 py-10 text-center text-slate-400">Aún no hay registros de auditoría.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <p class="text-xs text-slate-400 mt-3">El sistema registra automáticamente los inicios de sesión y toda modificación de datos. Integraciones externas (IMSS, SAT, biométrico, respaldo off-site) se documentan en la hoja de ruta.</p>
+    </section>
+</div>
+{% endblock %}

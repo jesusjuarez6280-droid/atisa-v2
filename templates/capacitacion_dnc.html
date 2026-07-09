@@ -1,0 +1,60 @@
+{% extends _layout|default("base.html") %}
+{% block title %}DNC | ERP Atisa{% endblock %}
+
+{% block content %}
+<div class="p-10">
+    <a href="/capacitacion" hx-get="/capacitacion" hx-target="#content" hx-push-url="true" class="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-[#0e6ba8] mb-4 transition-colors">
+        <i class="ri-arrow-left-line"></i> Capacitación
+    </a>
+
+    <header class="mb-6">
+        <h1 class="text-2xl font-bold text-[#1d1d1f]">Detección de Necesidades de Capacitación</h1>
+        <p class="text-slate-500 mt-1">Brechas por competencia derivadas de la Matriz de Expertise · objetivo {{ target }}%</p>
+    </header>
+
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5"><p class="text-2xl font-bold text-rose-600">{{ resumen.alta }}</p><p class="text-xs text-slate-500 font-medium mt-1">Prioridad alta</p></div>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5"><p class="text-2xl font-bold text-amber-600">{{ resumen.media }}</p><p class="text-xs text-slate-500 font-medium mt-1">Prioridad media</p></div>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5"><p class="text-2xl font-bold text-emerald-600">{{ resumen.baja }}</p><p class="text-xs text-slate-500 font-medium mt-1">Brecha cubierta</p></div>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5"><p class="text-2xl font-bold text-slate-400">{{ resumen.sin }}</p><p class="text-xs text-slate-500 font-medium mt-1">Sin evaluar</p></div>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
+        {% for area, comps in por_area.items() %}
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-lg bg-[#0e6ba8]/10 text-[#0e6ba8] flex items-center justify-center"><i class="ri-building-4-line"></i></div>
+                <h2 class="text-base font-bold text-[#1d1d1f]">{{ area }}</h2>
+                <span class="ml-auto text-xs font-bold px-2.5 py-1 rounded-md bg-slate-100 text-slate-600">{{ comps|length }}</span>
+            </div>
+            <div class="divide-y divide-slate-100">
+                {% for c in comps %}
+                <div class="px-6 py-3.5">
+                    <div class="flex items-center justify-between gap-3 mb-1.5">
+                        <p class="font-semibold text-[#1d1d1f] text-sm min-w-0 truncate">{{ c.nombre }}</p>
+                        <span class="text-[11px] font-bold px-2 py-0.5 rounded shrink-0 {{ c.css }}">{{ c.prioridad }}</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                            <div class="h-full rounded-full {% if c.promedio < 60 %}bg-rose-400{% elif c.promedio < target %}bg-amber-400{% else %}bg-emerald-500{% endif %}" style="width: {{ c.promedio }}%"></div>
+                        </div>
+                        <span class="text-xs font-bold text-slate-600 w-12 text-right">{{ c.promedio }}%</span>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mt-1">
+                        {{ c.evaluados }} evaluado{{ 's' if c.evaluados != 1 else '' }}
+                        {% if c.brecha and c.evaluados %} · brecha de {{ c.brecha }} pts{% endif %}
+                    </p>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        {% else %}
+        <div class="col-span-full bg-white rounded-2xl shadow-sm border border-slate-200 p-16 text-center">
+            <i class="ri-search-eye-line text-5xl text-slate-300 block mb-3"></i>
+            <h3 class="text-lg font-bold text-[#1d1d1f]">Aún no hay competencias evaluadas</h3>
+            <p class="text-slate-500 mt-1">Captura niveles en la Matriz de Expertise para detectar necesidades de capacitación.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

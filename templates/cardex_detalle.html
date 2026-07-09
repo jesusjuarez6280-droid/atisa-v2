@@ -1,0 +1,194 @@
+{% extends _layout|default("base.html") %}
+{% block title %}{{ emp.nombre_completo }} | Cardex{% endblock %}
+
+{% block content %}
+<div class="p-10">
+    <a href="/cardex" hx-get="/cardex" hx-target="#content" hx-push-url="true" class="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-[#0e6ba8] mb-4 transition-colors">
+        <i class="ri-arrow-left-line"></i> Cardex
+    </a>
+
+    <!-- Encabezado ejecutivo -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-5">
+        <div class="flex flex-wrap items-center gap-5">
+            <div class="w-16 h-16 rounded-2xl bg-[#0e6ba8] text-white flex items-center justify-center text-2xl font-bold uppercase shrink-0">{{ emp.nombre_completo[0] if emp.nombre_completo else '?' }}</div>
+            <div class="min-w-0 flex-1">
+                <h1 class="text-2xl font-bold text-[#1d1d1f]">{{ emp.nombre_completo }}</h1>
+                <p class="text-slate-500">{{ emp.puesto or 'Sin puesto' }}{% if emp.area %} · {{ emp.area }}{% endif %}</p>
+                <div class="flex flex-wrap items-center gap-2 mt-2">
+                    <span class="text-[11px] font-bold px-2.5 py-1 rounded {{ nivel_info.css }}">Madurez {{ nivel }}/5 · {{ nivel_info.label }}</span>
+                    <span class="text-[11px] font-bold px-2.5 py-1 rounded {{ sem_general.css }} border">Estado general: {{ sem_general.nivel }}</span>
+                    <span class="text-[11px] font-semibold px-2.5 py-1 rounded bg-slate-100 text-slate-500"><i class="ri-time-line"></i> {{ antiguedad.texto }} en la empresa</span>
+                </div>
+            </div>
+            <div class="text-center shrink-0">
+                <div class="relative w-20 h-20">
+                    <svg viewBox="0 0 36 36" class="w-20 h-20 -rotate-90">
+                        <circle cx="18" cy="18" r="15.9" fill="none" stroke="#eef1f4" stroke-width="3.2"></circle>
+                        <circle cx="18" cy="18" r="15.9" fill="none" stroke="{{ sem_general.hex }}" stroke-width="3.2" stroke-linecap="round" stroke-dasharray="{{ general }} 100"></circle>
+                    </svg>
+                    <div class="absolute inset-0 flex flex-col items-center justify-center">
+                        <span class="text-xl font-bold text-[#1d1d1f]">{{ general }}</span>
+                        <span class="text-[9px] text-slate-400 uppercase font-bold">Índice</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alertas activas -->
+    {% if alertas %}
+    <div class="bg-amber-50/60 border border-amber-200 rounded-2xl p-4 mb-5">
+        <div class="flex items-center gap-2 mb-2"><i class="ri-notification-badge-line text-amber-600"></i><p class="text-sm font-bold text-amber-800">Alertas activas</p></div>
+        <div class="flex flex-wrap gap-x-6 gap-y-1.5">
+            {% for a in alertas %}
+            <span class="text-sm font-semibold {{ a.css }} flex items-center gap-1.5"><i class="{{ a.icono }}"></i> {{ a.texto }}</span>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Métricas clave -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+            <div class="flex items-center justify-between mb-1"><p class="text-xs font-bold text-slate-500 uppercase">Desempeño</p><i class="ri-speed-up-line text-[#0e6ba8]"></i></div>
+            {% if metricas.desempeno.n %}
+            <p class="text-2xl font-bold text-[#1d1d1f] leading-none">{{ metricas.desempeno.ultima }}<span class="text-sm text-slate-400 font-medium">/100</span></p>
+            <div class="flex items-center justify-between mt-2">
+                <span class="text-[11px] text-slate-400">{{ metricas.desempeno.n }} evaluación{{ 'es' if metricas.desempeno.n != 1 else '' }}</span>
+                {% if metricas.desempeno.spark %}
+                <svg viewBox="0 0 {{ metricas.desempeno.spark.w }} {{ metricas.desempeno.spark.h }}" width="70" height="20" class="overflow-visible">
+                    {% if metricas.desempeno.spark.n > 1 %}<polyline points="{{ metricas.desempeno.spark.puntos }}" fill="none" stroke="#0e6ba8" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"></polyline>{% endif %}
+                    <circle cx="{{ '%.1f'|format(metricas.desempeno.spark.cx) }}" cy="{{ '%.1f'|format(metricas.desempeno.spark.cy) }}" r="2.6" fill="#0e6ba8"></circle>
+                </svg>
+                {% endif %}
+            </div>
+            {% else %}<p class="text-lg font-bold text-slate-300 mt-1">Sin evaluar</p><p class="text-[11px] text-slate-400 mt-1">Aún no hay registros BPD</p>{% endif %}
+        </div>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+            <div class="flex items-center justify-between mb-1"><p class="text-xs font-bold text-slate-500 uppercase">Asistencia</p><i class="ri-calendar-check-line text-[#0e6ba8]"></i></div>
+            <p class="text-2xl font-bold text-[#1d1d1f] leading-none">{{ metricas.asistencia_score }}<span class="text-sm text-slate-400 font-medium">/100</span></p>
+            <p class="text-[11px] text-slate-400 mt-2">{{ metricas.faltas90 }} falta{{ 's' if metricas.faltas90 != 1 else '' }} en 90 días</p>
+        </div>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+            <div class="flex items-center justify-between mb-1"><p class="text-xs font-bold text-slate-500 uppercase">Capacitación</p><i class="ri-graduation-cap-line text-[#0e6ba8]"></i></div>
+            <p class="text-2xl font-bold text-[#1d1d1f] leading-none">{{ metricas.avance_cap }}%</p>
+            <div class="w-full h-1.5 bg-slate-100 rounded-full mt-2 overflow-hidden"><div class="h-full rounded-full bg-[#0e6ba8]" style="width: {{ metricas.avance_cap }}%"></div></div>
+            <p class="text-[11px] text-slate-400 mt-1.5">{{ metricas.tomados }}/{{ metricas.n_cursos }} cursos tomados</p>
+        </div>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+            <div class="flex items-center justify-between mb-1"><p class="text-xs font-bold text-slate-500 uppercase">Expediente</p><i class="ri-folder-user-line text-[#0e6ba8]"></i></div>
+            <p class="text-2xl font-bold text-[#1d1d1f] leading-none">{{ metricas.pct_docs }}%</p>
+            <div class="w-full h-1.5 bg-slate-100 rounded-full mt-2 overflow-hidden"><div class="h-full rounded-full {% if metricas.pct_docs == 100 %}bg-emerald-500{% else %}bg-amber-400{% endif %}" style="width: {{ metricas.pct_docs }}%"></div></div>
+            <p class="text-[11px] text-slate-400 mt-1.5">{{ metricas.docs_cargados }}/{{ metricas.total_docs }} documentos</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-5 gap-5">
+        <!-- Radar de competencias -->
+        <section class="xl:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+            <h2 class="text-lg font-bold text-[#1d1d1f] mb-1">Competencias</h2>
+            <p class="text-xs text-slate-500 mb-4">Promedio {{ metricas.expertise }}% · nivel de madurez {{ nivel }}/5</p>
+            {% if radar %}
+            <div class="flex justify-center">
+                <svg viewBox="0 0 {{ radar.size }} {{ radar.size }}" width="300" height="300" class="overflow-visible">
+                    {% for ring in radar.anillos %}<polygon points="{{ ring }}" fill="none" stroke="#eceef2" stroke-width="1"></polygon>{% endfor %}
+                    {% for e in radar.ejes %}<line x1="{{ radar.cx }}" y1="{{ radar.cy }}" x2="{{ '%.1f'|format(e.x2) }}" y2="{{ '%.1f'|format(e.y2) }}" stroke="#f0f0f3" stroke-width="1"></line>{% endfor %}
+                    <polygon points="{{ radar.poligono }}" fill="rgba(14,107,168,0.14)" stroke="#0e6ba8" stroke-width="2" stroke-linejoin="round"></polygon>
+                    {% for v in radar.vertices %}<circle cx="{{ '%.1f'|format(v.x) }}" cy="{{ '%.1f'|format(v.y) }}" r="3.2" fill="{{ v.hex }}" stroke="#ffffff" stroke-width="1.2"></circle>{% endfor %}
+                    {% for et in radar.etiquetas %}<text x="{{ '%.1f'|format(et.x) }}" y="{{ '%.1f'|format(et.y) }}" text-anchor="{{ et.anchor }}" dominant-baseline="middle" font-size="8.5" fill="#86868b" font-family="-apple-system,system-ui,sans-serif">{{ et.texto }}</text>{% endfor %}
+                </svg>
+            </div>
+            {% else %}
+            <div class="py-12 text-center">
+                <i class="ri-radar-line text-4xl text-slate-300 block mb-2"></i>
+                <p class="text-slate-500 text-sm">Sin competencias evaluadas.</p>
+                <a href="/expertise" hx-get="/expertise" hx-target="#content" hx-push-url="true" class="text-[#0e6ba8] text-sm font-semibold hover:underline mt-1 inline-block">Ir a Matriz de Expertise</a>
+            </div>
+            {% endif %}
+            <div class="mt-4 pt-4 border-t border-slate-100">
+                <p class="text-xs font-bold text-slate-500 uppercase mb-2">Escala de madurez</p>
+                <div class="flex flex-col gap-1">
+                    {% for n in [1,2,3,4,5] %}
+                    <div class="flex items-center gap-2 text-xs {% if n == nivel %}font-bold text-[#1d1d1f]{% else %}text-slate-400{% endif %}">
+                        <span class="w-5 h-5 rounded flex items-center justify-center text-[10px] {% if n == nivel %}{{ niveles[n].css }}{% else %}bg-slate-50{% endif %}">{{ n }}</span>
+                        {{ niveles[n].label }}{% if n == nivel %} <i class="ri-arrow-left-line"></i> actual{% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <!-- Trayectoria -->
+        <section class="xl:col-span-3 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+            <div class="px-6 py-4 border-b border-slate-100 flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-lg bg-[#0e6ba8]/10 text-[#0e6ba8] flex items-center justify-center"><i class="ri-route-line"></i></div>
+                <h2 class="text-lg font-bold text-[#1d1d1f]">Trayectoria</h2>
+                <button type="button" onclick="document.getElementById('modal-evento').classList.remove('hidden')" class="ml-auto text-sm font-bold text-[#0e6ba8] hover:underline flex items-center gap-1"><i class="ri-add-line"></i> Agregar</button>
+            </div>
+            <div class="divide-y divide-slate-100">
+                {% for e in eventos %}
+                <div class="px-6 py-3.5 flex items-start gap-3">
+                    <div class="w-9 h-9 rounded-xl shrink-0 flex items-center justify-center {{ e.info.css }}"><i class="{{ e.info.icono }}"></i></div>
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <p class="font-bold text-[#1d1d1f] text-sm">{{ e.titulo }}</p>
+                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded {{ e.info.css }}">{{ e.info.label }}</span>
+                        </div>
+                        {% if e.detalle %}<p class="text-xs text-slate-500 mt-0.5">{{ e.detalle }}</p>{% endif %}
+                        <p class="text-[11px] text-slate-400 mt-0.5">{{ e.fecha }}{% if e.registrado_por %} · {{ e.registrado_por }}{% endif %}</p>
+                    </div>
+                    <form action="/cardex/evento/eliminar" method="POST" onsubmit="return confirm('¿Eliminar este evento?');" class="shrink-0">
+                        <input type="hidden" name="id" value="{{ e.id }}">
+                        <input type="hidden" name="numero_empleado" value="{{ emp.numero_empleado }}">
+                        <button type="submit" class="w-7 h-7 rounded-lg border border-slate-200 text-slate-400 hover:bg-rose-50 hover:text-rose-500 flex items-center justify-center" title="Eliminar"><i class="ri-delete-bin-line text-sm"></i></button>
+                    </form>
+                </div>
+                {% else %}
+                <div class="px-6 py-12 text-center">
+                    <i class="ri-route-line text-4xl text-slate-300 block mb-2"></i>
+                    <p class="text-slate-500 text-sm">Sin eventos registrados.</p>
+                    <p class="text-slate-400 text-xs mt-1">Agrega promociones, reconocimientos, cambios de puesto o amonestaciones.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+</div>
+
+<!-- Modal: agregar evento -->
+<div id="modal-evento" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-8">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-xl font-bold text-[#1d1d1f]">Nuevo evento de trayectoria</h3>
+            <button type="button" onclick="document.getElementById('modal-evento').classList.add('hidden')" class="text-slate-400 hover:text-slate-700"><i class="ri-close-line text-2xl"></i></button>
+        </div>
+        <form action="/cardex/evento/agregar" method="POST" class="flex flex-col gap-4">
+            <input type="hidden" name="numero_empleado" value="{{ emp.numero_empleado }}">
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Tipo</label>
+                    <select name="tipo" class="select-pro" required>
+                        {% for k, t in tipos.items() %}<option value="{{ k }}">{{ t.label }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Fecha</label>
+                    <input type="date" name="fecha" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none">
+                </div>
+            </div>
+            <div>
+                <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Título</label>
+                <input type="text" name="titulo" required placeholder="Ej. Promoción a Coordinador" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none">
+            </div>
+            <div>
+                <label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Detalle <span class="font-normal lowercase text-slate-400">(opcional)</span></label>
+                <textarea name="detalle" rows="2" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none resize-none"></textarea>
+            </div>
+            <div class="flex gap-3 mt-1">
+                <button type="button" onclick="document.getElementById('modal-evento').classList.add('hidden')" class="flex-1 py-3 font-bold rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50">Cancelar</button>
+                <button type="submit" class="flex-1 bg-[#0e6ba8] text-white py-3 font-bold rounded-xl hover:bg-[#1d1d1f]">Agregar</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

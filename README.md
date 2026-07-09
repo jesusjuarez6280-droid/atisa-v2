@@ -38,6 +38,10 @@ Recursos Humanos · Empleados · Asistencias (ZKTeco) · Incidencias · Capacita
 
 Identidad visual *"clínico y confiable"* documentada en [`DESIGN.md`](DESIGN.md) y [`PRODUCT.md`](PRODUCT.md): paleta, tipografía y componentes consistentes en todas las pantallas.
 
+## 🛡️ Seguridad y QA
+
+Modelo de seguridad, metodología de pruebas, defectos corregidos y checklist de producción en [`SEGURIDAD.md`](SEGURIDAD.md): RBAC, CSRF, anti-XSS/SQLi, blindaje de sesión y contraseñas, anti-fuerza-bruta y auditoría. Auditado con ~100 pruebas adversariales, con respaldo/restauración de la base.
+
 ## 🚀 Cómo correrlo
 
 ```bash
