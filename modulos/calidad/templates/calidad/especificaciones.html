@@ -62,7 +62,7 @@
         {% if puede_operar and filas|selectattr('estatus', 'equalto', 'EN_REVISION')|list %}
         <details class="cc-desplegable cc-tarjeta p-5 max-w-2xl">
             <summary class="font-bold text-[#1d1d1f]">Revisar o aprobar las marcadas en bloque</summary>
-            <p class="text-sm text-slate-500 my-2">Se firma una vez y queda una firma por especificación.</p>
+            <p class="text-sm text-slate-500 mt-2 mb-2">Se firma una vez y queda una firma por especificación.</p>
             <div class="flex gap-4 text-sm mb-3">
                 <label><input type="radio" name="accion" value="revisar" checked> Revisar</label>
                 {% if tiene_facultad('aprobar_maestros') %}<label><input type="radio" name="accion" value="aprobar"> Aprobar</label>{% endif %}

@@ -220,9 +220,9 @@ def extender_reanalisis(conn, *, lote_id, nueva_fecha, firma, usuario, motivo=No
     if lote['fecha_caducidad'] and nueva > lote['fecha_caducidad']:
         raise ErrorCalidad(f'La fecha de reanálisis no puede pasar de la caducidad ({lote["fecha_caducidad"]}).')
     a = _ultimo_analisis(conn, lote_id, 'REANALISIS')
-    ultima = conn.execute("SELECT MAX(ts) FROM cc_dictamenes WHERE lote_id = ? AND decision = 'REANALISIS_EXTENDIDO'",
-                          (lote_id,)).fetchone()[0]
-    if not a or a['estatus'] != 'CONFORME' or (ultima and (a['terminado_en'] or '') < ultima):
+    usado = conn.execute("SELECT 1 FROM cc_dictamenes WHERE lote_id = ? AND decision = 'REANALISIS_EXTENDIDO' "
+                         "AND analisis_id = ?", (lote_id, a['id'] if a else None)).fetchone()
+    if not a or a['estatus'] != 'CONFORME' or usado:
         raise ErrorCalidad('Para extender la fecha se necesita un análisis de reanálisis CONFORME.')
     v = verificaciones(conn, lote_id)
     fid = firmar(conn, firma, 'Liberó', 'lotes', lote_id,
