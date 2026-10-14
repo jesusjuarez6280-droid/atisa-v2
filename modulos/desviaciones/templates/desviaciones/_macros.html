@@ -1,0 +1,42 @@
+{#- Chips y piezas comunes de las pantallas de desviaciones.
+    {% from 'desviaciones/_macros.html' import chip_clasificacion, chip_estatus, chip_impacto, chip_accion, campo, clase_input %} -#}
+{% set clase_input = 'w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none' %}
+
+{% macro chip_clasificacion(c) -%}
+{% if c == 'CRITICA' %}<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-rose-50 text-rose-600 border border-rose-100">Crítica</span>
+{% elif c == 'MAYOR' %}<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-amber-50 text-amber-600 border border-amber-100">Mayor</span>
+{% elif c == 'MENOR' %}<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 text-slate-600">Menor</span>
+{% else %}<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-slate-50 text-slate-400 border border-slate-200">Sin clasificar</span>{% endif %}
+{%- endmacro %}
+
+{% macro chip_estatus(e) -%}
+{% set nombres = {'REPORTADA': 'Por clasificar', 'EN_INVESTIGACION': 'En investigación', 'POR_APROBAR': 'Por aprobar',
+                  'EN_ACCIONES': 'Acciones en curso', 'CERRADA': 'Cerrada', 'ANULADA': 'Anulada'} %}
+{% if e == 'CERRADA' %}<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">{{ nombres[e] }}</span>
+{% elif e == 'ANULADA' %}<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 text-slate-500 line-through">{{ nombres[e] }}</span>
+{% elif e == 'REPORTADA' %}<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-violet-50 text-violet-700 border border-violet-200">{{ nombres[e] }}</span>
+{% else %}<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-blue-50 text-[#0e6ba8] border border-blue-100">{{ nombres.get(e, e) }}</span>{% endif %}
+{%- endmacro %}
+
+{% macro chip_impacto(i) -%}
+{% if i == 'SIN_IMPACTO' %}<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">Sin impacto</span>
+{% elif i == 'CON_IMPACTO' %}<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-rose-50 text-rose-600 border border-rose-100">Con impacto</span>
+{% else %}<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-amber-50 text-amber-600 border border-amber-100">Por evaluar</span>{% endif %}
+{%- endmacro %}
+
+{% macro chip_accion(a, hoy) -%}
+{% if a.estatus == 'VERIFICADA' %}<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">Verificada</span>
+{% elif a.estatus == 'HECHA' %}<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-blue-50 text-[#0e6ba8] border border-blue-100">Hecha · por verificar</span>
+{% elif a.estatus == 'CANCELADA' %}<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 text-slate-500 line-through">Cancelada</span>
+{% elif a.capacitacion and a.capacitacion.completa %}<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-blue-50 text-[#0e6ba8] border border-blue-100">Capacitación completa</span>
+{% elif a.fecha_compromiso < hoy %}<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-rose-50 text-rose-600 border border-rose-100">Vencida</span>
+{% else %}<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-amber-50 text-amber-600 border border-amber-100">Pendiente</span>{% endif %}
+{%- endmacro %}
+
+{% macro etiqueta(texto, opcional=False) -%}
+<label class="text-xs font-bold text-slate-500 uppercase mb-1 block">{{ texto }}{% if opcional %} <span class="font-normal lowercase text-slate-400">(opcional)</span>{% endif %}</label>
+{%- endmacro %}
+
+{% macro boton(texto, icono='ri-check-line', color='azul') -%}
+<button type="submit" class="{% if color == 'rojo' %}bg-rose-500 hover:bg-rose-600{% elif color == 'verde' %}bg-emerald-600 hover:bg-emerald-700{% else %}bg-[#0e6ba8] hover:bg-[#1d1d1f]{% endif %} text-white px-6 py-3 font-bold rounded-xl flex items-center justify-center gap-2 transition-colors"><i class="{{ icono }}"></i> {{ texto }}</button>
+{%- endmacro %}

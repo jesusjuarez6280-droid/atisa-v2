@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>Reportar desviación | Planta</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/remixicon.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/estilos.css') }}">
+    {% if tailwind_estatico %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+    {% else %}
+    <script src="{{ url_for('static', filename='js/tailwind.js') }}"></script>
+    {% endif %}
+    {% include 'nucleo/_utilidades.html' %}
+    {% include 'desviaciones/_estilos.html' %}
+    <style>
+        .area-btn input:checked + span { background-color: #0e6ba8; color: #fff; border-color: #0e6ba8; }
+        .area-btn span { min-height: 64px; }
+        .texto-grande { font-size: 1.35rem; line-height: 1.6; }
+    </style>
+</head>
+<body class="bg-[#f5f5f7] min-h-screen" style="font-family: Inter, sans-serif;">
+    {% include '_flashes.html' %}
+
+    <header class="bg-white border-b border-slate-100 px-6 lg:px-10 h-[80px] flex items-center justify-between sticky top-0 z-40">
+        <div class="flex items-center gap-4">
+            <div class="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center"><i class="ri-error-warning-line text-2xl"></i></div>
+            <div>
+                <h1 class="text-[#1d1d1f] text-lg font-bold leading-tight">Reportar desviación</h1>
+                <p class="text-slate-500 text-xs mt-0.5">Algo salió mal: cuéntalo aquí y calidad le da seguimiento</p>
+            </div>
+        </div>
+        <a href="{{ volver }}" class="flex items-center gap-2 h-11 px-4 rounded-xl border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50"><i class="ri-arrow-left-line text-lg"></i> Regresar</a>
+    </header>
+
+    <main class="px-6 lg:px-10 py-8">
+        <form action="{{ url_for('desviaciones.planta_nueva') }}" method="POST" enctype="multipart/form-data" class="max-w-[960px] mx-auto flex flex-col gap-6" autocomplete="off">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="volver" value="{{ volver }}">
+            {% for c in ('origen_tipo', 'origen_modulo', 'origen_id', 'origen_texto', 'origen_url', 'documento_folio', 'equipo_id', 'material_id') %}
+            {% if datos.get(c) %}<input type="hidden" name="{{ c }}" value="{{ datos.get(c) }}">{% endif %}
+            {% endfor %}
+
+            {% if datos.get('origen_texto') or datos.get('documento_folio') %}
+            <div class="bg-white rounded-3xl border border-slate-200 p-6 text-lg text-[#1d1d1f] flex items-center gap-3">
+                <i class="ri-links-line text-2xl text-[#0e6ba8]"></i> Desde <strong>{{ datos.get('origen_texto') or datos.get('documento_folio') }}</strong>
+            </div>
+            {% endif %}
+
+            <section class="bg-white rounded-3xl border border-slate-200 p-6 flex flex-col gap-3">
+                <label for="descripcion" class="text-sm font-bold text-slate-500 uppercase">¿Qué pasó?</label>
+                <textarea id="descripcion" name="descripcion" rows="4" required class="texto-grande w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:border-[#0e6ba8] outline-none">{{ datos.get('descripcion') or '' }}</textarea>
+            </section>
+
+            <section class="bg-white rounded-3xl border border-slate-200 p-6 flex flex-col gap-3">
+                <p class="text-sm font-bold text-slate-500 uppercase">Área</p>
+                <div class="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                    {% for a in areas %}
+                    <label class="area-btn cursor-pointer"><input type="radio" name="area" value="{{ a }}" class="hidden" {{ 'checked' if datos.get('area') == a }} required>
+                        <span class="flex items-center justify-center rounded-2xl border border-slate-200 text-lg font-bold text-[#1d1d1f] px-4">{{ a }}</span></label>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section class="bg-white rounded-3xl border border-slate-200 p-6 flex flex-col gap-3">
+                <p class="text-sm font-bold text-slate-500 uppercase">Orden o lote</p>
+                {% for l in prellenados %}
+                <label class="flex items-center gap-3 text-lg"><input type="checkbox" name="lote_id" value="{{ l.id }}" checked class="w-6 h-6"> <strong>{{ l.numero_lote }}</strong> <span class="text-slate-500">{{ l.material_nombre }}</span></label>
+                {% endfor %}
+                <input name="lotes_texto" value="{{ datos.get('lotes_texto') or '' }}" placeholder="{{ 'Otro número de lote (opcional)' if prellenados else 'Número de lote (opcional)' }}" class="texto-grande w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:border-[#0e6ba8] outline-none">
+            </section>
+
+            <section class="bg-white rounded-3xl border border-slate-200 p-6 flex flex-col gap-3">
+                <p class="text-sm font-bold text-slate-500 uppercase">Foto <span class="font-normal lowercase text-slate-400">(opcional)</span></p>
+                <label class="flex items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-slate-300 p-8 text-lg font-bold text-slate-600 cursor-pointer hover:bg-slate-50">
+                    <i class="ri-camera-line text-3xl text-[#0e6ba8]"></i> <span id="foto-nombre">Tomar foto</span>
+                    <input type="file" name="foto" accept="image/*" capture="environment" class="hidden" onchange="document.getElementById('foto-nombre').textContent = this.files.length ? this.files[0].name : 'Tomar foto';">
+                </label>
+            </section>
+
+            {% from 'nucleo/_firma.html' import campo_firma %}
+            {{ campo_firma('Realizó', titulo='Firma: tu número de empleado y PIN') }}
+
+            <button type="submit" class="bg-[#0e6ba8] text-white py-5 text-xl font-bold rounded-2xl hover:bg-[#1d1d1f] flex items-center justify-center gap-3"><i class="ri-send-plane-line text-2xl"></i> Reportar</button>
+        </form>
+    </main>
+</body>
+</html>

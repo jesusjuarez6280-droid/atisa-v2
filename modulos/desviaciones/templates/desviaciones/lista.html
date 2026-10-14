@@ -1,0 +1,102 @@
+{% extends _layout|default("base.html") %}
+{% from 'desviaciones/_macros.html' import chip_clasificacion, chip_estatus %}
+{% block title %}Desviaciones y CAPA | ERP Atisa{% endblock %}
+
+{% block content %}
+{% include 'desviaciones/_estilos.html' %}
+{% set i = indicadores %}
+{% set qs = {'tipo': filtros.tipo, 'clasificacion': filtros.clasificacion, 'area': filtros.area, 'categoria': filtros.categoria,
+             'desde': filtros.desde, 'hasta': filtros.hasta, 'q': filtros.texto} %}
+<div class="p-10">
+    <header class="flex flex-wrap justify-between items-center gap-4 mb-8">
+        <div>
+            <h1 class="text-2xl font-bold text-[#1d1d1f]">Desviaciones y CAPA</h1>
+            <p class="text-slate-500 mt-1">Desviaciones, quejas de clientes y hallazgos de auditoría, con sus acciones correctivas y preventivas</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+            <a href="{{ url_for('desviaciones.tendencias') }}" class="flex items-center gap-2 h-11 px-4 rounded-xl border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50"><i class="ri-bar-chart-2-line"></i> Tendencias</a>
+            <a href="{{ url_for('desviaciones.lista_excel', pestana=filtros.pestana, **qs) }}" hx-boost="false" class="flex items-center gap-2 h-11 px-4 rounded-xl border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50"><i class="ri-file-excel-2-line"></i> Excel</a>
+            <a href="{{ url_for('desviaciones.nueva') }}" class="bg-[#0e6ba8] text-white px-6 py-3 font-bold rounded-xl hover:bg-[#1d1d1f] flex items-center gap-2 transition-colors"><i class="ri-add-line text-lg"></i> Reportar</a>
+        </div>
+    </header>
+
+    <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-[#0e6ba8]/10 text-[#0e6ba8] flex items-center justify-center shrink-0"><i class="ri-error-warning-line text-xl"></i></div><div><p class="text-2xl font-bold text-[#1d1d1f] leading-none">{{ i.abiertas }}</p><p class="text-xs text-slate-500 font-medium mt-1">Abiertas</p></div></div></div>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0"><i class="ri-alarm-warning-line text-xl"></i></div><div><p class="text-2xl font-bold {{ 'text-rose-600' if i.criticas else 'text-[#1d1d1f]' }} leading-none">{{ i.criticas }}</p><p class="text-xs text-slate-500 font-medium mt-1">Críticas abiertas</p></div></div></div>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0"><i class="ri-search-eye-line text-xl"></i></div><div><p class="text-2xl font-bold text-[#1d1d1f] leading-none">{{ i.investigaciones_vencidas }} · {{ i.acciones_vencidas }}</p><p class="text-xs text-slate-500 font-medium mt-1">Investigaciones · acciones vencidas</p></div></div></div>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0"><i class="ri-check-double-line text-xl"></i></div><div><p class="text-2xl font-bold text-[#1d1d1f] leading-none">{{ i.cerradas_mes }}</p><p class="text-xs text-slate-500 font-medium mt-1">Cerradas en el mes{% if i.a_tiempo_pct is not none %} · {{ i.a_tiempo_pct }}% a tiempo{% endif %}</p></div></div></div>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center shrink-0"><i class="ri-timer-line text-xl"></i></div><div><p class="text-2xl font-bold text-[#1d1d1f] leading-none">{{ i.dias_promedio if i.dias_promedio is not none else '—' }}</p><p class="text-xs text-slate-500 font-medium mt-1">Días promedio para cerrar</p></div></div></div>
+    </div>
+
+    <nav class="flex flex-wrap gap-2 mb-4">
+        {% for clave, (nombre, _) in sv.PESTANAS.items() %}
+        <a href="{{ url_for('desviaciones.lista', pestana=clave, **qs) }}"
+           class="px-4 py-2 rounded-xl text-sm font-bold border {{ 'bg-[#0e6ba8] text-white border-[#0e6ba8]' if filtros.pestana == clave else 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50' }}">
+            {{ nombre }} <span class="{{ 'text-white' if filtros.pestana == clave else 'text-slate-400' }} font-semibold">{{ conteo[clave] }}</span>
+        </a>
+        {% endfor %}
+        <a href="{{ url_for('desviaciones.mis_acciones') }}" class="px-4 py-2 rounded-xl text-sm font-bold border bg-white text-slate-600 border-slate-200 hover:bg-slate-50">
+            <i class="ri-user-follow-line"></i> Mis acciones <span class="{{ 'text-rose-500' if mis else 'text-slate-400' }} font-semibold">{{ mis }}</span>
+        </a>
+    </nav>
+
+    <form method="GET" action="{{ url_for('desviaciones.lista') }}" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 mb-4 flex flex-wrap items-end gap-3">
+        <input type="hidden" name="pestana" value="{{ filtros.pestana }}">
+        <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Buscar</label><input name="q" value="{{ filtros.texto or '' }}" placeholder="Folio o texto" class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none text-sm"></div>
+        <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Tipo</label>
+            <select name="tipo" class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm"><option value="">Todos</option>{% for k, n in sv.NOMBRE_TIPO.items() %}<option value="{{ k }}" {{ 'selected' if filtros.tipo == k }}>{{ n }}</option>{% endfor %}</select></div>
+        <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Clasificación</label>
+            <select name="clasificacion" class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm"><option value="">Todas</option>{% for k, n in sv.NOMBRE_CLASIFICACION.items() %}<option value="{{ k }}" {{ 'selected' if filtros.clasificacion == k }}>{{ n }}</option>{% endfor %}</select></div>
+        <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Área</label>
+            <select name="area" class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm"><option value="">Todas</option>{% for a in sv.AREAS %}<option {{ 'selected' if filtros.area == a }}>{{ a }}</option>{% endfor %}</select></div>
+        <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Causa</label>
+            <select name="categoria" class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm"><option value="">Todas</option>{% for c in sv.CATEGORIAS %}<option {{ 'selected' if filtros.categoria == c }}>{{ c }}</option>{% endfor %}</select></div>
+        <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Desde</label><input type="date" name="desde" value="{{ filtros.desde or '' }}" class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm"></div>
+        <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Hasta</label><input type="date" name="hasta" value="{{ filtros.hasta or '' }}" class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm"></div>
+        <button type="submit" class="h-10 px-4 rounded-xl bg-[#0e6ba8] text-white text-sm font-bold hover:bg-[#1d1d1f] flex items-center gap-2"><i class="ri-filter-3-line"></i> Filtrar</button>
+        <a href="{{ url_for('desviaciones.lista', pestana=filtros.pestana) }}" class="h-10 px-4 rounded-xl border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50 flex items-center">Limpiar</a>
+    </form>
+
+    {% if renglones %}
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="bg-slate-50 text-xs text-slate-500 uppercase">
+                <tr><th class="text-left px-4 py-3">Folio</th><th class="text-left px-4 py-3">Fecha</th><th class="text-left px-4 py-3">Título</th><th class="text-left px-4 py-3">Área</th><th class="text-left px-4 py-3">Clasificación</th><th class="text-left px-4 py-3">Lotes</th><th class="text-left px-4 py-3">Responsable</th><th class="text-left px-4 py-3">Fecha límite</th><th class="text-left px-4 py-3">Estatus</th></tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                {% for r in renglones %}
+                <tr class="hover:bg-slate-50">
+                    <td class="px-4 py-3 whitespace-nowrap"><a href="{{ url_for('desviaciones.detalle', desviacion_id=r.id) }}" class="font-bold text-[#0e6ba8] hover:underline">{{ r.folio }}</a><p class="text-xs text-slate-400">{{ sv.NOMBRE_TIPO[r.tipo] }}</p></td>
+                    <td class="px-4 py-3 whitespace-nowrap text-slate-600">{{ r.fecha_detecto }}</td>
+                    <td class="px-4 py-3 text-[#1d1d1f] font-semibold">{{ r.titulo }}</td>
+                    <td class="px-4 py-3 text-slate-600">{{ r.area }}</td>
+                    <td class="px-4 py-3">{{ chip_clasificacion(r.clasificacion) }}</td>
+                    <td class="px-4 py-3 text-xs text-slate-600">{{ r.lotes_texto or '—' }}</td>
+                    <td class="px-4 py-3 text-slate-600">{{ r.responsable_nombre or '—' }}</td>
+                    <td class="px-4 py-3 whitespace-nowrap">{% if r.fecha_limite %}<span class="{{ 'text-rose-600 font-bold' if r.fecha_limite < hoy else 'text-slate-600' }}">{{ r.fecha_limite }}</span>{% else %}<span class="text-slate-400">—</span>{% endif %}</td>
+                    <td class="px-4 py-3">{{ chip_estatus(r.estatus) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+    {% if paginas > 1 %}
+    <div class="flex items-center justify-between mt-4 text-sm text-slate-500">
+        <span>{{ total }} en total · página {{ pagina }} de {{ paginas }}</span>
+        <div class="flex gap-2">
+            {% if pagina > 1 %}<a href="{{ url_for('desviaciones.lista', pestana=filtros.pestana, pagina=pagina - 1, **qs) }}" class="px-4 py-2 rounded-xl border border-slate-200 bg-white font-bold hover:bg-slate-50">Anterior</a>{% endif %}
+            {% if pagina < paginas %}<a href="{{ url_for('desviaciones.lista', pestana=filtros.pestana, pagina=pagina + 1, **qs) }}" class="px-4 py-2 rounded-xl border border-slate-200 bg-white font-bold hover:bg-slate-50">Siguiente</a>{% endif %}
+        </div>
+    </div>
+    {% endif %}
+    {% else %}
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-16 text-center">
+        <i class="ri-shield-check-line text-5xl text-slate-300 block mb-3"></i>
+        <h3 class="text-lg font-bold text-[#1d1d1f]">No hay desviaciones aquí</h3>
+        <p class="text-slate-500 mt-1">Cuando algo salga mal, repórtalo con el botón de arriba o desde la tablet de planta.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

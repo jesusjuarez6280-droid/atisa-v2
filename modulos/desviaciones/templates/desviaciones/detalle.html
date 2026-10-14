@@ -1,0 +1,535 @@
+{% extends _layout|default("base.html") %}
+{% from 'nucleo/_firma.html' import campo_firma, firmado %}
+{% from 'nucleo/_lote.html' import chip_estatus as chip_lote %}
+{% from 'desviaciones/_macros.html' import chip_clasificacion, chip_estatus, chip_impacto, chip_accion, etiqueta, boton, clase_input %}
+{% block title %}{{ d.folio }} | Desviaciones | ERP Atisa{% endblock %}
+
+{% block content %}
+{% include 'desviaciones/_estilos.html' %}
+{% set abierta = d.estatus in sv.ABIERTAS %}
+{% set yo = session.numero_empleado %}
+<style>
+    .dev-detalle details > summary { list-style: none; cursor: pointer; }
+    .dev-detalle details > summary::-webkit-details-marker { display: none; }
+    .dev-detalle .def-clas input:checked + div { border-color: #0e6ba8; background-color: rgba(14,107,168,.06); }
+</style>
+<div class="p-10 dev-detalle">
+    <header class="flex flex-wrap justify-between items-start gap-4 mb-6">
+        <div>
+            <a href="{{ url_for('desviaciones.lista') }}" class="text-sm text-slate-500 hover:text-[#0e6ba8] flex items-center gap-1 mb-2"><i class="ri-arrow-left-line"></i> Desviaciones</a>
+            <div class="flex flex-wrap items-center gap-3">
+                <h1 class="text-2xl font-bold text-[#1d1d1f]">{{ d.folio }}</h1>
+                {{ chip_clasificacion(d.clasificacion) }} {{ chip_estatus(d.estatus) }}
+            </div>
+            <p class="text-lg text-[#1d1d1f] font-semibold mt-1">{{ d.titulo }}</p>
+            <p class="text-sm text-slate-500 mt-1">
+                {{ sv.NOMBRE_TIPO[d.tipo] }} · {{ d.area }}
+                {% set abierta_dias = -(dias_hasta(d.creado_en) or 0) %}
+                {% if abierta %} · {{ abierta_dias }} día{{ '' if abierta_dias == 1 else 's' }} abierta{% endif %}
+                {% if d.estatus == 'EN_INVESTIGACION' and d.vence_investigacion %} · investigar antes del <span class="{{ 'text-rose-600 font-bold' if d.vence_investigacion < hoy else 'font-semibold' }}">{{ d.vence_investigacion }}</span>{% endif %}
+            </p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+            <a href="{{ url_for('desviaciones.imprimir', desviacion_id=d.id) }}" hx-boost="false" target="_blank" class="flex items-center gap-2 h-11 px-4 rounded-xl border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50"><i class="ri-printer-line"></i> Imprimir</a>
+            {% if abierta and gestor %}
+            <button type="button" onclick="document.getElementById('modal-anular').classList.remove('hidden')" class="flex items-center gap-2 h-11 px-4 rounded-xl border-2 border-rose-200 text-rose-500 text-sm font-bold hover:bg-rose-50"><i class="ri-forbid-line"></i> Anular</button>
+            {% endif %}
+        </div>
+    </header>
+
+    {% if d.estatus == 'ANULADA' %}
+    <div class="bg-slate-100 border border-slate-200 rounded-2xl p-4 mb-6 text-sm text-slate-600"><strong>Anulada:</strong> {{ d.motivo_anulacion }} {{ firmado(firmas.anulo) }}</div>
+    {% endif %}
+
+    <div class="flex flex-col gap-6">
+    {# ===================== Reporte ===================== #}
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+        <h2 class="text-lg font-bold text-[#1d1d1f] mb-4 flex items-center gap-2"><i class="ri-file-text-line text-[#0e6ba8]"></i> Reporte</h2>
+        <p class="text-[#1d1d1f] whitespace-pre-line">{{ d.descripcion }}</p>
+        <dl class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 text-sm">
+            <div><dt class="text-xs font-bold text-slate-500 uppercase">Ocurrió</dt><dd>{{ d.fecha_ocurrio or '—' }}</dd></div>
+            <div><dt class="text-xs font-bold text-slate-500 uppercase">Se detectó</dt><dd>{{ d.fecha_detecto }}</dd></div>
+            <div><dt class="text-xs font-bold text-slate-500 uppercase">Lo detectó</dt><dd>{{ d.detecto or '—' }}</dd></div>
+            <div><dt class="text-xs font-bold text-slate-500 uppercase">Reportó</dt><dd>{{ d.reporto }}</dd></div>
+            {% if d.material_codigo %}<div><dt class="text-xs font-bold text-slate-500 uppercase">Material</dt><dd>{{ d.material_codigo }} · {{ d.material_nombre }}</dd></div>{% endif %}
+            {% if d.equipo_codigo %}<div><dt class="text-xs font-bold text-slate-500 uppercase">Equipo</dt><dd>{{ d.equipo_codigo }} · {{ d.equipo_nombre }}</dd></div>{% endif %}
+            {% if d.proveedor_nombre %}<div><dt class="text-xs font-bold text-slate-500 uppercase">Proveedor</dt><dd>{{ d.proveedor_nombre }}</dd></div>{% endif %}
+            {% if d.documento_folio %}<div><dt class="text-xs font-bold text-slate-500 uppercase">Documento</dt><dd>{{ d.documento_folio }}</dd></div>{% endif %}
+        </dl>
+        {% if d.correccion_inmediata %}<div class="mt-4 bg-slate-50 rounded-xl p-4 text-sm"><p class="text-xs font-bold text-slate-500 uppercase mb-1">Corrección inmediata</p>{{ d.correccion_inmediata }}</div>{% endif %}
+        {% if d.tipo == 'QUEJA' %}
+        <div class="mt-4 bg-amber-50 border border-amber-100 rounded-xl p-4 text-sm grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div><p class="text-xs font-bold text-slate-500 uppercase">Cliente</p>{{ d.cliente }}{% if d.cliente_contacto %} · {{ d.cliente_contacto }}{% endif %}</div>
+            <div><p class="text-xs font-bold text-slate-500 uppercase">Cantidad reclamada</p>{{ d.cantidad_reclamada or '—' }}</div>
+            <div><p class="text-xs font-bold text-slate-500 uppercase">Reacción adversa</p>{% if d.posible_reaccion_adversa %}<span class="text-rose-600 font-bold">Posible reacción adversa en animales</span>{% else %}No{% endif %}</div>
+        </div>
+        {% endif %}
+        {% if d.tipo == 'HALLAZGO' %}
+        <div class="mt-4 bg-slate-50 rounded-xl p-4 text-sm"><strong>Auditoría:</strong> {{ d.auditoria }}{% if d.requisito %} · <strong>Requisito:</strong> {{ d.requisito }}{% endif %}</div>
+        {% endif %}
+        <div class="flex flex-wrap items-center gap-4 mt-4 text-sm">
+            {% if origen_url %}<a href="{{ origen_url }}" class="flex items-center gap-1 text-[#0e6ba8] font-semibold hover:underline"><i class="ri-arrow-go-back-line"></i> {{ d.origen_texto or 'Ir al origen' }}</a>
+            {% elif d.origen_texto %}<span class="text-slate-500"><i class="ri-links-line"></i> {{ d.origen_texto }}</span>{% endif %}
+            {% for a in adjuntos %}<a href="/archivo/{{ a.id }}" hx-boost="false" target="_blank" class="flex items-center gap-1 text-[#0e6ba8] hover:underline"><i class="ri-attachment-2"></i> {{ a.nombre_original }}</a>{% endfor %}
+            <span class="ml-auto">{{ firmado(firmas.reporto) }}</span>
+        </div>
+    </section>
+
+    {# ===================== Clasificación ===================== #}
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6" id="clasificacion">
+        <h2 class="text-lg font-bold text-[#1d1d1f] mb-4 flex items-center gap-2"><i class="ri-scales-3-line text-[#0e6ba8]"></i> Clasificación</h2>
+        {% if d.estatus == 'REPORTADA' %}
+            {% if gestor %}
+            <form action="{{ url_for('desviaciones.clasificar', desviacion_id=d.id) }}" method="POST" class="flex flex-col gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {% for c in sv.CLASIFICACIONES %}
+                    <label class="def-clas cursor-pointer"><input type="radio" name="clasificacion" value="{{ c }}" class="hidden" required {{ 'checked' if d.clasificacion == c }} data-vence="{{ vence_sugerido[c] }}">
+                        <div class="h-full rounded-xl border border-slate-200 p-4"><p class="mb-1">{{ chip_clasificacion(c) }}</p><p class="text-xs text-slate-500">{{ sv.DEFINICION_CLASIFICACION[c] }}</p></div></label>
+                    {% endfor %}
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>{{ etiqueta('Responsable de investigar') }}<select name="responsable" required class="{{ clase_input }}"><option value="">Elige…</option>{% for u in usuarios %}<option value="{{ u.numero_empleado }}">{{ u.nombre }}{% if u.puesto %} · {{ u.puesto }}{% endif %}</option>{% endfor %}</select></div>
+                    <div>{{ etiqueta('Fecha límite de la investigación') }}<input type="date" name="vence" id="vence" min="{{ hoy }}" value="{{ vence_sugerido[d.clasificacion] if d.clasificacion else '' }}" class="{{ clase_input }}"><p class="text-xs text-slate-400 mt-1">Sale sola de la clasificación; se puede ajustar.</p></div>
+                </div>
+                {% if sin_agregar %}
+                <div>{{ etiqueta('Lotes del documento ' ~ d.documento_folio) }}
+                    {% for l in sin_agregar %}<label class="flex items-center gap-3 text-sm mb-1"><input type="checkbox" name="lote_id" value="{{ l.id }}" checked class="w-4 h-4"> <strong>{{ l.numero_lote }}</strong> {{ l.material_codigo }} · {{ l.material_nombre }} {{ chip_lote(l) }}</label>{% endfor %}
+                </div>
+                {% endif %}
+                <div>{{ etiqueta('Otros lotes afectados', opcional=True) }}<input name="lotes_texto" list="dl-lotes" placeholder="Número de lote · código, separados por coma" class="{{ clase_input }}"></div>
+                {{ campo_firma('Aprobó', numero=yo, id='f-clas', titulo='Firma de quien clasifica') }}
+                <div class="flex justify-end">{{ boton('Clasificar y asignar', 'ri-scales-3-line') }}</div>
+            </form>
+            {% if d.tipo != 'QUEJA' and not d.posible_reaccion_adversa %}
+            <details class="mt-4 border-t border-slate-100 pt-4">
+                <summary class="text-sm font-bold text-slate-600 hover:text-[#0e6ba8]"><i class="ri-checkbox-circle-line"></i> Menor sin causa que investigar: cerrar con la corrección</summary>
+                <form action="{{ url_for('desviaciones.cerrar_menor', desviacion_id=d.id) }}" method="POST" class="flex flex-col gap-4 mt-4">
+                    {% if not d.correccion_inmediata %}<p class="text-sm text-amber-700 bg-amber-50 rounded-xl p-3">El reporte no trae corrección inmediata: así no se puede cerrar al clasificar.</p>{% endif %}
+                    <div>{{ etiqueta('Por qué no hace falta investigar') }}<textarea name="justificacion" rows="2" required class="{{ clase_input }}"></textarea></div>
+                    {{ campo_firma('Cerró', numero=yo, id='f-menor') }}
+                    <div class="flex justify-end">{{ boton('Cerrar como menor', 'ri-lock-line', 'verde') }}</div>
+                </form>
+            </details>
+            {% endif %}
+            {% else %}
+            <p class="text-sm text-slate-500">Espera a que calidad la clasifique y asigne quién investiga.</p>
+            {% endif %}
+        {% else %}
+        <dl class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div><dt class="text-xs font-bold text-slate-500 uppercase">Clasificación</dt><dd class="mt-1">{{ chip_clasificacion(d.clasificacion) }}</dd></div>
+            <div><dt class="text-xs font-bold text-slate-500 uppercase">Responsable</dt><dd>{{ d.responsable_nombre or '—' }}</dd></div>
+            <div><dt class="text-xs font-bold text-slate-500 uppercase">Fecha límite</dt><dd>{{ d.vence_investigacion or '—' }}</dd></div>
+            <div><dt class="text-xs font-bold text-slate-500 uppercase">Clasificó</dt><dd>{{ firmado(firmas.clasifico) or '—' }}</dd></div>
+        </dl>
+        {% endif %}
+    </section>
+
+    {# ===================== Lotes afectados ===================== #}
+    {% set puede_lotes = abierta and d.estatus != 'POR_APROBAR' and (gestor or d.responsable == yo) %}
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6" id="lotes">
+        <h2 class="text-lg font-bold text-[#1d1d1f] mb-4 flex items-center gap-2"><i class="ri-stack-line text-[#0e6ba8]"></i> Lotes afectados</h2>
+        {% if lotes %}
+        <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="bg-slate-50 text-xs text-slate-500 uppercase"><tr><th class="text-left px-3 py-2">Lote</th><th class="text-left px-3 py-2">Material</th><th class="text-left px-3 py-2">Estatus</th><th class="text-left px-3 py-2">Impacto</th><th class="text-left px-3 py-2">Justificación</th><th class="px-3 py-2"></th></tr></thead>
+            <tbody class="divide-y divide-slate-100">
+            {% for l in lotes %}
+            <tr>
+                <td class="px-3 py-3 font-bold">{% set ficha = enlace('ficha_lote', lote_id=l.lote_id) %}{% if ficha %}<a href="{{ ficha }}" class="text-[#0e6ba8] hover:underline">{{ l.numero_lote }}</a>{% else %}{{ l.numero_lote }}{% endif %}{% if l.retenido %}<p class="text-xs font-normal text-violet-700">Retenido por esta desviación{% if l.retuvo_nombre %} · {{ l.retuvo_nombre }}{% endif %}</p>{% endif %}</td>
+                <td class="px-3 py-3">{{ l.material_codigo }} · {{ l.material_nombre }}</td>
+                <td class="px-3 py-3">{{ chip_lote(l.estatus) }}</td>
+                <td class="px-3 py-3">{{ chip_impacto(l.impacto) }}</td>
+                <td class="px-3 py-3 text-slate-600">{{ l.justificacion or '' }}</td>
+                <td class="px-3 py-3 text-right whitespace-nowrap">
+                    {% if gestor and abierta and l.estatus == 'APROBADO' %}
+                    <details class="inline-block text-left"><summary class="px-3 py-1.5 rounded-lg border border-violet-200 text-violet-700 text-xs font-bold hover:bg-violet-50">Retener</summary>
+                        <form action="{{ url_for('desviaciones.retener', desviacion_id=d.id, lote_id=l.lote_id) }}" method="POST" class="mt-2 w-max">
+                            {{ campo_firma('Retuvo', numero=yo, id='f-ret-' ~ l.lote_id) }}
+                            <div class="flex justify-end mt-2">{{ boton('Retener lote', 'ri-pause-circle-line') }}</div>
+                        </form>
+                    </details>
+                    {% endif %}
+                </td>
+            </tr>
+            {% if puede_lotes and (d.estatus in ('REPORTADA', 'EN_INVESTIGACION') or l.impacto == 'PENDIENTE') %}
+            <tr><td colspan="6" class="px-3 pb-3">
+                <form action="{{ url_for('desviaciones.evaluar_lote', desviacion_id=d.id, lote_id=l.lote_id) }}" method="POST" class="flex flex-wrap items-center gap-2 bg-slate-50 rounded-xl p-2">
+                    <select name="impacto" class="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm"><option value="SIN_IMPACTO" {{ 'selected' if l.impacto == 'SIN_IMPACTO' }}>Sin impacto</option><option value="CON_IMPACTO" {{ 'selected' if l.impacto == 'CON_IMPACTO' }}>Con impacto</option></select>
+                    <input name="justificacion" value="{{ l.justificacion or '' }}" required placeholder="Por qué" class="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm">
+                    <button type="submit" class="px-3 py-2 rounded-lg bg-[#0e6ba8] text-white text-xs font-bold hover:bg-[#1d1d1f]">Guardar evaluación</button>
+                </form>
+            </td></tr>
+            {% endif %}
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        {% else %}
+        <p class="text-sm text-slate-500">No hay lotes ligados.</p>
+        {% endif %}
+
+        {% if sin_agregar and d.estatus not in ('REPORTADA', 'CERRADA', 'ANULADA') %}
+        <div class="mt-4 bg-amber-50 border border-amber-100 rounded-xl p-4 text-sm">
+            <p class="font-bold text-amber-800 mb-2"><i class="ri-alert-line"></i> Lotes del documento {{ d.documento_folio }} sin evaluar (Calidad no los puede liberar):</p>
+            {% for l in sin_agregar %}
+            <div class="flex flex-wrap items-center gap-2 mb-2"><strong>{{ l.numero_lote }}</strong> {{ l.material_codigo }} {{ chip_lote(l) }}
+                {% if puede_lotes %}
+                <form action="{{ url_for('desviaciones.evaluar_lote', desviacion_id=d.id, lote_id=l.id) }}" method="POST" class="flex flex-wrap items-center gap-2 flex-1">
+                    <select name="impacto" class="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm"><option value="SIN_IMPACTO">Sin impacto</option><option value="CON_IMPACTO">Con impacto</option></select>
+                    <input name="justificacion" required placeholder="Por qué" class="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm">
+                    <button type="submit" class="px-3 py-2 rounded-lg bg-[#0e6ba8] text-white text-xs font-bold hover:bg-[#1d1d1f]">Evaluar</button>
+                </form>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if puede_lotes %}
+        <form action="{{ url_for('desviaciones.agregar_lotes', desviacion_id=d.id) }}" method="POST" class="flex flex-wrap items-end gap-2 mt-4">
+            <div class="flex-1">{{ etiqueta('Agregar lotes') }}<input name="lotes_texto" list="dl-lotes" placeholder="Número de lote · código, separados por coma" class="{{ clase_input }}"></div>
+            <button type="submit" class="h-12 px-4 rounded-xl border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50 flex items-center gap-2"><i class="ri-add-line"></i> Agregar</button>
+        </form>
+        {% endif %}
+        <datalist id="dl-lotes">{% for l in opciones_lotes %}<option value="{{ l.numero_lote }} · {{ l.codigo }}">{{ l.nombre }} ({{ l.estatus }})</option>{% endfor %}</datalist>
+
+        {% if lotes %}
+        <div class="mt-6 border-t border-slate-100 pt-4">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                <h3 class="font-bold text-[#1d1d1f]">Alcance: a dónde llegaron estos lotes</h3>
+                <div class="flex gap-2">
+                    {% if puede_lotes and alcance %}
+                    <form action="{{ url_for('desviaciones.agregar_alcance', desviacion_id=d.id) }}" method="POST"><button type="submit" class="px-3 py-2 rounded-lg border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50"><i class="ri-add-line"></i> Agregar todos</button></form>
+                    {% endif %}
+                    <a href="{{ url_for('desviaciones.alcance_excel', desviacion_id=d.id) }}" hx-boost="false" class="px-3 py-2 rounded-lg border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50"><i class="ri-file-excel-2-line"></i> Excel</a>
+                </div>
+            </div>
+            {% if alcance %}
+            {% set relaciones = {'PRESENTACION': 'Presentación', 'PRODUCIDO': 'Lote producido', 'VENTA': 'Venta', 'DEVOLUCION': 'Devolución'} %}
+            <table class="w-full text-sm">
+                <thead class="bg-slate-50 text-xs text-slate-500 uppercase"><tr><th class="text-left px-3 py-2">Desde</th><th class="text-left px-3 py-2">Qué</th><th class="text-left px-3 py-2">Lote</th><th class="text-left px-3 py-2">Orden / folio</th><th class="text-left px-3 py-2">Cliente</th><th class="text-right px-3 py-2">Cantidad</th></tr></thead>
+                <tbody class="divide-y divide-slate-100">
+                {% for r in alcance %}
+                <tr><td class="px-3 py-2 text-slate-500">{{ r.desde_numero_lote }}</td><td class="px-3 py-2">{{ relaciones.get(r.relacion, r.relacion) }}</td>
+                    <td class="px-3 py-2">{% if r.relacion != 'VENTA' %}<strong>{{ r.numero_lote }}</strong> {{ r.material_codigo }}{% endif %}</td>
+                    <td class="px-3 py-2">{{ r.folio or '' }}</td><td class="px-3 py-2">{{ r.cliente or '' }}</td><td class="px-3 py-2 text-right tabular-nums">{{ r.cantidad if r.cantidad is not none else '' }}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="text-sm text-slate-500">Estos lotes no se han usado, envasado ni vendido.</p>
+            {% endif %}
+        </div>
+        {% endif %}
+    </section>
+
+    {# ===================== Investigación ===================== #}
+    {% if d.estatus not in ('REPORTADA',) and not (d.estatus == 'CERRADA' and not d.investigo_firma_id and not d.causa_raiz) %}
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6" id="investigacion">
+        <h2 class="text-lg font-bold text-[#1d1d1f] mb-4 flex items-center gap-2"><i class="ri-search-eye-line text-[#0e6ba8]"></i> Investigación</h2>
+        {% if d.comentarios_aprobacion and d.estatus == 'EN_INVESTIGACION' %}
+        <div class="bg-amber-50 border border-amber-100 rounded-xl p-4 mb-4 text-sm"><strong class="text-amber-800">Se regresó con comentarios:</strong> {{ d.comentarios_aprobacion }}</div>
+        {% endif %}
+        {% if puede_investigar %}
+        <form action="{{ url_for('desviaciones.guardar_investigacion', desviacion_id=d.id) }}" method="POST" class="flex flex-col gap-4">
+            <div>{{ etiqueta('Descripción ampliada', opcional=True) }}<textarea name="descripcion_ampliada" rows="2" placeholder="Lo que se agregue queda en el historial" class="{{ clase_input }}"></textarea></div>
+            <div>{{ etiqueta('5 porqués (uno por renglón)') }}<textarea name="porques" rows="5" class="{{ clase_input }}">{{ d.porques or '' }}</textarea></div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {% for campo, nombre in sv.SEIS_M %}
+                <div>{{ etiqueta(nombre) }}<textarea name="{{ campo }}" rows="2" placeholder="Lo que se revisó" class="{{ clase_input }}">{{ d[campo] or '' }}</textarea></div>
+                {% endfor %}
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="md:col-span-2">{{ etiqueta('Causa raíz') }}<textarea name="causa_raiz" rows="2" class="{{ clase_input }}">{{ d.causa_raiz or '' }}</textarea></div>
+                <div>{{ etiqueta('Categoría de la causa') }}<select name="categoria_causa" class="{{ clase_input }}"><option value="">Elige…</option>{% for c in sv.CATEGORIAS %}<option {{ 'selected' if d.categoria_causa == c }}>{{ c }}</option>{% endfor %}</select></div>
+            </div>
+            {% if d.clasificacion != 'CRITICA' %}
+            <div>{{ etiqueta('Si no hacen falta acciones, por qué', opcional=True) }}<input name="sin_acciones_motivo" value="{{ d.sin_acciones_motivo or '' }}" class="{{ clase_input }}"></div>
+            {% endif %}
+            <div class="flex justify-end">{{ boton('Guardar investigación', 'ri-save-line') }}</div>
+        </form>
+        {% else %}
+        <div class="flex flex-col gap-3 text-sm">
+            {% if d.porques %}<div><p class="text-xs font-bold text-slate-500 uppercase">5 porqués</p><ol class="list-decimal pl-5">{% for p in d.porques.splitlines() if p.strip() %}<li>{{ p }}</li>{% endfor %}</ol></div>{% endif %}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">{% for campo, nombre in sv.SEIS_M if d[campo] %}<div><p class="text-xs font-bold text-slate-500 uppercase">{{ nombre }}</p>{{ d[campo] }}</div>{% endfor %}</div>
+            <div><p class="text-xs font-bold text-slate-500 uppercase">Causa raíz</p>{{ d.causa_raiz or 'Aún sin causa raíz.' }}{% if d.categoria_causa %} <span class="px-2 py-0.5 rounded bg-slate-100 text-xs font-bold text-slate-600">{{ d.categoria_causa }}</span>{% endif %}</div>
+            {% if d.sin_acciones_motivo %}<div><p class="text-xs font-bold text-slate-500 uppercase">Sin acciones porque</p>{{ d.sin_acciones_motivo }}</div>{% endif %}
+            <div class="flex flex-wrap gap-6">{% if firmas.investigo %}<span>{{ firmado(firmas.investigo) }}</span>{% endif %}{% if firmas.aprobo %}<span>{{ firmado(firmas.aprobo) }}</span>{% endif %}</div>
+        </div>
+        {% endif %}
+
+        <div class="mt-6 border-t border-slate-100 pt-4">
+            <h3 class="font-bold text-[#1d1d1f] mb-2">Parecidas en los últimos 12 meses</h3>
+            {% if parecidas %}
+            <ul class="divide-y divide-slate-100 text-sm">
+                {% set ya = relacionadas|map(attribute='id')|list %}
+                {% for p in parecidas %}
+                <li class="flex flex-wrap items-center gap-3 py-2">
+                    <a href="{{ url_for('desviaciones.detalle', desviacion_id=p.id) }}" class="font-bold text-[#0e6ba8] hover:underline">{{ p.folio }}</a>
+                    <span class="flex-1">{{ p.titulo }} <span class="text-xs text-slate-400">· {{ p.fecha_detecto }} · {{ p.por }}</span></span>
+                    {{ chip_estatus(p.estatus) }}
+                    {% if p.id in ya %}<span class="text-xs text-emerald-600 font-bold">Ligada</span>
+                    {% elif abierta %}<form action="{{ url_for('desviaciones.relacionar', desviacion_id=d.id) }}" method="POST"><input type="hidden" name="relacionada_id" value="{{ p.id }}"><input type="hidden" name="motivo" value="Parecida ({{ p.por }})"><button type="submit" class="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50">Ligar</button></form>{% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+            {% if parecidas|length >= 2 %}<p class="text-xs text-amber-700 mt-2">Ya pasó algo parecido {{ parecidas|length }} veces: hace falta al menos una acción preventiva.</p>{% endif %}
+            {% else %}
+            <p class="text-sm text-slate-500">{{ 'No hay parecidas.' if d.material_id or d.equipo_id or d.categoria_causa else 'Se buscan por material, equipo o área y categoría de causa.' }}</p>
+            {% endif %}
+            {% if relacionadas %}
+            <p class="text-xs font-bold text-slate-500 uppercase mt-4 mb-1">Ligadas</p>
+            <ul class="text-sm">{% for r in relacionadas %}<li><a href="{{ url_for('desviaciones.detalle', desviacion_id=r.id) }}" class="font-bold text-[#0e6ba8] hover:underline">{{ r.folio }}</a> {{ r.titulo }} <span class="text-xs text-slate-400">· {{ r.motivo }}</span></li>{% endfor %}</ul>
+            {% endif %}
+        </div>
+
+        {% if puede_investigar %}
+        <div class="mt-6 border-t border-slate-100 pt-4">
+            {% if faltan_envio %}
+            <p class="text-sm font-bold text-slate-600 mb-2">Para enviar a aprobación falta:</p>
+            <ul class="text-sm text-amber-700 list-disc pl-5 mb-2">{% for f in faltan_envio %}<li>{{ f }}</li>{% endfor %}</ul>
+            {% else %}
+            <form action="{{ url_for('desviaciones.enviar', desviacion_id=d.id) }}" method="POST" class="flex flex-col gap-3">
+                {{ campo_firma('Realizó', numero=yo, id='f-enviar', titulo='Firma de quien investigó') }}
+                <div class="flex justify-end">{{ boton('Enviar a aprobación', 'ri-send-plane-line') }}</div>
+            </form>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% if d.estatus == 'POR_APROBAR' %}
+        <div class="mt-6 border-t border-slate-100 pt-4">
+            {% if gestor and (not firmas.investigo or firmas.investigo.numero_empleado != yo) %}
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <form action="{{ url_for('desviaciones.aprobar', desviacion_id=d.id) }}" method="POST" class="flex flex-col gap-3">
+                    <p class="font-bold text-[#1d1d1f]">Aprobar la investigación y las acciones</p>
+                    {{ campo_firma('Aprobó', numero=yo, id='f-aprobar') }}
+                    <div class="flex justify-end">{{ boton('Aprobar', 'ri-check-double-line', 'verde') }}</div>
+                </form>
+                <form action="{{ url_for('desviaciones.regresar', desviacion_id=d.id) }}" method="POST" class="flex flex-col gap-3">
+                    <p class="font-bold text-[#1d1d1f]">Regresar con comentarios</p>
+                    <textarea name="comentarios" rows="4" required placeholder="Qué le falta" class="{{ clase_input }}"></textarea>
+                    <div class="flex justify-end"><button type="submit" class="px-6 py-3 font-bold rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 flex items-center gap-2"><i class="ri-arrow-go-back-line"></i> Regresar</button></div>
+                </form>
+            </div>
+            {% else %}
+            <p class="text-sm text-slate-500">Espera la aprobación de quien gestiona desviaciones (alguien distinto de quien investigó).</p>
+            {% endif %}
+        </div>
+        {% endif %}
+    </section>
+    {% endif %}
+
+    {# ===================== Acciones (CAPA) ===================== #}
+    {% set puede_agregar = puede_investigar or (d.estatus == 'EN_ACCIONES' and gestor) %}
+    {% if acciones or puede_agregar %}
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6" id="acciones">
+        <h2 class="text-lg font-bold text-[#1d1d1f] mb-4 flex items-center gap-2"><i class="ri-task-line text-[#0e6ba8]"></i> Acciones (CAPA)</h2>
+        {% if acciones %}
+        <div class="flex flex-col gap-3">
+        {% for a in acciones %}
+        <div class="border border-slate-200 rounded-xl p-4 {{ 'opacity-70' if a.estatus == 'CANCELADA' }}">
+            <div class="flex flex-wrap items-start gap-3">
+                <span class="w-8 h-8 rounded-lg bg-[#0e6ba8]/10 text-[#0e6ba8] font-bold flex items-center justify-center shrink-0">{{ a.numero }}</span>
+                <div class="flex-1">
+                    <p class="font-semibold text-[#1d1d1f]">{{ a.descripcion }}</p>
+                    <p class="text-xs text-slate-500 mt-1">{{ 'Correctiva' if a.tipo == 'CORRECTIVA' else 'Preventiva' }} · {{ a.responsable_nombre or a.responsable }} · compromiso <span class="{{ 'text-rose-600 font-bold' if a.estatus == 'PENDIENTE' and a.fecha_compromiso < hoy }}">{{ a.fecha_compromiso }}</span>
+                    {% if a.eficacia_fecha %} · revisar eficacia el {{ a.eficacia_fecha }} ({{ a.eficacia_criterio }}){% endif %}</p>
+                </div>
+                {{ chip_accion(a, hoy) }}
+            </div>
+            {% if a.capacitacion %}
+            <div class="mt-3 bg-slate-50 rounded-lg p-3 text-sm">
+                <p class="text-xs font-bold text-slate-500 uppercase mb-1">Capacitación: {{ a.curso_nombre }} · {{ a.capacitacion.tomadas }} de {{ a.capacitacion.total }}</p>
+                <div class="flex flex-wrap gap-2">{% for p in a.personas %}<span class="px-2 py-1 rounded-md text-xs font-semibold {{ 'bg-emerald-50 text-emerald-600' if p.tomado else 'bg-white text-slate-500 border border-slate-200' }}">{{ p.nombre or p.numero_empleado }}{% if p.tomado %} · {{ p.fecha }}{% endif %}</span>{% endfor %}</div>
+            </div>
+            {% endif %}
+            {% if a.como_se_hizo %}<p class="mt-3 text-sm"><strong>Cómo se hizo:</strong> {{ a.como_se_hizo }}</p>{% endif %}
+            {% if a.evidencias %}<p class="mt-1 text-sm flex flex-wrap gap-3">{% for e in a.evidencias %}<a href="/archivo/{{ e.id }}" hx-boost="false" target="_blank" class="text-[#0e6ba8] hover:underline"><i class="ri-attachment-2"></i> {{ e.nombre_original }}</a>{% endfor %}</p>{% endif %}
+            <div class="mt-2 flex flex-wrap gap-4 text-xs">
+                {% if a.hecha_nombre %}<span class="text-emerald-700"><i class="ri-quill-pen-line"></i> Realizó: {{ a.hecha_nombre }} · {{ a.hecha_ts[:16] }}</span>{% endif %}
+                {% if a.verifico_nombre %}<span class="text-emerald-700"><i class="ri-quill-pen-line"></i> Verificó: {{ a.verifico_nombre }} · {{ a.verifico_ts[:16] }}</span>{% endif %}
+                {% if a.eficaz is not none %}<span class="{{ 'text-emerald-700' if a.eficaz else 'text-rose-600' }}"><i class="ri-quill-pen-line"></i> Eficacia: {{ 'funcionó' if a.eficaz else 'no funcionó' }} ({{ a.eficacia_comentario }}) · {{ a.eficacia_nombre }}</span>{% endif %}
+                {% if a.estatus == 'CANCELADA' %}<span class="text-slate-500">Cancelada: {{ a.motivo_cancelacion }}</span>{% endif %}
+            </div>
+
+            {% if abierta and d.estatus != 'REPORTADA' %}
+            <div class="mt-3 flex flex-wrap gap-2">
+                {% if a.estatus == 'PENDIENTE' and a.responsable == yo %}
+                <details class="w-full"><summary class="inline-flex px-3 py-1.5 rounded-lg bg-[#0e6ba8] text-white text-xs font-bold">Marcar hecha</summary>
+                    <form action="{{ url_for('desviaciones.marcar_hecha', accion_id=a.id) }}" method="POST" enctype="multipart/form-data" class="flex flex-col gap-3 mt-3">
+                        <div>{{ etiqueta('Cómo se hizo') }}<textarea name="como_se_hizo" rows="2" required class="{{ clase_input }}"></textarea></div>
+                        <div>{{ etiqueta('Evidencia (foto o PDF)', opcional=True) }}<input type="file" name="evidencia" multiple accept=".pdf,.jpg,.jpeg,.png" class="text-sm"></div>
+                        {{ campo_firma('Realizó', numero=yo, id='f-hecha-' ~ a.id) }}
+                        <div class="flex justify-end">{{ boton('Marcar hecha') }}</div>
+                    </form>
+                </details>
+                {% endif %}
+                {% if es_calidad and a.responsable != yo and (a.estatus == 'HECHA' or (a.estatus == 'PENDIENTE' and a.capacitacion and a.capacitacion.completa)) %}
+                <details class="w-full"><summary class="inline-flex px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-bold">Verificar</summary>
+                    <form action="{{ url_for('desviaciones.verificar', accion_id=a.id) }}" method="POST" class="flex flex-col gap-3 mt-3">
+                        <div>{{ etiqueta('Comentario', opcional=True) }}<input name="comentario" class="{{ clase_input }}"></div>
+                        {{ campo_firma('Verificó', numero=yo, id='f-ver-' ~ a.id) }}
+                        <div class="flex justify-end">{{ boton('Verificar', 'ri-check-double-line', 'verde') }}</div>
+                    </form>
+                </details>
+                {% endif %}
+                {% if gestor and a.estatus == 'PENDIENTE' %}
+                <details class="w-full"><summary class="inline-flex px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 text-xs font-bold">Cambiar fecha o responsable</summary>
+                    <form action="{{ url_for('desviaciones.reprogramar', accion_id=a.id) }}" method="POST" class="flex flex-col gap-3 mt-3">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>{{ etiqueta('Fecha compromiso') }}<input type="date" name="fecha_compromiso" value="{{ a.fecha_compromiso }}" min="{{ hoy }}" class="{{ clase_input }}"></div>
+                            <div>{{ etiqueta('Responsable') }}<select name="responsable" class="{{ clase_input }}">{% for u in usuarios %}<option value="{{ u.numero_empleado }}" {{ 'selected' if u.numero_empleado == a.responsable }}>{{ u.nombre }}</option>{% endfor %}</select></div>
+                        </div>
+                        <div>{{ etiqueta('Motivo') }}<input name="motivo" required class="{{ clase_input }}"></div>
+                        {{ campo_firma('Autorizó', numero=yo, id='f-rep-' ~ a.id) }}
+                        <div class="flex justify-end">{{ boton('Guardar cambio', 'ri-calendar-event-line') }}</div>
+                    </form>
+                </details>
+                {% endif %}
+                {% if gestor and a.estatus in ('PENDIENTE', 'HECHA') %}
+                <details class="w-full"><summary class="inline-flex px-3 py-1.5 rounded-lg border border-rose-200 text-rose-500 text-xs font-bold">Cancelar acción</summary>
+                    <form action="{{ url_for('desviaciones.cancelar_accion', accion_id=a.id) }}" method="POST" class="flex flex-col gap-3 mt-3">
+                        <div>{{ etiqueta('Motivo') }}<input name="motivo" required class="{{ clase_input }}"></div>
+                        {{ campo_firma('Anuló', numero=yo, id='f-can-' ~ a.id) }}
+                        <div class="flex justify-end">{{ boton('Cancelar acción', 'ri-close-line', 'rojo') }}</div>
+                    </form>
+                </details>
+                {% endif %}
+            </div>
+            {% endif %}
+            {% if es_calidad and a.estatus == 'VERIFICADA' and a.eficacia_fecha and a.eficaz is none and a.eficacia_fecha <= hoy and d.estatus != 'ANULADA' %}
+            <details class="mt-3"><summary class="inline-flex px-3 py-1.5 rounded-lg bg-amber-500 text-white text-xs font-bold">Revisar eficacia</summary>
+                <form action="{{ url_for('desviaciones.eficacia', accion_id=a.id) }}" method="POST" class="flex flex-col gap-3 mt-3">
+                    <p class="text-sm">Criterio: <strong>{{ a.eficacia_criterio }}</strong></p>
+                    <div class="flex gap-4 text-sm font-semibold"><label class="flex items-center gap-2"><input type="radio" name="eficaz" value="1" required> Funcionó</label><label class="flex items-center gap-2"><input type="radio" name="eficaz" value="0"> No funcionó (abre otra desviación ligada)</label></div>
+                    <div>{{ etiqueta('Qué se revisó') }}<textarea name="comentario" rows="2" required class="{{ clase_input }}"></textarea></div>
+                    {{ campo_firma('Verificó', numero=yo, id='f-ef-' ~ a.id) }}
+                    <div class="flex justify-end">{{ boton('Guardar revisión') }}</div>
+                </form>
+            </details>
+            {% endif %}
+        </div>
+        {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if puede_agregar %}
+        <details class="mt-4 border-t border-slate-100 pt-4" {{ 'open' if not acciones }}>
+            <summary class="text-sm font-bold text-[#0e6ba8]"><i class="ri-add-line"></i> Agregar acción</summary>
+            <form action="{{ url_for('desviaciones.agregar_accion', desviacion_id=d.id) }}" method="POST" class="flex flex-col gap-4 mt-4" id="form-accion">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>{{ etiqueta('Tipo') }}<select name="tipo" class="{{ clase_input }}"><option value="CORRECTIVA">Correctiva</option><option value="PREVENTIVA">Preventiva</option></select></div>
+                    <div class="md:col-span-3">{{ etiqueta('Qué se va a hacer') }}<input name="descripcion" required class="{{ clase_input }}"></div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>{{ etiqueta('Responsable') }}<select name="responsable" required class="{{ clase_input }}"><option value="">Elige…</option>{% for u in usuarios %}<option value="{{ u.numero_empleado }}">{{ u.nombre }}</option>{% endfor %}</select></div>
+                    <div>{{ etiqueta('Fecha compromiso') }}<input type="date" name="fecha_compromiso" min="{{ hoy }}" required class="{{ clase_input }}"></div>
+                </div>
+                <label class="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" name="es_capacitacion" value="1" id="es-cap" class="w-4 h-4"> Es una capacitación (se cumple sola cuando RH la registra)</label>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 hidden" id="cap-campos">
+                    <div>{{ etiqueta('Curso') }}<select name="curso_id" class="{{ clase_input }}">{% for c in cursos %}<option value="{{ c.id }}">{{ c.nombre }}</option>{% endfor %}</select></div>
+                    <div>{{ etiqueta('A quién') }}<select name="personas" multiple size="5" class="{{ clase_input }}">{% for e in empleados %}<option value="{{ e.numero_empleado }}">{{ e.nombre_completo }}</option>{% endfor %}</select></div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="md:col-span-2">{{ etiqueta('Cómo se revisa que funcionó', opcional=True) }}<input name="eficacia_criterio" placeholder="Ej. no se repite en 3 meses" class="{{ clase_input }}"></div>
+                    <div>{{ etiqueta('Cuándo revisarlo', opcional=True) }}<input type="date" name="eficacia_fecha" class="{{ clase_input }}"><p class="text-xs text-slate-400 mt-1">Si lo dejas vacío: {{ sv.parametro_int('desviaciones.dias_eficacia') }} días después del compromiso.</p></div>
+                </div>
+                <div class="flex justify-end">{{ boton('Agregar acción', 'ri-add-line') }}</div>
+            </form>
+        </details>
+        {% endif %}
+    </section>
+    {% endif %}
+
+    {# ===================== Respuesta al cliente y cierre ===================== #}
+    {% if d.tipo == 'QUEJA' or d.estatus in ('EN_ACCIONES', 'CERRADA') %}
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6" id="cierre">
+        <h2 class="text-lg font-bold text-[#1d1d1f] mb-4 flex items-center gap-2"><i class="ri-lock-line text-[#0e6ba8]"></i> Cierre</h2>
+        {% if d.tipo == 'QUEJA' %}
+        <div class="mb-4">
+            <p class="text-xs font-bold text-slate-500 uppercase mb-1">Respuesta al cliente</p>
+            {% if d.respuesta_cliente %}<p class="text-sm">{{ d.respuesta_cliente }} <span class="text-slate-400">· {{ d.fecha_respuesta }}</span></p>{% endif %}
+            {% if abierta and (gestor or d.responsable == yo) %}
+            <form action="{{ url_for('desviaciones.respuesta', desviacion_id=d.id) }}" method="POST" class="flex flex-wrap items-end gap-2 mt-2">
+                <textarea name="respuesta_cliente" rows="2" required placeholder="Lo que se le respondió al cliente" class="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none">{{ d.respuesta_cliente or '' }}</textarea>
+                <input type="date" name="fecha_respuesta" value="{{ d.fecha_respuesta or hoy }}" max="{{ hoy }}" class="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl">
+                <button type="submit" class="h-12 px-4 rounded-xl border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50">Guardar respuesta</button>
+            </form>
+            {% endif %}
+        </div>
+        {% endif %}
+        {% if d.estatus == 'EN_ACCIONES' %}
+            {% if faltan_cierre %}
+            <p class="text-sm font-bold text-slate-600 mb-2">Falta para cerrar:</p>
+            <ul class="text-sm text-amber-700 list-disc pl-5">{% for f in faltan_cierre %}<li>{{ f }}</li>{% endfor %}</ul>
+            {% elif gestor %}
+            <form action="{{ url_for('desviaciones.cerrar', desviacion_id=d.id) }}" method="POST" class="flex flex-col gap-3">
+                <p class="text-sm text-emerald-700 font-semibold"><i class="ri-check-line"></i> Todo está hecho. Las revisiones de eficacia pueden quedar para después del cierre.</p>
+                <div>{{ etiqueta('Conclusión') }}<textarea name="conclusion" rows="3" required class="{{ clase_input }}"></textarea></div>
+                {{ campo_firma('Cerró', numero=yo, id='f-cerrar') }}
+                <div class="flex justify-end">{{ boton('Cerrar desviación', 'ri-lock-line', 'verde') }}</div>
+            </form>
+            {% else %}
+            <p class="text-sm text-slate-500">Lista para que quien gestiona desviaciones la cierre.</p>
+            {% endif %}
+        {% elif d.estatus == 'CERRADA' %}
+        <p class="text-sm"><strong>Conclusión:</strong> {{ d.conclusion }}</p>
+        <p class="text-sm mt-2">{{ firmado(firmas.cerro) }}</p>
+        {% endif %}
+    </section>
+    {% endif %}
+
+    {# ===================== Historial ===================== #}
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6" id="historial">
+        <h2 class="text-lg font-bold text-[#1d1d1f] mb-4 flex items-center gap-2"><i class="ri-history-line text-[#0e6ba8]"></i> Historial</h2>
+        <ul class="divide-y divide-slate-100 text-sm">
+            {% for h in historial %}
+            <li class="py-2 flex flex-wrap gap-x-3">
+                <span class="text-xs text-slate-400 w-32 shrink-0">{{ h.ts[:16] }}</span>
+                <span class="flex-1">
+                    {% if h.campo == 'comentario' %}<strong>Comentario</strong>{% if h.motivo %} ({{ h.motivo }}){% endif %}: {{ h.valor_nuevo }}
+                    {% else %}<strong>{{ h.campo|replace('_', ' ')|capitalize }}{% if h.accion_numero %} (acción {{ h.accion_numero }}){% endif %}</strong>:
+                        {% if h.valor_anterior %}{{ sv.NOMBRE_ESTATUS.get(h.valor_anterior, h.valor_anterior) }} → {% endif %}{{ sv.NOMBRE_ESTATUS.get(h.valor_nuevo, h.valor_nuevo) }}
+                        {% if h.motivo %}<span class="text-slate-500">· {{ h.motivo }}</span>{% endif %}{% endif %}
+                </span>
+                <span class="text-xs text-slate-500">{{ h.usuario }}{% if h.firma_nombre %} · firmó {{ h.firma_nombre }}{% endif %}</span>
+            </li>
+            {% endfor %}
+        </ul>
+        <form action="{{ url_for('desviaciones.comentario', desviacion_id=d.id) }}" method="POST" enctype="multipart/form-data" class="flex flex-wrap items-end gap-2 mt-4">
+            <div class="flex-1">{{ etiqueta('Agregar un comentario') }}<input name="comentario" required placeholder="Lo reportado no se edita: se complementa aquí" class="{{ clase_input }}"></div>
+            <input type="file" name="archivos" multiple accept=".pdf,.jpg,.jpeg,.png" class="text-sm">
+            <button type="submit" class="h-12 px-4 rounded-xl border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50 flex items-center gap-2"><i class="ri-chat-1-line"></i> Comentar</button>
+        </form>
+    </section>
+    </div>
+</div>
+
+{% if abierta and gestor %}
+<div id="modal-anular" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-8 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-xl font-bold text-[#1d1d1f]">Anular {{ d.folio }}</h3>
+            <button type="button" onclick="document.getElementById('modal-anular').classList.add('hidden')" class="text-slate-400 hover:text-slate-700"><i class="ri-close-line text-2xl"></i></button>
+        </div>
+        <form action="{{ url_for('desviaciones.anular', desviacion_id=d.id) }}" method="POST" class="flex flex-col gap-4">
+            <p class="text-sm text-slate-500">Reportada por error, duplicada o no procede. Nada se borra y los lotes retenidos siguen retenidos hasta que Calidad los dictamine.</p>
+            <div>{{ etiqueta('Motivo') }}<textarea name="motivo" rows="2" required class="{{ clase_input }}"></textarea></div>
+            {{ campo_firma('Anuló', numero=yo, id='f-anular') }}
+            <div class="flex justify-end">{{ boton('Anular', 'ri-forbid-line', 'rojo') }}</div>
+        </form>
+    </div>
+</div>
+{% endif %}
+<script>
+(function () {
+    var vence = document.getElementById('vence');
+    document.querySelectorAll('input[name="clasificacion"][data-vence]').forEach(function (r) {
+        r.addEventListener('change', function () { if (vence) vence.value = r.getAttribute('data-vence'); });
+    });
+    var cap = document.getElementById('es-cap');
+    if (cap) cap.addEventListener('change', function () { document.getElementById('cap-campos').classList.toggle('hidden', !cap.checked); });
+})();
+</script>
+{% endblock %}

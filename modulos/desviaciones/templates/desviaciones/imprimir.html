@@ -1,0 +1,71 @@
+{% extends 'nucleo/_impresion.html' %}
+{% block hoja_titulo %}{{ sv.NOMBRE_TIPO[d.tipo] }}{% endblock %}
+{% block hoja_codigo %}{{ codigo_formato or 'Desviaciones y CAPA' }}{% endblock %}
+{% block hoja_folio %}{{ d.folio }}{% endblock %}
+{% block hoja_estilos %}
+<style>
+    h2 { font-size: 11.5pt; margin: 14px 0 4px; color: #0e6ba8; }
+    p { margin: 3px 0; }
+    .gris { color: #6e6e73; font-size: 9pt; }
+</style>
+{% endblock %}
+
+{% block hoja_cuerpo %}
+<table>
+    <tr><th>Título</th><td colspan="3">{{ d.titulo }}</td></tr>
+    <tr><th>Estatus</th><td>{{ sv.NOMBRE_ESTATUS[d.estatus] }}</td><th>Clasificación</th><td>{{ sv.NOMBRE_CLASIFICACION.get(d.clasificacion, 'Sin clasificar') }}</td></tr>
+    <tr><th>Área</th><td>{{ d.area }}</td><th>Detectó</th><td>{{ d.detecto or '—' }}</td></tr>
+    <tr><th>Ocurrió</th><td>{{ d.fecha_ocurrio or '—' }}</td><th>Se detectó</th><td>{{ d.fecha_detecto }}</td></tr>
+    <tr><th>Origen</th><td>{{ d.origen_texto or '—' }}</td><th>Documento</th><td>{{ d.documento_folio or '—' }}</td></tr>
+    {% if d.material_codigo or d.equipo_codigo or d.proveedor_nombre %}
+    <tr><th>Material</th><td>{{ (d.material_codigo ~ ' · ' ~ d.material_nombre) if d.material_codigo else '—' }}</td><th>Equipo / proveedor</th><td>{{ d.equipo_codigo or '' }} {{ d.equipo_nombre or '' }} {{ d.proveedor_nombre or '' }}</td></tr>
+    {% endif %}
+    <tr><th>Responsable</th><td>{{ d.responsable_nombre or '—' }}</td><th>Fecha límite</th><td>{{ d.vence_investigacion or '—' }}</td></tr>
+</table>
+
+<h2>Qué pasó</h2>
+<p style="white-space: pre-line">{{ d.descripcion }}</p>
+{% if d.correccion_inmediata %}<p><strong>Corrección inmediata:</strong> {{ d.correccion_inmediata }}</p>{% endif %}
+{% if d.tipo == 'QUEJA' %}
+<p><strong>Cliente:</strong> {{ d.cliente }} {{ d.cliente_contacto or '' }} · <strong>Cantidad:</strong> {{ d.cantidad_reclamada or '—' }} · <strong>Posible reacción adversa:</strong> {{ 'Sí' if d.posible_reaccion_adversa else 'No' }}</p>
+<p><strong>Respuesta al cliente:</strong> {{ d.respuesta_cliente or '—' }} {{ d.fecha_respuesta or '' }}</p>
+{% endif %}
+{% if d.tipo == 'HALLAZGO' %}<p><strong>Auditoría:</strong> {{ d.auditoria }} · <strong>Requisito:</strong> {{ d.requisito or '—' }}</p>{% endif %}
+
+<h2>Lotes afectados</h2>
+{% if lotes %}
+<table>
+    <tr><th>Lote</th><th>Material</th><th>Estatus</th><th>Impacto</th><th>Justificación</th></tr>
+    {% for l in lotes %}<tr><td>{{ l.numero_lote }}{% if l.retenido %} (retenido){% endif %}</td><td>{{ l.material_codigo }} · {{ l.material_nombre }}</td><td>{{ l.estatus }}</td><td>{{ sv.NOMBRE_IMPACTO[l.impacto] }}</td><td>{{ l.justificacion or '' }}</td></tr>{% endfor %}
+</table>
+{% else %}<p class="gris">Sin lotes ligados.</p>{% endif %}
+
+<h2>Investigación</h2>
+{% if d.porques %}<p><strong>5 porqués:</strong></p><ol>{% for p in d.porques.splitlines() if p.strip() %}<li>{{ p }}</li>{% endfor %}</ol>{% endif %}
+{% for campo, nombre in sv.SEIS_M if d[campo] %}<p><strong>{{ nombre }}:</strong> {{ d[campo] }}</p>{% endfor %}
+<p><strong>Causa raíz:</strong> {{ d.causa_raiz or '—' }}{% if d.categoria_causa %} ({{ d.categoria_causa }}){% endif %}</p>
+{% if d.sin_acciones_motivo %}<p><strong>Sin acciones porque:</strong> {{ d.sin_acciones_motivo }}</p>{% endif %}
+
+<h2>Acciones (CAPA)</h2>
+{% if acciones %}
+<table>
+    <tr><th>#</th><th>Tipo</th><th>Acción</th><th>Responsable</th><th>Compromiso</th><th>Estatus</th><th>Realizó / verificó</th><th>Eficacia</th></tr>
+    {% for a in acciones %}
+    <tr><td>{{ a.numero }}</td><td>{{ 'Correctiva' if a.tipo == 'CORRECTIVA' else 'Preventiva' }}</td><td>{{ a.descripcion }}{% if a.como_se_hizo %}<br><span class="gris">{{ a.como_se_hizo }}</span>{% endif %}</td>
+        <td>{{ a.responsable_nombre }}</td><td>{{ a.fecha_compromiso }}</td><td>{{ a.estatus|capitalize }}</td>
+        <td>{{ a.hecha_nombre or '' }}{% if a.hecha_ts %} {{ a.hecha_ts[:10] }}{% endif %}{% if a.verifico_nombre %}<br>{{ a.verifico_nombre }} {{ a.verifico_ts[:10] }}{% endif %}</td>
+        <td>{% if a.eficaz is not none %}{{ 'Funcionó' if a.eficaz else 'No funcionó' }}{% elif a.eficacia_fecha %}Revisar {{ a.eficacia_fecha }}{% else %}—{% endif %}</td></tr>
+    {% endfor %}
+</table>
+{% else %}<p class="gris">Sin acciones.</p>{% endif %}
+
+{% if d.conclusion %}<h2>Conclusión</h2><p>{{ d.conclusion }}</p>{% endif %}
+{% if d.estatus == 'ANULADA' %}<h2>Anulada</h2><p>{{ d.motivo_anulacion }}</p>{% endif %}
+<p class="gris" style="margin-top: 12px">Impreso el {{ impreso }}.</p>
+{% endblock %}
+
+{% block hoja_firmas %}
+{% for clave, titulo in [('reporto', 'Reportó'), ('clasifico', 'Clasificó'), ('investigo', 'Investigó'), ('aprobo', 'Aprobó'), ('cerro', 'Cerró')] %}
+<div>{% set f = firmas.get(clave) %}{% if f %}<strong>{{ f.nombre }}</strong><br>{{ f.ts[:16] }}<br>{% else %}<br><br>{% endif %}{{ titulo }}</div>
+{% endfor %}
+{% endblock %}
