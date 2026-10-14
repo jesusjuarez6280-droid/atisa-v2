@@ -1,0 +1,53 @@
+{% extends _layout|default("base.html") %}
+{% from 'equipos/_comun.html' import chip_cal, vence, encabezado, boton, si_no with context %}
+{% block title %}Calibraciones | Equipos | ERP Atisa{% endblock %}
+{% block content %}
+{% include 'equipos/_estilos.html' %}
+<div class="p-10">
+    {% call encabezado('Calibraciones', 'Por dictaminar, vencidas y programa de los próximos 90 días', 'ri-scales-3-line') %}
+        {{ boton(url_for('equipos.lista'), 'Equipos', 'ri-arrow-left-line') }}
+        {{ boton(url_for('equipos.programa_anual'), 'Programa anual', 'ri-calendar-2-line') }}
+    {% endcall %}
+
+    {% if por_dictaminar %}
+    <section class="bg-white rounded-2xl shadow-sm border border-amber-100 mb-6 overflow-hidden">
+        <h2 class="px-6 py-4 border-b border-slate-100 font-bold text-[#1d1d1f]">Por dictaminar <span class="text-amber-600">{{ por_dictaminar|length }}</span></h2>
+        <ul class="divide-y divide-slate-100">{% for c in por_dictaminar %}
+            <li><a href="{{ url_for('equipos.calibracion', calibracion_id=c.id) }}" class="flex items-center gap-4 px-6 py-3 hover:bg-slate-50 text-sm">
+                <b class="text-[#0e6ba8]">{{ c.folio }}</b><span>{{ c.codigo }} · {{ c.equipo_nombre }}</span><span class="text-slate-500">{{ c.fecha }}</span>
+                {% if not c.conforme_encontrado %}<span class="text-rose-600 font-semibold">Llegó fuera de tolerancia</span>{% endif %}
+                <i class="ri-arrow-right-s-line ml-auto text-slate-400"></i></a></li>{% endfor %}</ul>
+    </section>
+    {% endif %}
+
+    {% for titulo, lista, vacio in [('Vencidas o sin calibrar', vencidas, 'Ninguna vencida.'), ('Próximos 90 días', proximas, 'Nada en los próximos 90 días.')] %}
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200 mb-6 overflow-hidden">
+        <h2 class="px-6 py-4 border-b border-slate-100 font-bold text-[#1d1d1f]">{{ titulo }} <span class="text-slate-400">{{ lista|length }}</span></h2>
+        {% if lista %}
+        <table class="w-full text-sm">
+            <thead class="bg-slate-50 text-xs text-slate-500 uppercase"><tr><th class="text-left px-6 py-3">Equipo</th><th class="text-left px-6 py-3">Vence</th><th class="text-left px-6 py-3">Cada</th><th class="text-left px-6 py-3">Modalidad</th><th class="text-left px-6 py-3"></th></tr></thead>
+            <tbody class="divide-y divide-slate-100">{% for e in lista %}
+            <tr class="{{ 'bg-sky-50' if e.vence_calibracion and e.vence_calibracion[:7] == mes }}"><td class="px-6 py-3"><a href="{{ url_for('equipos.ficha', equipo_id=e.id) }}" class="font-bold text-[#0e6ba8] hover:underline">{{ e.codigo }}</a> <span class="text-slate-600">{{ e.nombre }}</span></td>
+                <td class="px-6 py-3">{{ vence(e.vence_calibracion, 30, 'Por calibrar') }}</td><td class="px-6 py-3">{{ e.frecuencia_meses }} meses</td>
+                <td class="px-6 py-3">{{ e.modalidad }}{% if e.proveedor_nombre %} · {{ e.proveedor_nombre }}{% endif %}</td>
+                <td class="px-6 py-3 text-right">{% if puede('equipos_operar') %}<a href="{{ url_for('equipos.calibracion_nueva', equipo_id=e.id) }}" class="text-sm font-bold text-[#0e6ba8] hover:underline">Registrar</a>{% endif %}</td></tr>
+            {% endfor %}</tbody>
+        </table>
+        {% else %}<p class="p-6 text-sm text-slate-400">{{ vacio }}</p>{% endif %}
+    </section>
+    {% endfor %}
+
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <h2 class="px-6 py-4 border-b border-slate-100 font-bold text-[#1d1d1f]">Últimas dictaminadas</h2>
+        {% if recientes %}
+        <table class="w-full text-sm">
+            <thead class="bg-slate-50 text-xs text-slate-500 uppercase"><tr><th class="text-left px-6 py-3">Folio</th><th class="text-left px-6 py-3">Equipo</th><th class="text-left px-6 py-3">Fecha</th><th class="text-left px-6 py-3">Encontrado</th><th class="text-left px-6 py-3">Dictamen</th><th class="text-left px-6 py-3">Próxima</th></tr></thead>
+            <tbody class="divide-y divide-slate-100">{% for c in recientes %}
+            <tr><td class="px-6 py-3"><a href="{{ url_for('equipos.calibracion', calibracion_id=c.id) }}" class="font-bold text-[#0e6ba8] hover:underline">{{ c.folio }}</a></td><td class="px-6 py-3">{{ c.codigo }} · {{ c.equipo_nombre }}</td>
+                <td class="px-6 py-3">{{ c.fecha }}</td><td class="px-6 py-3">{{ si_no(c.conforme_encontrado) }}</td><td class="px-6 py-3">{{ chip_cal(c.estatus) }}</td><td class="px-6 py-3">{{ c.proxima or '—' }}</td></tr>
+            {% endfor %}</tbody>
+        </table>
+        {% else %}<p class="p-6 text-sm text-slate-400">Aún no hay calibraciones dictaminadas.</p>{% endif %}
+    </section>
+</div>
+{% endblock %}

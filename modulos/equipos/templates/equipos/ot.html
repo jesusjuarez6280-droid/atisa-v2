@@ -1,0 +1,68 @@
+{% extends _layout|default("base.html") %}
+{% from 'equipos/_comun.html' import chip_cal, chip_estatus, encabezado, boton, si_no, csrf with context %}
+{% from 'nucleo/_firma.html' import campo_firma, firmado %}
+{% block title %}{{ o.folio }} | Equipos | ERP Atisa{% endblock %}
+{% set ic = 'w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none text-sm' %}
+{% set lc = 'text-xs font-bold text-slate-500 uppercase mb-1 block' %}
+{% block content %}
+{% include 'equipos/_estilos.html' %}
+<div class="p-10">
+    {% call encabezado('Orden de trabajo ' ~ o.folio, o.codigo ~ ' · ' ~ o.equipo_nombre, 'ri-hammer-line') %}
+        {{ boton(url_for('equipos.mantenimiento_lista', tab='abiertas'), 'Mantenimiento', 'ri-arrow-left-line') }}
+        {{ boton(url_for('equipos.ficha', equipo_id=o.equipo_id), o.codigo, 'ri-tools-line') }}
+        <a href="{{ url_for('equipos.ot', ot_id=o.id, imprimir=1) }}" hx-boost="false" target="_blank" class="flex items-center gap-2 h-11 px-4 rounded-xl text-sm font-bold border border-slate-200 text-slate-600 bg-white hover:bg-slate-50"><i class="ri-printer-line"></i> Imprimir</a>
+    {% endcall %}
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+            <div class="flex flex-wrap gap-2 mb-4">{{ chip_cal(o.estatus) }} <span class="px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 text-slate-600">{{ o.tipo|capitalize }}</span> {{ chip_estatus(o.equipo_estatus) }}</div>
+            <dl class="text-sm space-y-3">
+                <div><dt class="text-xs font-bold text-slate-500 uppercase">{{ 'Falla reportada' if o.tipo == 'CORRECTIVO' else 'Tareas del plan' }}</dt><dd class="whitespace-pre-line">{{ o.descripcion }}</dd></div>
+                {% if o.tipo == 'CORRECTIVO' %}<div><dt class="text-xs font-bold text-slate-500 uppercase">¿Se podía seguir usando?</dt><dd>{{ 'Sí' if o.se_puede_usar else 'No' }}</dd></div>{% endif %}
+                <div><dt class="text-xs font-bold text-slate-500 uppercase">Programada</dt><dd>{{ o.fecha_programada or '—' }}</dd></div>
+                <div><dt class="text-xs font-bold text-slate-500 uppercase">Taller externo</dt><dd>{{ o.proveedor_nombre or '—' }}</dd></div>
+                {% if o.estatus == 'TERMINADA' %}
+                <div><dt class="text-xs font-bold text-slate-500 uppercase">Trabajo</dt><dd>{{ o.inicio }} a {{ o.fin }}{% if o.horas is not none %} · {{ o.horas }} h{% endif %}</dd></div>
+                {% if hechas %}<div><dt class="text-xs font-bold text-slate-500 uppercase">Tareas</dt><dd>{% for t in hechas %}<p>{{ si_no(t.hecha) }} {{ t.tarea }}{% if t.nota %} <span class="text-slate-500">· {{ t.nota }}</span>{% endif %}</p>{% endfor %}</dd></div>{% endif %}
+                {% if o.trabajo_realizado %}<div><dt class="text-xs font-bold text-slate-500 uppercase">Trabajo realizado</dt><dd class="whitespace-pre-line">{{ o.trabajo_realizado }}</dd></div>{% endif %}
+                {% if o.refacciones %}<div><dt class="text-xs font-bold text-slate-500 uppercase">Refacciones</dt><dd>{{ o.refacciones }}</dd></div>{% endif %}
+                <div><dt class="text-xs font-bold text-slate-500 uppercase">¿Pudo afectar la medición?</dt><dd>{{ 'Sí: pide calibración o verificación antes de usarlo' if o.afecta_medicion else 'No' }}</dd></div>
+                {% endif %}
+                {% if o.motivo_cancelacion %}<div><dt class="text-xs font-bold text-slate-500 uppercase">Cancelada</dt><dd>{{ o.motivo_cancelacion }}</dd></div>{% endif %}
+            </dl>
+            {% if archivos %}<div class="flex flex-wrap gap-2 mt-4">{% for a in archivos %}<a href="/archivo/{{ a.id }}" hx-boost="false" target="_blank" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-sm text-slate-600 hover:bg-slate-50"><i class="ri-attachment-2"></i> {{ a.descripcion }}</a>{% endfor %}</div>{% endif %}
+            <div class="flex flex-col gap-1 mt-6">{% if reporto %}<span class="text-xs text-slate-500">Reportó:</span>{{ firmado(reporto) }}{% endif %}{% if realizo %}<span class="text-xs text-slate-500 mt-2">Hizo el trabajo:</span>{{ firmado(realizo) }}{% endif %}</div>
+        </section>
+
+        {% if o.estatus == 'ABIERTA' and puede('equipos_operar') %}
+        <section class="xl:col-span-2 flex flex-col gap-6">
+            <form action="{{ url_for('equipos.terminar_ot', ot_id=o.id) }}" method="POST" enctype="multipart/form-data" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col gap-4">{{ csrf() }}
+                <h2 class="font-bold text-[#1d1d1f]">Terminar orden</h2>
+                {% if tareas %}
+                <div class="flex flex-col gap-2">{% for t in tareas %}
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 items-center"><label class="flex items-center gap-2 text-sm"><input type="checkbox" name="tarea_{{ loop.index0 }}" value="1"> {{ t }}</label>
+                    <input name="nota_{{ loop.index0 }}" placeholder="Si no se hizo, ¿por qué?" class="{{ ic }}"></div>{% endfor %}</div>
+                {% endif %}
+                <div><label class="{{ lc }}">Trabajo realizado{{ ' *' if o.tipo == 'CORRECTIVO' }}</label><textarea name="trabajo_realizado" rows="3" {{ 'required' if o.tipo == 'CORRECTIVO' }} class="{{ ic }}"></textarea></div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div><label class="{{ lc }}">Inicio</label><input type="date" name="inicio" max="{{ hoy }}" value="{{ hoy }}" class="{{ ic }}"></div>
+                    <div><label class="{{ lc }}">Término</label><input type="date" name="fin" max="{{ hoy }}" value="{{ hoy }}" class="{{ ic }}"></div>
+                    <div><label class="{{ lc }}">Horas</label><input name="horas" inputmode="decimal" class="{{ ic }}"></div>
+                    <div><label class="{{ lc }}">Taller externo</label><select name="proveedor_id" class="select-pro w-full"><option value="">—</option>{% for p in proveedores %}<option value="{{ p.id }}" {{ 'selected' if o.proveedor_id == p.id }}>{{ p.nombre }}</option>{% endfor %}</select></div>
+                </div>
+                <div><label class="{{ lc }}">Refacciones usadas</label><input name="refacciones" class="{{ ic }}"></div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div><label class="{{ lc }}">Reporte del taller (PDF)</label><input type="file" name="reporte" accept=".pdf" class="text-sm"></div>
+                    <div><label class="{{ lc }}">Foto</label><input type="file" name="foto" accept=".jpg,.jpeg,.png" class="text-sm"></div>
+                </div>
+                <label class="flex items-center gap-2 text-sm font-semibold text-[#1d1d1f]"><input type="checkbox" name="afecta_medicion" value="1"> ¿Pudo afectar la medición? (pide calibración o verificación antes de regresarlo a servicio)</label>
+                <div class="max-w-lg">{{ campo_firma('Realizó', numero=session.numero_empleado, id='firma-ot') }}</div>
+                <button type="submit" class="bg-[#0e6ba8] text-white py-3 font-bold rounded-xl hover:bg-[#1d1d1f]">Terminar y firmar</button>
+            </form>
+            <details class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6"><summary class="cursor-pointer text-sm font-bold text-slate-500">Cancelar orden</summary>
+                <form action="{{ url_for('equipos.cancelar_ot', ot_id=o.id) }}" method="POST" class="flex gap-3 mt-3">{{ csrf() }}
+                    <input name="motivo" required placeholder="Motivo" class="{{ ic }}"><button type="submit" class="px-5 rounded-xl bg-slate-600 text-white font-bold hover:bg-[#1d1d1f]">Cancelar</button></form></details>
+        </section>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,16 @@
+{#- Campos del reporte de falla (oficina y tablet). Necesita: elegido, form. -#}
+{% from 'nucleo/_firma.html' import campo_firma %}
+<div>
+    <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">¿Qué pasa? *</label>
+    <textarea name="descripcion" required rows="3" placeholder="Describe la falla" class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none text-lg">{{ form.get('descripcion', '') }}</textarea>
+</div>
+<div>
+    <p class="text-xs font-bold text-slate-500 uppercase mb-2">¿Se puede seguir usando? *</p>
+    <div class="grid grid-cols-2 gap-3">
+        <label class="flex items-center justify-center gap-3 px-4 py-4 rounded-2xl border-2 border-slate-200 text-lg font-bold text-emerald-600 cursor-pointer"><input type="radio" name="se_puede_usar" value="1" required {{ 'checked' if form.get('se_puede_usar') == '1' }}> Sí</label>
+        <label class="flex items-center justify-center gap-3 px-4 py-4 rounded-2xl border-2 border-slate-200 text-lg font-bold text-rose-600 cursor-pointer"><input type="radio" name="se_puede_usar" value="0" required {{ 'checked' if form.get('se_puede_usar') == '0' }}> No: dejarlo fuera de servicio</label>
+    </div>
+</div>
+<div><label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Foto (opcional)</label><input type="file" name="foto" accept=".jpg,.jpeg,.png" capture="environment" class="text-sm"></div>
+{{ campo_firma('Realizó', numero=(session.numero_empleado if oficina else None), id='firma-falla') }}
+<button type="submit" class="w-full bg-[#0e6ba8] text-white py-4 text-lg font-bold rounded-2xl hover:bg-[#1d1d1f]">Reportar falla</button>

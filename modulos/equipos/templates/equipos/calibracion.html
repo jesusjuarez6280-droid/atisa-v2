@@ -1,0 +1,72 @@
+{% extends _layout|default("base.html") %}
+{% from 'equipos/_comun.html' import chip_cal, encabezado, boton, si_no, csrf with context %}
+{% from 'nucleo/_firma.html' import campo_firma, firmado %}
+{% block title %}{{ c.folio }} | Equipos | ERP Atisa{% endblock %}
+{% block content %}
+{% include 'equipos/_estilos.html' %}
+<div class="p-10">
+    {% call encabezado('Calibración ' ~ c.folio, c.codigo ~ ' · ' ~ c.equipo_nombre, 'ri-scales-3-line') %}
+        {{ boton(url_for('equipos.ficha', equipo_id=c.equipo_id), c.codigo, 'ri-arrow-left-line') }}
+        {{ boton(url_for('equipos.calibraciones_lista'), 'Calibraciones', 'ri-list-check') }}
+    {% endcall %}
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 xl:col-span-2">
+            <div class="flex items-center gap-3 mb-4">{{ chip_cal(c.estatus) }}
+                {% if not c.conforme_encontrado %}<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-rose-50 text-rose-600 border border-rose-100">Llegó fuera de tolerancia</span>{% endif %}
+                {% if c.ajustado %}<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 text-slate-600">Se ajustó</span>{% endif %}</div>
+            <dl class="grid grid-cols-2 lg:grid-cols-3 gap-4 text-sm mb-6">
+                <div><dt class="text-xs font-bold text-slate-500 uppercase">Fecha</dt><dd>{{ c.fecha }}</dd></div>
+                <div><dt class="text-xs font-bold text-slate-500 uppercase">Modalidad</dt><dd>{{ c.modalidad }}</dd></div>
+                {% if c.modalidad == 'Externa' %}
+                <div><dt class="text-xs font-bold text-slate-500 uppercase">Laboratorio</dt><dd>{{ c.proveedor_nombre or '—' }}{% if c.proveedor_estatus and c.proveedor_estatus != 'Aprobado' %} <span class="text-amber-600">({{ c.proveedor_estatus }})</span>{% endif %}</dd></div>
+                <div><dt class="text-xs font-bold text-slate-500 uppercase">Acreditación</dt><dd>{{ c.acreditacion or '—' }}</dd></div>
+                <div><dt class="text-xs font-bold text-slate-500 uppercase">Certificado</dt><dd>{{ c.certificado or '—' }}</dd></div>
+                {% else %}
+                <div><dt class="text-xs font-bold text-slate-500 uppercase">Patrones</dt><dd>{{ c.patrones or '—' }}</dd></div>
+                {% endif %}
+                {% if c.proxima %}<div><dt class="text-xs font-bold text-slate-500 uppercase">Próxima</dt><dd class="font-bold">{{ c.proxima }}</dd></div>{% endif %}
+            </dl>
+            <table class="w-full text-sm">
+                <thead class="bg-slate-50 text-xs text-slate-500 uppercase"><tr><th class="text-left px-4 py-2">Nominal</th><th class="text-left px-4 py-2">Tolerancia</th><th class="text-left px-4 py-2">Como se encontró</th><th class="text-left px-4 py-2">Como se dejó</th><th class="text-left px-4 py-2">Incertidumbre</th></tr></thead>
+                <tbody class="divide-y divide-slate-100">{% for p in puntos %}
+                <tr><td class="px-4 py-2">{{ p.nominal }} {{ p.unidad }}</td><td class="px-4 py-2">± {{ p.tolerancia }}</td>
+                    <td class="px-4 py-2 {{ '' if p.conforme_encontrado else 'text-rose-600 font-bold' }}">{{ p.encontrado }} {{ si_no(p.conforme_encontrado) }}</td>
+                    <td class="px-4 py-2 {{ '' if p.conforme_dejado else 'text-rose-600 font-bold' }}">{{ p.dejado }} {{ si_no(p.conforme_dejado) }}</td>
+                    <td class="px-4 py-2">{{ p.incertidumbre if p.incertidumbre is not none else '—' }}</td></tr>{% endfor %}</tbody>
+            </table>
+            {% if c.observaciones %}<p class="text-sm text-slate-600 mt-4 whitespace-pre-line">{{ c.observaciones }}</p>{% endif %}
+            {% if archivos %}<div class="flex flex-wrap gap-2 mt-4">{% for a in archivos %}<a href="/archivo/{{ a.id }}" hx-boost="false" target="_blank" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-sm text-slate-600 hover:bg-slate-50"><i class="ri-file-pdf-2-line"></i> {{ a.descripcion }}</a>{% endfor %}</div>{% endif %}
+            <div class="flex flex-col gap-1 mt-6">{{ firmado(realizo) }}{{ firmado(dictamino) }}</div>
+            {% if c.dictamen_motivo %}<p class="text-sm text-slate-600 mt-2">Dictamen: {{ c.dictamen_motivo }}</p>{% endif %}
+            {% if c.motivo_anulacion %}<p class="text-sm text-slate-600 mt-2">Anulada: {{ c.motivo_anulacion }}</p>{% endif %}
+            {% if impacto %}<a href="{{ url_for('equipos.impacto', impacto_id=impacto.id) }}" class="inline-flex items-center gap-2 mt-4 text-sm font-bold text-rose-600 hover:underline"><i class="ri-error-warning-line"></i> Evaluación de impacto · {{ 'pendiente' if impacto.estatus == 'PENDIENTE' else 'evaluada' }}</a>{% endif %}
+        </section>
+
+        <section class="flex flex-col gap-6">
+        {% if c.estatus == 'POR_DICTAMINAR' %}
+            {% if puede('equipos_operar') and tiene_facultad('dictaminar_equipos') %}
+            <form action="{{ url_for('equipos.dictaminar', calibracion_id=c.id) }}" method="POST" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col gap-4">{{ csrf() }}
+                <h2 class="font-bold text-[#1d1d1f]">Dictamen</h2>
+                <div class="grid grid-cols-2 gap-3">
+                    <label class="flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-slate-200 font-bold text-emerald-600 {{ 'opacity-50' if not c.conforme_dejado }}"><input type="radio" name="dictamen" value="APTO" required {{ 'disabled' if not c.conforme_dejado }}> Apto</label>
+                    <label class="flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-slate-200 font-bold text-rose-600"><input type="radio" name="dictamen" value="NO_APTO" required> No apto</label>
+                </div>
+                {% if not c.conforme_dejado %}<p class="text-xs text-rose-600">No puede ser apto: hay puntos que no cumplen como se dejaron.</p>{% endif %}
+                <textarea name="motivo" rows="2" placeholder="Comentario (obligatorio si no es apto)" class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none text-sm"></textarea>
+                {{ campo_firma('Aprobó', numero=session.numero_empleado, id='firma-dictamen', titulo='Firma de quien dictamina') }}
+                <button type="submit" class="bg-[#0e6ba8] text-white py-3 font-bold rounded-xl hover:bg-[#1d1d1f]">Firmar dictamen</button>
+            </form>
+            {% else %}<p class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 text-sm text-slate-500">La dictamina quien tiene la facultad de dictaminar equipos.</p>{% endif %}
+            {% if puede('equipos_operar') %}
+            <details class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6"><summary class="cursor-pointer text-sm font-bold text-slate-500">Anular (error de captura)</summary>
+                <form action="{{ url_for('equipos.anular_calibracion', calibracion_id=c.id) }}" method="POST" class="flex flex-col gap-3 mt-3">{{ csrf() }}
+                    <textarea name="motivo" required rows="2" placeholder="Motivo" class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none text-sm"></textarea>
+                    {{ campo_firma('Anuló', numero=session.numero_empleado, id='firma-anular') }}
+                    <button type="submit" class="bg-slate-600 text-white py-3 font-bold rounded-xl hover:bg-[#1d1d1f]">Anular</button>
+                </form></details>
+            {% endif %}
+        {% endif %}
+        </section>
+    </div>
+</div>
+{% endblock %}

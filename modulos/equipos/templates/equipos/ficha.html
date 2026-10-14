@@ -1,0 +1,187 @@
+{% extends _layout|default("base.html") %}
+{% from 'equipos/_comun.html' import chip_estatus, vence, chip_verif, chip_cal, encabezado, boton, si_no, csrf with context %}
+{% from 'nucleo/_firma.html' import campo_firma %}
+{% block title %}{{ e.codigo }} | Equipos | ERP Atisa{% endblock %}
+{% block content %}
+{% include 'equipos/_estilos.html' %}
+<div class="p-10">
+    {% call encabezado(e.codigo ~ ' · ' ~ e.nombre, e.tipo ~ (' · ' ~ e.area if e.area else ''), 'ri-tools-line') %}
+        {{ boton(url_for('equipos.lista'), 'Equipos', 'ri-arrow-left-line') }}
+        <a href="{{ url_for('equipos.etiqueta', equipo_id=e.id) }}" hx-boost="false" target="_blank" class="flex items-center gap-2 h-11 px-4 rounded-xl text-sm font-bold border border-slate-200 text-slate-600 bg-white hover:bg-slate-50"><i class="ri-price-tag-3-line"></i> Etiqueta</a>
+        {% if e.estatus != 'BAJA' %}
+        {{ boton(url_for('equipos.falla', equipo_id=e.id), 'Reportar falla', 'ri-alarm-warning-line') }}
+        {% if puede('equipos_operar') %}
+        {{ boton(url_for('equipos.editar', equipo_id=e.id), 'Editar', 'ri-edit-line') }}
+        {% if prog_cal %}{{ boton(url_for('equipos.calibracion_nueva', equipo_id=e.id), 'Registrar calibración', 'ri-scales-3-line', True) }}{% endif %}
+        {% endif %}
+        {% endif %}
+    {% endcall %}
+
+    {% if impactos and impactos[0].estatus == 'PENDIENTE' %}
+    <a href="{{ url_for('equipos.impacto', impacto_id=impactos[0].id) }}" class="flex items-center gap-3 bg-rose-50 border border-rose-100 text-rose-600 rounded-2xl px-6 py-4 mb-6 font-semibold">
+        <i class="ri-error-warning-line text-xl"></i> Se encontró fuera de tolerancia el {{ impactos[0].hasta }} y falta evaluar su impacto en los lotes.
+        <i class="ri-arrow-right-s-line ml-auto"></i></a>
+    {% endif %}
+
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 xl:col-span-2">
+            <h2 class="font-bold text-[#1d1d1f] mb-4">Datos</h2>
+            <dl class="grid grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4 text-sm">
+                {% for t, v in [('Marca', e.marca), ('Modelo', e.modelo), ('Serie', e.serie), ('Capacidad', e.capacidad),
+                                ('Resolución', e.resolucion), ('Ubicación', e.ubicacion),
+                                ('Rango de uso', ficha.rango_uso if ficha), ('Tolerancia del proceso', ficha.tolerancia_proceso if ficha),
+                                ('Criticidad', ficha.criticidad if ficha), ('Proveedor', ficha.proveedor_nombre if ficha),
+                                ('Fecha de alta', ficha.fecha_alta if ficha)] %}
+                <div><dt class="text-xs font-bold text-slate-500 uppercase">{{ t }}</dt><dd class="text-[#1d1d1f] mt-0.5">{{ v or '—' }}</dd></div>
+                {% endfor %}
+                {% if e.tipo == 'Pesa patrón' and ficha %}
+                <div><dt class="text-xs font-bold text-slate-500 uppercase">Valor nominal</dt><dd class="text-[#1d1d1f] mt-0.5">{{ ficha.valor_nominal }} {{ ficha.unidad_nominal or '' }} · clase {{ ficha.clase or '—' }}</dd></div>
+                {% endif %}
+                <div><dt class="text-xs font-bold text-slate-500 uppercase">Instrumento</dt><dd class="mt-0.5">{{ si_no(e.es_instrumento) }}</dd></div>
+                <div><dt class="text-xs font-bold text-slate-500 uppercase">Verificación diaria</dt><dd class="mt-0.5">{{ si_no(e.verificacion_diaria) }}</dd></div>
+                {% if activo %}<div><dt class="text-xs font-bold text-slate-500 uppercase">Activo ligado</dt><dd class="text-[#1d1d1f] mt-0.5">#{{ activo.id }} · {{ activo.categoria }} · {{ activo.descripcion }}</dd></div>{% endif %}
+            </dl>
+            {% if ficha and ficha.notas %}<p class="text-sm text-slate-600 mt-4 whitespace-pre-line">{{ ficha.notas }}</p>{% endif %}
+            {% if archivos %}
+            <div class="flex flex-wrap gap-2 mt-4">
+                {% for a in archivos %}<a href="/archivo/{{ a.id }}" hx-boost="false" target="_blank" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-sm text-slate-600 hover:bg-slate-50"><i class="{{ 'ri-image-line' if a.descripcion == 'Foto' else 'ri-file-pdf-2-line' }}"></i> {{ a.descripcion }}</a>{% endfor %}
+            </div>
+            {% endif %}
+            <h3 class="text-xs font-bold text-slate-500 uppercase mt-6 mb-2">Personal calificado{% if tarea %} · {{ tarea.nombre }}{% endif %}</h3>
+            {% if calificados %}
+            <div class="flex flex-wrap gap-2">{% for p in calificados %}<span class="px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-sm">{{ p.nombre_completo }} <b class="{{ 'text-emerald-600' if p.nivel_pct >= 80 else 'text-amber-600' if p.nivel_pct >= 60 else 'text-rose-600' }}">{{ p.nivel_pct }} %</b></span>{% endfor %}</div>
+            {% else %}<p class="text-sm text-slate-400">{{ 'Nadie tiene evaluada esa tarea en la Matriz de Expertise.' if tarea else 'Liga el equipo a una tarea de la Matriz de Expertise para ver quién lo sabe operar.' }}</p>{% endif %}
+        </section>
+
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+            <h2 class="font-bold text-[#1d1d1f] mb-4">Estatus</h2>
+            <div class="flex items-center gap-3 mb-4">{{ chip_estatus(e.estatus, causa) }}
+                {% if apto.apto %}<span class="text-sm text-emerald-600 font-semibold"><i class="ri-check-line"></i> Se puede usar hoy</span>
+                {% else %}<span class="text-sm text-rose-600 font-semibold"><i class="ri-forbid-line"></i> No se puede usar</span>{% endif %}</div>
+            {% for b in apto.bloqueos %}<p class="text-sm text-rose-600 mb-1">· {{ b }}</p>{% endfor %}
+            {% for a in apto.avisos %}<p class="text-sm text-amber-600 mb-1">· {{ a }}</p>{% endfor %}
+            <dl class="text-sm mt-4 space-y-3">
+                <div class="flex justify-between gap-2"><dt class="text-slate-500">Calibración</dt><dd>{{ vence(e.vence_calibracion, prog_cal.dias_aviso if prog_cal else 30, 'Sin programa') }}</dd></div>
+                <div class="flex justify-between gap-2"><dt class="text-slate-500">Mantenimiento</dt><dd>{{ vence(e.vence_mantenimiento, prog_man.dias_aviso if prog_man else 15, '—') }}</dd></div>
+                <div class="flex justify-between gap-2"><dt class="text-slate-500">Verificación de hoy</dt><dd>{{ chip_verif(verif) }}</dd></div>
+            </dl>
+
+            {% if e.estatus == 'EN_SERVICIO' %}
+            <details class="mt-6"><summary class="cursor-pointer text-sm font-bold text-rose-600">Poner fuera de servicio</summary>
+                <form action="{{ url_for('equipos.fuera', equipo_id=e.id) }}" method="POST" class="flex flex-col gap-3 mt-3">{{ csrf() }}
+                    <textarea name="motivo" required rows="2" placeholder="Motivo" class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none text-sm"></textarea>
+                    {{ campo_firma('Realizó', numero=session.numero_empleado, id='firma-fuera') }}
+                    <button type="submit" class="bg-rose-500 text-white py-3 font-bold rounded-xl hover:bg-[#1d1d1f]">Poner fuera de servicio</button>
+                </form></details>
+            {% elif e.estatus == 'FUERA_DE_SERVICIO' %}
+            {% if no_regresar %}<div class="mt-6 text-sm text-slate-500">Para regresarlo a servicio: {% for m in no_regresar %}<p class="mt-1">· {{ m }}</p>{% endfor %}</div>
+            {% elif puede('equipos_operar') and tiene_facultad('dictaminar_equipos') %}
+            <details class="mt-6" open><summary class="cursor-pointer text-sm font-bold text-emerald-600">Regresar a servicio</summary>
+                <form action="{{ url_for('equipos.regresar', equipo_id=e.id) }}" method="POST" class="flex flex-col gap-3 mt-3">{{ csrf() }}
+                    <textarea name="motivo" required rows="2" placeholder="Qué se hizo y por qué ya se puede usar" class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none text-sm"></textarea>
+                    {{ campo_firma('Aprobó', numero=session.numero_empleado, id='firma-regresar') }}
+                    <button type="submit" class="bg-emerald-600 text-white py-3 font-bold rounded-xl hover:bg-[#1d1d1f]">Regresar a servicio</button>
+                </form></details>
+            {% else %}<p class="mt-6 text-sm text-slate-500">Lo regresa a servicio quien tiene la facultad de dictaminar equipos.</p>{% endif %}
+            {% endif %}
+            {% if e.estatus != 'BAJA' and puede('equipos_operar') and tiene_facultad('dictaminar_equipos') %}
+            <details class="mt-4"><summary class="cursor-pointer text-sm font-bold text-slate-500">Dar de baja</summary>
+                <form action="{{ url_for('equipos.baja', equipo_id=e.id) }}" method="POST" class="flex flex-col gap-3 mt-3">{{ csrf() }}
+                    <textarea name="motivo" required rows="2" placeholder="Motivo de la baja" class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none text-sm"></textarea>
+                    {{ campo_firma('Aprobó', numero=session.numero_empleado, id='firma-baja') }}
+                    <button type="submit" class="bg-slate-600 text-white py-3 font-bold rounded-xl hover:bg-[#1d1d1f]">Dar de baja</button>
+                </form></details>
+            {% endif %}
+        </section>
+    </div>
+
+    <nav class="flex flex-wrap gap-2 mb-4">
+        {% for clave, texto in [('calibracion', 'Calibración'), ('verificaciones', 'Verificaciones'), ('mantenimiento', 'Mantenimiento'), ('uso', 'Bitácora de uso'), ('historial', 'Historial de estatus')] %}
+        <a href="{{ url_for('equipos.ficha', equipo_id=e.id, tab=clave) }}" class="px-4 py-2 rounded-xl text-sm font-bold {% if tab == clave %}bg-[#0e6ba8] text-white{% else %}bg-white border border-slate-200 text-slate-600 hover:bg-slate-50{% endif %}">{{ texto }}</a>
+        {% endfor %}
+    </nav>
+
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+    {% if tab == 'calibracion' %}
+        <div class="p-6 border-b border-slate-100 text-sm text-slate-600">
+            {% if prog_cal %}Cada <b>{{ prog_cal.frecuencia_meses }} meses</b> · {{ prog_cal.modalidad }} · aviso {{ prog_cal.dias_aviso }} días
+            {% else %}Sin programa de calibración.{% endif %}
+            {% if puntos %}<div class="flex flex-wrap gap-2 mt-3">{% for p in puntos %}<span class="px-3 py-1 rounded-lg bg-slate-50 border border-slate-200">{{ p.nombre or ('Punto ' ~ p.orden) }}: {{ p.nominal }} ± {{ p.tolerancia }} {{ p.unidad }}</span>{% endfor %}</div>{% endif %}
+        </div>
+        {% if calibraciones %}
+        <table class="w-full text-sm">
+            <thead class="bg-slate-50 text-xs text-slate-500 uppercase"><tr><th class="text-left px-6 py-3">Folio</th><th class="text-left px-6 py-3">Fecha</th><th class="text-left px-6 py-3">Laboratorio / patrones</th><th class="text-left px-6 py-3">Como se encontró</th><th class="text-left px-6 py-3">Como se dejó</th><th class="text-left px-6 py-3">Dictamen</th><th class="text-left px-6 py-3">Próxima</th></tr></thead>
+            <tbody class="divide-y divide-slate-100">
+            {% for c in calibraciones %}
+            <tr><td class="px-6 py-3 font-bold whitespace-nowrap"><a href="{{ url_for('equipos.calibracion', calibracion_id=c.id) }}" class="text-[#0e6ba8] hover:underline">{{ c.folio }}</a></td>
+                <td class="px-6 py-3 whitespace-nowrap">{{ c.fecha }}</td><td class="px-6 py-3">{{ c.proveedor_nombre or c.patrones or '—' }}{% if c.certificado %}<p class="text-xs text-slate-400">Cert. {{ c.certificado }}</p>{% endif %}</td>
+                <td class="px-6 py-3">{{ si_no(c.conforme_encontrado) }}</td><td class="px-6 py-3">{{ si_no(c.conforme_dejado) }}</td>
+                <td class="px-6 py-3">{{ chip_cal(c.estatus) }}</td><td class="px-6 py-3 whitespace-nowrap">{{ c.proxima or '—' }}</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}<p class="p-6 text-sm text-slate-400">Sin calibraciones registradas.</p>{% endif %}
+    {% elif tab == 'verificaciones' %}
+        <div class="p-6 border-b border-slate-100 text-sm text-slate-600 flex flex-wrap items-center gap-2">
+            {% for p in puntos %}<span class="px-3 py-1 rounded-lg bg-slate-50 border border-slate-200">{{ p.nombre or ('Punto ' ~ p.orden) }}: {% if p.nominal is not none %}{{ p.nominal }} ± {{ p.tolerancia }}{% else %}{{ p.minimo if p.minimo is not none else '…' }} a {{ p.maximo if p.maximo is not none else '…' }}{% endif %} {{ p.unidad }}{% if p.requiere_pesa %} · con pesa{% endif %}</span>
+            {% else %}{{ 'Sin puntos de verificación.' if e.verificacion_diaria else 'Este equipo no lleva verificación diaria.' }}{% endfor %}
+            {% if e.verificacion_diaria and e.estatus != 'BAJA' and puede('equipos_planta') %}<a href="{{ url_for('equipos.planta_verificar', equipo_id=e.id) }}" hx-boost="false" class="ml-auto px-4 py-2 rounded-xl bg-[#0e6ba8] text-white text-sm font-bold hover:bg-[#1d1d1f]">Verificar ahora</a>{% endif %}
+        </div>
+        {% if historial %}
+        <table class="w-full text-sm">
+            <thead class="bg-slate-50 text-xs text-slate-500 uppercase"><tr><th class="text-left px-6 py-3">Fecha</th><th class="text-left px-6 py-3">Intento</th><th class="text-left px-6 py-3">Lecturas</th><th class="text-left px-6 py-3">Resultado</th><th class="text-left px-6 py-3">Quién</th></tr></thead>
+            <tbody class="divide-y divide-slate-100">
+            {% for h in historial %}
+            <tr><td class="px-6 py-3">{{ h.v.fecha }} <span class="text-xs text-slate-400">{{ (h.v.ts or '')[11:16] }}</span></td><td class="px-6 py-3">{{ h.v.intento }}</td>
+                <td class="px-6 py-3">{% for l in h.lecturas %}<p class="{{ '' if l.conforme else 'text-rose-600 font-semibold' }}">{{ l.nombre or ('Punto ' ~ l.orden) }}: {{ l.lectura }} {{ l.unidad }}{% if l.error is not none %} (error {{ '%+g'|format(l.error) }}){% endif %}{% if l.pesa %} · {{ l.pesa }}{% endif %}</p>{% endfor %}</td>
+                <td class="px-6 py-3">{{ si_no(h.v.conforme) }}</td><td class="px-6 py-3">{{ h.v.firmante or '—' }}</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}<p class="p-6 text-sm text-slate-400">Sin verificaciones.</p>{% endif %}
+    {% elif tab == 'mantenimiento' %}
+        <div class="p-6 border-b border-slate-100 text-sm text-slate-600">
+            {% if prog_man %}Preventivo cada <b>{{ prog_man.frecuencia_meses }} meses</b> · aviso {{ prog_man.dias_aviso }} días
+            <ul class="mt-2 list-disc ml-5">{% for t in prog_man.tareas.splitlines() if t.strip() %}<li>{{ t }}</li>{% endfor %}</ul>
+            {% else %}Sin plan de mantenimiento preventivo.{% endif %}
+        </div>
+        {% if ordenes %}
+        <table class="w-full text-sm">
+            <thead class="bg-slate-50 text-xs text-slate-500 uppercase"><tr><th class="text-left px-6 py-3">Folio</th><th class="text-left px-6 py-3">Tipo</th><th class="text-left px-6 py-3">Descripción</th><th class="text-left px-6 py-3">Programada</th><th class="text-left px-6 py-3">Terminó</th><th class="text-left px-6 py-3">Estatus</th></tr></thead>
+            <tbody class="divide-y divide-slate-100">
+            {% for o in ordenes %}
+            <tr><td class="px-6 py-3 font-bold"><a href="{{ url_for('equipos.ot', ot_id=o.id) }}" class="text-[#0e6ba8] hover:underline">{{ o.folio }}</a></td>
+                <td class="px-6 py-3">{{ o.tipo|capitalize }}</td><td class="px-6 py-3 text-slate-600">{{ o.descripcion|truncate(70) }}</td>
+                <td class="px-6 py-3">{{ o.fecha_programada or '—' }}</td><td class="px-6 py-3">{{ o.fin or '—' }}</td><td class="px-6 py-3">{{ chip_cal(o.estatus) }}</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}<p class="p-6 text-sm text-slate-400">Sin órdenes de trabajo.</p>{% endif %}
+    {% elif tab == 'uso' %}
+        <div class="p-6 text-sm">
+            {% for clave, titulo in [('lotes_por_equipo', 'Órdenes y lotes'), ('analisis_por_equipo', 'Análisis')] %}
+            <h3 class="text-xs font-bold text-slate-500 uppercase mb-2 {{ 'mt-6' if not loop.first }}">{{ titulo }}</h3>
+            {% if titulo in usos.faltan %}<p class="text-slate-400">Se verá aquí cuando el módulo {{ 'Órdenes de producción' if clave == 'lotes_por_equipo' else 'Calidad' }} esté instalado.</p>
+            {% elif titulo in usos.errores %}<p class="text-rose-600">No se pudo consultar; el error quedó registrado.</p>
+            {% elif usos[clave] %}
+            <ul class="divide-y divide-slate-100">{% for u in usos[clave] %}<li class="py-2 flex gap-3">{% if u.url %}<a href="{{ u.url }}" class="text-[#0e6ba8] font-semibold hover:underline">{{ u.folio or u.numero_lote or ('#' ~ u.lote_id) }}</a>{% else %}<span class="font-semibold">{{ u.folio or u.numero_lote or ('#' ~ u.lote_id) }}</span>{% endif %}
+                <span class="text-slate-600">{{ u.numero_lote if u.folio and u.numero_lote }} {{ u.material or u.descripcion or '' }}</span><span class="ml-auto text-slate-400">{{ u.fecha or '' }}</span></li>{% endfor %}</ul>
+            {% else %}<p class="text-slate-400">Sin registros.</p>{% endif %}
+            {% endfor %}
+        </div>
+    {% elif tab == 'historial' %}
+        {% if historial %}
+        <table class="w-full text-sm">
+            <thead class="bg-slate-50 text-xs text-slate-500 uppercase"><tr><th class="text-left px-6 py-3">Fecha</th><th class="text-left px-6 py-3">Cambio</th><th class="text-left px-6 py-3">Motivo</th><th class="text-left px-6 py-3">Folio</th><th class="text-left px-6 py-3">Firma</th></tr></thead>
+            <tbody class="divide-y divide-slate-100">
+            {% for h in historial %}
+            <tr><td class="px-6 py-3">{{ h.ts }}</td><td class="px-6 py-3">{{ chip_estatus(h.anterior) }} <i class="ri-arrow-right-line text-slate-400"></i> {{ chip_estatus(h.nuevo, h.causa) }}</td>
+                <td class="px-6 py-3 text-slate-600">{{ h.motivo }}</td><td class="px-6 py-3">{{ h.folio or '—' }}</td><td class="px-6 py-3">{{ h.firmante or h.usuario }}</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}<p class="p-6 text-sm text-slate-400">Sin cambios de estatus.</p>{% endif %}
+    {% endif %}
+    </section>
+</div>
+{% endblock %}

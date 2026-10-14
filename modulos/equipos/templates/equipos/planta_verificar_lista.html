@@ -1,0 +1,22 @@
+{% extends 'equipos/_planta_base.html' %}
+{% block titulo %}Verificaciones del día{% endblock %}
+{% block cuerpo %}
+<p class="text-slate-500 mb-6">Hechas hoy: <b class="text-[#1d1d1f]">{{ hechas }} de {{ tocan }}</b>. Sin la verificación del día el equipo no se puede usar.</p>
+{% if pendientes %}
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+    {% for e in pendientes %}
+    <a href="{{ url_for('equipos.planta_verificar', equipo_id=e.id) }}" class="bg-white rounded-3xl border {{ 'border-rose-200' if e.estado == 'fallo' else 'border-slate-200' }} shadow-sm p-8 flex flex-col items-center justify-center gap-3 text-center hover:border-[#0e6ba8] min-h-[200px]">
+        <div class="w-16 h-16 rounded-2xl {{ 'bg-rose-50 text-rose-500' if e.estado == 'fallo' else 'bg-[#0e6ba8]/10 text-[#0e6ba8]' }} flex items-center justify-center"><i class="{{ 'ri-fire-line' if e.tipo == 'Caldera' else 'ri-scales-3-line' }} text-3xl"></i></div>
+        <span class="text-2xl font-bold text-[#1d1d1f]">{{ e.codigo }}</span>
+        <span class="text-slate-500">{{ e.nombre }}{% if e.area %} · {{ e.area }}{% endif %}</span>
+        {% if e.estado == 'fallo' %}<span class="text-sm font-bold text-rose-600">Falló: limpiar, nivelar y repetir</span>{% endif %}
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<div class="bg-white rounded-3xl border border-slate-200 p-16 text-center">
+    <i class="ri-check-double-line text-5xl text-emerald-500 block mb-3"></i>
+    <p class="text-lg font-bold text-[#1d1d1f]">Todo verificado por hoy</p>
+</div>
+{% endif %}
+{% endblock %}

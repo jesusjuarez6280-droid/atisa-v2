@@ -1,0 +1,28 @@
+{% extends 'nucleo/_impresion.html' %}
+{% from 'nucleo/_firma.html' import firmado %}
+{% block hoja_titulo %}Orden de trabajo de mantenimiento{% endblock %}
+{% block hoja_codigo %}{{ codigo_formato }}{% endblock %}
+{% block hoja_folio %}{{ o.folio }}{% endblock %}
+{% block hoja_cuerpo %}
+<table>
+    <tr><th>Equipo</th><td>{{ o.codigo }} · {{ o.equipo_nombre }}</td><th>Tipo</th><td>{{ o.tipo|capitalize }}</td></tr>
+    <tr><th>Programada</th><td>{{ o.fecha_programada or '—' }}</td><th>Estatus</th><td>{{ o.estatus|capitalize }}</td></tr>
+    <tr><th>Taller externo</th><td>{{ o.proveedor_nombre or '—' }}</td><th>Horas</th><td>{{ o.horas if o.horas is not none else '' }}</td></tr>
+    <tr><th>{{ 'Falla' if o.tipo == 'CORRECTIVO' else 'Tareas' }}</th><td colspan="3" style="white-space: pre-line">{{ o.descripcion }}</td></tr>
+</table>
+{% if tareas %}
+<table><tr><th>Tarea</th><th style="width: 18mm">Hecha</th><th>Nota</th></tr>
+    {% set dadas = {} %}{% for t in hechas %}{% set _ = dadas.update({t.tarea: t}) %}{% endfor %}
+    {% for t in tareas %}<tr><td>{{ t }}</td><td>{{ ('Sí' if dadas[t].hecha else 'No') if t in dadas else '' }}</td><td>{{ dadas[t].nota or '' if t in dadas }}</td></tr>{% endfor %}
+</table>
+{% endif %}
+<table>
+    <tr><th>Trabajo realizado</th><td style="height: 30mm; white-space: pre-line">{{ o.trabajo_realizado or '' }}</td></tr>
+    <tr><th>Refacciones</th><td>{{ o.refacciones or '' }}</td></tr>
+    <tr><th>¿Pudo afectar la medición?</th><td>{{ ('Sí' if o.afecta_medicion else 'No') if o.estatus == 'TERMINADA' else 'Sí ☐   No ☐' }}</td></tr>
+</table>
+{% endblock %}
+{% block hoja_firmas %}
+<div>Reportó<br>{{ firmado(reporto) if reporto }}</div>
+<div>Realizó<br>{{ firmado(realizo) if realizo }}</div>
+{% endblock %}

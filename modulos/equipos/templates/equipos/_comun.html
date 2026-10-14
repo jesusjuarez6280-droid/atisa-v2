@@ -1,0 +1,69 @@
+{#- Piezas comunes de las pantallas de Equipos.
+    {% from 'equipos/_comun.html' import chip_estatus, vence, chip_verif, chip_cal, input_cls, label_cls %} -#}
+{% set input_cls = 'w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none text-sm' %}
+{% set label_cls = 'text-xs font-bold text-slate-500 uppercase mb-1 block' %}
+
+{% macro chip_estatus(estatus, causa=None) -%}
+{% if estatus == 'EN_SERVICIO' %}
+<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">En servicio</span>
+{% elif estatus == 'FUERA_DE_SERVICIO' %}
+<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-rose-50 text-rose-600 border border-rose-100">{{ 'Por calibrar' if causa == 'POR_CALIBRAR' else 'Fuera de servicio' }}</span>
+{% elif estatus == 'BAJA' %}
+<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 text-slate-600">Baja</span>
+{% else %}
+<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 text-slate-600">{{ estatus }}</span>
+{% endif %}
+{%- endmacro %}
+
+{% macro vence(fecha, dias_aviso=30, vacio='Sin programa') -%}
+{% if not fecha %}<span class="text-slate-400 text-sm">{{ vacio }}</span>
+{% else %}{% set dias = dias_hasta(fecha) %}
+{% if dias is none %}<span class="text-slate-500 text-sm">{{ fecha }}</span>
+{% elif dias < 0 %}<span class="inline-flex items-center gap-1.5 text-rose-600 text-sm font-bold"><span class="w-2 h-2 rounded-full bg-rose-500"></span>{{ fecha }} · vencida</span>
+{% elif dias <= dias_aviso %}<span class="inline-flex items-center gap-1.5 text-amber-600 text-sm font-semibold"><span class="w-2 h-2 rounded-full bg-amber-500"></span>{{ fecha }} · {{ dias }} día{{ '' if dias == 1 else 's' }}</span>
+{% else %}<span class="inline-flex items-center gap-1.5 text-slate-600 text-sm"><span class="w-2 h-2 rounded-full bg-emerald-500"></span>{{ fecha }}</span>{% endif %}
+{% endif %}
+{%- endmacro %}
+
+{% macro chip_verif(estado) -%}
+{% if estado == 'hecha' %}<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">Hecha</span>
+{% elif estado == 'fallo' %}<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-rose-50 text-rose-600 border border-rose-100">Falló · repetir</span>
+{% elif estado == 'pendiente' %}<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-amber-50 text-amber-600 border border-amber-100">Pendiente</span>
+{% else %}<span class="text-slate-400 text-sm">—</span>{% endif %}
+{%- endmacro %}
+
+{% macro chip_cal(estatus) -%}
+{% if estatus == 'APTO' %}<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">Apto</span>
+{% elif estatus == 'NO_APTO' %}<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-rose-50 text-rose-600 border border-rose-100">No apto</span>
+{% elif estatus == 'POR_DICTAMINAR' %}<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-amber-50 text-amber-600 border border-amber-100">Por dictaminar</span>
+{% elif estatus == 'ANULADA' %}<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 text-slate-600">Anulada</span>
+{% elif estatus == 'ABIERTA' %}<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-amber-50 text-amber-600 border border-amber-100">Abierta</span>
+{% elif estatus == 'TERMINADA' %}<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">Terminada</span>
+{% elif estatus == 'CANCELADA' %}<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 text-slate-600">Cancelada</span>
+{% elif estatus == 'PENDIENTE' %}<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-rose-50 text-rose-600 border border-rose-100">Pendiente de evaluar</span>
+{% elif estatus == 'EVALUADO' %}<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">Evaluado</span>
+{% else %}<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 text-slate-600">{{ estatus }}</span>{% endif %}
+{%- endmacro %}
+
+{% macro si_no(valor) -%}
+{% if valor %}<i class="ri-checkbox-circle-fill text-emerald-500"></i>{% else %}<i class="ri-close-circle-fill text-rose-500"></i>{% endif %}
+{%- endmacro %}
+
+{% macro csrf() -%}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{%- endmacro %}
+
+{% macro encabezado(titulo, subtitulo='', icono='ri-tools-line') -%}
+<header class="flex flex-wrap justify-between items-center gap-4 mb-8">
+    <div class="flex items-center gap-4">
+        <div class="w-12 h-12 bg-[#0e6ba8]/10 text-[#0e6ba8] rounded-xl flex items-center justify-center text-2xl"><i class="{{ icono }}"></i></div>
+        <div>
+            <h1 class="text-2xl font-bold text-[#1d1d1f]">{{ titulo }}</h1>
+            {% if subtitulo %}<p class="text-slate-500 mt-1 text-sm">{{ subtitulo }}</p>{% endif %}
+        </div>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">{{ caller() if caller else '' }}</div>
+</header>
+{%- endmacro %}
+
+{% macro boton(url, texto, icono='', primario=False) -%}
+<a href="{{ url }}" class="flex items-center gap-2 h-11 px-4 rounded-xl text-sm font-bold {% if primario %}bg-[#0e6ba8] text-white hover:bg-[#1d1d1f]{% else %}border border-slate-200 text-slate-600 bg-white hover:bg-slate-50{% endif %}">{% if icono %}<i class="{{ icono }}"></i>{% endif %} {{ texto }}</a>
+{%- endmacro %}

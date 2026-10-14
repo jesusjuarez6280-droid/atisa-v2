@@ -1,0 +1,39 @@
+{#- Pantallas de la tablet (pantalla completa, sin menú). Bloques: titulo, regreso, cuerpo. -#}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>{% block titulo %}Planta{% endblock %} | ERP Atisa</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/remixicon.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/estilos.css') }}">
+    {% if tailwind_estatico %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+    {% else %}
+    <script src="{{ url_for('static', filename='js/tailwind.js') }}"></script>
+    {% endif %}
+    {% include 'nucleo/_utilidades.html' %}
+    {% include 'equipos/_estilos.html' %}
+</head>
+<body class="bg-[#f5f5f7] min-h-screen" style="font-family: Inter, sans-serif;">
+    {% include '_flashes.html' %}
+    <header class="bg-white border-b border-slate-100 px-6 lg:px-10 h-[80px] flex items-center justify-between sticky top-0 z-40">
+        <div class="flex items-center gap-4">
+            <a href="{% block regreso %}{{ url_for('nucleo.planta') }}{% endblock %}" class="w-12 h-12 rounded-xl border border-slate-200 text-slate-600 flex items-center justify-center hover:bg-slate-50" title="Regresar"><i class="ri-arrow-left-line text-2xl"></i></a>
+            <div>
+                <h1 class="text-[#1d1d1f] text-lg font-bold leading-tight">{{ self.titulo() }}</h1>
+                <p class="text-slate-500 text-xs mt-0.5">Sesión: <span class="font-semibold text-slate-600">{{ session.get('nombre') }}</span></p>
+            </div>
+        </div>
+        <a href="{{ url_for('nucleo.planta') }}" class="flex items-center gap-2 h-11 px-4 rounded-xl border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50"><i class="ri-home-5-line text-lg"></i> Planta</a>
+    </header>
+    <main class="px-6 lg:px-10 py-10"><div class="max-w-[960px] mx-auto">{% block cuerpo %}{% endblock %}</div></main>
+    <script>
+        // Anti doble clic en la tablet
+        document.addEventListener('submit', function (e) {
+            e.target.querySelectorAll('button[type="submit"]').forEach(function (b) { b.disabled = true; b.classList.add('opacity-60'); });
+        });
+    </script>
+</body>
+</html>
