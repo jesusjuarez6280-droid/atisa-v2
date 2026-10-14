@@ -132,6 +132,17 @@ y `registro.consulta('lotes_por_equipo', conn, equipo_id, desde, default=[])`; s
 módulo no está instalado devuelven `None` / el default y el botón simplemente no se pinta.
 Para el resto: `registro.verificaciones_liberacion(conn, lote_id)`, `registro.secciones_lote(conn, lote_id)`.
 
+Consultas acordadas entre módulos (quién la ofrece → quién la usa). Ambas devuelven una
+lista de dicts, más reciente primero; lista vacía si no hay nada:
+
+| Consulta | Ofrece → usa | Llamada | Cada elemento |
+|---|---|---|---|
+| `lotes_por_equipo` | Órdenes → Equipos | `consulta('lotes_por_equipo', conn, equipo_id, desde, default=[])` | `{lote_id, fecha, numero_lote, folio, material, url}` (folio de la orden OP-…, material = código y nombre) |
+| `analisis_por_equipo` | Calidad → Equipos | `consulta('analisis_por_equipo', conn, equipo_id, desde, default=[])` | `{lote_id, fecha, numero_lote, folio, descripcion, url}` (folio del análisis AN-…, descripcion = qué se analizó) |
+
+`desde` es una fecha `AAAA-MM-DD` (incluida); `fecha` va en el mismo formato y `url` lleva a la
+orden o al análisis.
+
 ## 6. Plantillas
 
 - Extienden `{% extends _layout|default("base.html") %}` y se pintan con `render_page`.
