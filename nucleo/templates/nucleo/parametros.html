@@ -1,0 +1,42 @@
+{% extends _layout|default("base.html") %}
+{% block title %}Parámetros | ERP Atisa{% endblock %}
+{% block content %}
+<div class="p-10">
+    <header class="flex flex-wrap justify-between items-center gap-4 mb-8">
+        <div>
+            <h1 class="text-2xl font-bold text-[#1d1d1f]">Parámetros</h1>
+            <p class="text-slate-500 mt-1">Valores ajustables de cada módulo</p>
+        </div>
+        <a href="/configuracion" class="flex items-center gap-2 h-11 px-4 rounded-xl border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50"><i class="ri-arrow-left-line"></i> Configuración</a>
+    </header>
+    {% set ns = namespace(modulo=None) %}
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <table class="w-full text-sm">
+            <thead class="bg-slate-50 text-xs text-slate-500 uppercase">
+                <tr><th class="text-left px-6 py-3">Parámetro</th><th class="text-left px-6 py-3">Valor</th><th class="text-left px-6 py-3">Último cambio</th></tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                {% for p in filas %}
+                {% if p.modulo != ns.modulo %}{% set ns.modulo = p.modulo %}
+                <tr class="bg-slate-50"><td colspan="3" class="px-6 py-2 text-xs font-bold text-[#0e6ba8]">{{ nombres.get(p.modulo, p.modulo) }}</td></tr>
+                {% endif %}
+                <tr>
+                    <td class="px-6 py-3">
+                        <p class="font-semibold text-[#1d1d1f]">{{ p.descripcion }}</p>
+                        <p class="text-xs text-slate-400 font-mono">{{ p.clave }} · predeterminado: {{ p.default }}</p>
+                    </td>
+                    <td class="px-6 py-3">
+                        <form action="{{ url_for('nucleo.configuracion_parametros') }}" method="POST" class="flex items-center gap-2">
+                            <input type="hidden" name="clave" value="{{ p.clave }}">
+                            <input name="valor" value="{{ p.valor }}" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none font-mono">
+                            <button type="submit" class="shrink-0 w-9 h-9 rounded-lg border border-slate-200 text-slate-500 hover:bg-[#0e6ba8]/10 hover:text-[#0e6ba8]" title="Guardar"><i class="ri-save-line"></i></button>
+                        </form>
+                    </td>
+                    <td class="px-6 py-3 text-xs text-slate-500">{% if p.actualizado_por %}{{ p.actualizado_por }}<br>{{ p.actualizado_en }}{% else %}—{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

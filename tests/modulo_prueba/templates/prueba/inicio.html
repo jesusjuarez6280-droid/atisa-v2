@@ -1,0 +1,9 @@
+{% extends _layout|default("base.html") %}
+{% block title %}Prueba | ERP Atisa{% endblock %}
+{% block content %}
+<div class="p-10">
+    <h1 class="text-2xl font-bold text-[#1d1d1f]">Módulo de prueba</h1>
+    <ul>{% for c in cosas %}<li>{{ c.nombre }}</li>{% endfor %}</ul>
+    {% if enlace('prueba_cosa', cosa_id=1) %}<a href="{{ enlace('prueba_cosa', cosa_id=1) }}">cosa</a>{% endif %}
+</div>
+{% endblock %}

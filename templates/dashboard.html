@@ -73,6 +73,31 @@
     </section>
 
     <section>
+        <div class="flex items-center justify-between mb-5">
+            <h2 class="text-[#1d1d1f] text-lg font-semibold">Mis pendientes</h2>
+            <a href="{{ url_for('nucleo.pendientes') }}" class="text-sm font-semibold text-[#0e6ba8] hover:underline flex items-center gap-1">Ver todos <i class="ri-arrow-right-line"></i></a>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+            {% if pendientes %}
+            <ul class="divide-y divide-slate-100">
+                {% for p in pendientes[:6] %}
+                <li>
+                    <a href="{{ p.url or '#' }}" class="flex items-center gap-3 px-6 py-3.5 hover:bg-slate-50">
+                        <span class="w-2.5 h-2.5 rounded-full shrink-0 {% if p.nivel == 'rojo' %}bg-rose-500{% elif p.nivel == 'amarillo' %}bg-amber-500{% else %}bg-[#0e6ba8]{% endif %}"></span>
+                        <span class="flex-1 text-sm text-[#1d1d1f]">{{ p.texto }}</span>
+                        {% if p.fecha %}<span class="text-xs text-slate-500">{{ p.fecha }}</span>{% endif %}
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+            {% if pendientes|length > 6 %}<p class="px-6 py-3 text-xs text-slate-500 border-t border-slate-100">y {{ pendientes|length - 6 }} más</p>{% endif %}
+            {% else %}
+            <p class="px-6 py-5 text-sm text-slate-500 flex items-center gap-2"><i class="ri-check-double-line text-emerald-500"></i> No tienes pendientes de firma ni de revisión.</p>
+            {% endif %}
+        </div>
+    </section>
+
+    <section>
         <h2 class="text-[#1d1d1f] text-lg font-semibold mb-5">Acciones Rápidas</h2>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
             <a href="{{ url_for('recetas') }}" class="flex items-center gap-4 bg-white rounded-xl px-6 py-5 border border-slate-100 hover:border-slate-200 hover:bg-slate-50 transition-all cursor-pointer text-left whitespace-nowrap">

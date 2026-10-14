@@ -13,6 +13,9 @@ _TMP = tempfile.mkdtemp(prefix='atisa_test_')
 os.environ['ATISA_DB'] = os.path.join(_TMP, 'prueba.db')
 os.environ['ATISA_RESPALDOS'] = os.path.join(_TMP, 'respaldos')
 os.environ['ATISA_SIN_RESPALDO'] = '1'
+os.environ['ATISA_PRIVADO'] = os.path.join(_TMP, 'privado')
+# Módulo de prueba (tests/modulo_prueba): ejercita el registro de módulos de la base.
+os.environ['ATISA_MODULOS_EXTRA'] = 'modulo_prueba'
 os.environ.pop('ATISA_SECRET_KEY', None)
 
 import erp  # noqa: E402

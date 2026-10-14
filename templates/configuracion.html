@@ -204,6 +204,60 @@
             </div>
         </section>
 
+        <section id="roles-firmas">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+                <div>
+                    <h2 class="text-[#1d1d1f] text-lg font-semibold">Roles y firmas</h2>
+                    <p class="text-slate-500 text-sm mt-0.5">Áreas adicionales, facultades de firma y PIN de cada persona. Nadie tiene facultades por defecto.</p>
+                </div>
+                <a href="{{ url_for('nucleo.configuracion_parametros') }}" class="flex items-center gap-2 h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-600 text-sm font-bold hover:bg-slate-50">
+                    <i class="ri-equalizer-line"></i> Parámetros
+                </a>
+            </div>
+            <div class="bg-white rounded-2xl border border-slate-100 divide-y divide-slate-100">
+                {% for u in usuarios if u.estatus == 1 %}
+                {% set extras = (u.roles_extra or '').split(',') %}
+                {% set facs = (u.facultades or '').split(',') %}
+                <details class="group">
+                    <summary class="flex flex-wrap items-center gap-3 px-6 py-4 cursor-pointer hover:bg-slate-50">
+                        <span class="text-[#1d1d1f] font-semibold text-sm flex-1">{{ u.nombre_completo }} <span class="text-slate-400 font-mono text-xs">{{ u.numero_empleado }}</span></span>
+                        <span class="text-xs font-bold text-slate-500">{{ ROLES_INFO.get(u.rol, {}).get('nombre', u.rol) }}</span>
+                        {% for r in extras if r %}<span class="px-2 py-0.5 rounded-md text-xs font-bold bg-[#0e6ba8]/10 text-[#0e6ba8]">+ {{ ROLES_INFO.get(r, {}).get('nombre', r) }}</span>{% endfor %}
+                        {% set n_facs = facs|select|list|length %}
+                        {% if n_facs %}<span class="px-2 py-0.5 rounded-md text-xs font-bold bg-violet-50 text-violet-700">{{ n_facs }} facultad{{ 'es' if n_facs != 1 else '' }}</span>{% endif %}
+                        {% if u.pin_hash %}<span class="px-2 py-0.5 rounded-md text-xs font-bold bg-emerald-50 text-emerald-600">Con PIN</span>
+                        {% else %}<span class="px-2 py-0.5 rounded-md text-xs font-bold bg-slate-100 text-slate-500">Sin PIN</span>{% endif %}
+                    </summary>
+                    <div class="px-6 pb-6 pt-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <form action="{{ url_for('nucleo.roles_firmas_guardar') }}" method="POST" class="contents">
+                            <input type="hidden" name="user_id" value="{{ u.id }}">
+                            <div>
+                                <p class="text-xs font-bold text-slate-500 uppercase mb-2">Áreas adicionales</p>
+                                {% for clave, info in ROLES_INFO.items() if clave != 'admin' and clave != u.rol %}
+                                <label class="flex items-center gap-2 py-1 text-sm text-slate-700 normal-case"><input type="checkbox" name="roles_extra" value="{{ clave }}" {% if clave in extras %}checked{% endif %}> {{ info.nombre }}</label>
+                                {% endfor %}
+                            </div>
+                            <div>
+                                <p class="text-xs font-bold text-slate-500 uppercase mb-2">Facultades de firma</p>
+                                {% for clave, desc in FACULTADES.items() %}
+                                <label class="flex items-start gap-2 py-1 text-sm text-slate-700 normal-case"><input type="checkbox" name="facultades" value="{{ clave }}" class="mt-1" {% if clave in facs %}checked{% endif %}> <span><span class="font-semibold">{{ clave|replace('_', ' ') }}</span> · <span class="text-slate-500">{{ desc }}</span></span></label>
+                                {% endfor %}
+                                <button type="submit" class="mt-3 bg-[#0e6ba8] text-white px-5 py-2.5 font-bold rounded-xl hover:bg-[#1d1d1f] text-sm">Guardar</button>
+                            </div>
+                        </form>
+                        {% if u.pin_hash %}
+                        <form action="{{ url_for('nucleo.pin_borrar') }}" method="POST" onsubmit="return confirm('¿Borrar el PIN de {{ u.nombre_completo }}? Tendrá que crear uno nuevo.');" class="md:col-span-2">
+                            <input type="hidden" name="numero_empleado" value="{{ u.numero_empleado }}">
+                            <input type="hidden" name="volver" value="/configuracion#roles-firmas">
+                            <button type="submit" class="text-sm font-bold text-rose-500 hover:underline flex items-center gap-1"><i class="ri-key-2-line"></i> Borrar PIN</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </details>
+                {% endfor %}
+            </div>
+        </section>
+
         <section>
             <div class="bg-white rounded-2xl border border-slate-100 p-6">
                 <div class="flex items-center gap-3 mb-4">

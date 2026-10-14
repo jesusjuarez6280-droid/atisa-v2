@@ -1,0 +1,63 @@
+{#- Hoja carta para imprimir (etiquetas, órdenes, certificados de análisis, reportes).
+
+    {% extends 'nucleo/_impresion.html' %}
+    {% block hoja_titulo %}Orden de producción{% endblock %}
+    {% block hoja_codigo %}F-PRO-001 · v2{% endblock %}   (código de formato y versión)
+    {% block hoja_folio %}OP-2026-0012{% endblock %}
+    {% block hoja_cuerpo %} ...contenido... {% endblock %}
+    {% block hoja_firmas %} ...firmas al pie (usa firmado() de _firma.html)... {% endblock %}
+    Se pinta con full_page(); al abrir manda imprimir si la URL trae ?imprimir=1.
+-#}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}{{ self.hoja_titulo() }} {{ self.hoja_folio() }} | ERP Atisa{% endblock %}</title>
+    <style>
+        @page { size: letter; margin: 14mm 14mm 18mm; }
+        * { box-sizing: border-box; }
+        body { font-family: Inter, Arial, sans-serif; color: #1d1d1f; font-size: 11pt; margin: 0; background: #f5f5f7; }
+        .hoja { background: #fff; width: 216mm; min-height: 279mm; margin: 12px auto; padding: 14mm; box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+        .encabezado { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+                      border-bottom: 2px solid #0e6ba8; padding-bottom: 8px; margin-bottom: 14px; }
+        .encabezado img { height: 38px; }
+        .encabezado h1 { font-size: 15pt; margin: 0; text-align: center; flex: 1; }
+        .meta { font-size: 8.5pt; color: #6e6e73; text-align: right; line-height: 1.5; }
+        table { width: 100%; border-collapse: collapse; margin: 8px 0; }
+        th, td { border: 1px solid #c7c7cc; padding: 4px 6px; font-size: 9.5pt; text-align: left; vertical-align: top; }
+        th { background: #f0f4f8; }
+        .firmas { display: flex; gap: 16px; margin-top: 28px; }
+        .firmas > div { flex: 1; border-top: 1px solid #1d1d1f; padding-top: 4px; font-size: 9pt; text-align: center; }
+        .pie { position: fixed; bottom: 6mm; left: 14mm; right: 14mm; font-size: 8pt; color: #86868b;
+               display: flex; justify-content: space-between; }
+        .pagina::after { content: "Página " counter(page); }
+        .no-imprimir { text-align: center; margin: 12px; }
+        @media print {
+            body { background: #fff; }
+            .hoja { margin: 0; padding: 0; box-shadow: none; width: auto; min-height: 0; }
+            .no-imprimir { display: none; }
+        }
+    </style>
+    {% block hoja_estilos %}{% endblock %}
+</head>
+<body>
+    <div class="no-imprimir"><button type="button" onclick="window.print()">Imprimir</button></div>
+    <div class="hoja">
+        <div class="encabezado">
+            <img src="{{ url_for('static', filename='img_sistema/logo.png') }}" alt="Atisa">
+            <h1>{% block hoja_titulo %}{% endblock %}</h1>
+            <div class="meta">
+                <div>{% block hoja_codigo %}{% endblock %}</div>
+                <div><strong>{% block hoja_folio %}{% endblock %}</strong></div>
+                <div>{{ EMPRESA_NOMBRE }}</div>
+            </div>
+        </div>
+        {% block hoja_cuerpo %}{% endblock %}
+        <div class="firmas">{% block hoja_firmas %}{% endblock %}</div>
+    </div>
+    <div class="pie"><span>{{ EMPRESA_NOMBRE }} · {{ self.hoja_codigo() }}</span><span class="pagina"></span></div>
+    <script>
+        if (new URLSearchParams(location.search).get('imprimir') === '1') { window.addEventListener('load', function () { window.print(); }); }
+    </script>
+</body>
+</html>

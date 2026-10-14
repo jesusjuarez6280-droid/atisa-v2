@@ -77,6 +77,8 @@
         /* Atenúa el contenido mientras carga (feedback sutil) */
         #content.htmx-request { opacity:.55; transition: opacity .15s ease; }
     </style>
+    {# Utilidades que el precompilado no trae y usan los módulos nuevos (base común) #}
+    {% include 'nucleo/_utilidades.html' %}
 </head>
 <body hx-boost="true" hx-ext="preload" hx-target="#content">
     <!-- Barra de carga superior (sensación de velocidad) -->

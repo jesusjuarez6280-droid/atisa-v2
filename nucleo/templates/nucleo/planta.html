@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>Planta | ERP Atisa</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/remixicon.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/estilos.css') }}">
+    {% if tailwind_estatico %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+    {% else %}
+    <script src="{{ url_for('static', filename='js/tailwind.js') }}"></script>
+    {% endif %}
+    {% include 'nucleo/_utilidades.html' %}
+</head>
+<body class="bg-[#f5f5f7] min-h-screen" style="font-family: Inter, sans-serif;">
+    {% include '_flashes.html' %}
+
+    <header class="bg-white border-b border-slate-100 px-6 lg:px-10 h-[80px] flex items-center justify-between sticky top-0 z-40">
+        <div class="flex items-center gap-4">
+            <img src="{{ url_for('static', filename='img_sistema/isotipo.png') }}" alt="Atisa" class="w-10 h-10 object-contain">
+            <div>
+                <h1 class="text-[#1d1d1f] text-lg font-bold leading-tight">Planta</h1>
+                <p class="text-slate-500 text-xs mt-0.5">Sesión: <span class="font-semibold text-slate-600">{{ session.get('nombre') }}</span></p>
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <button type="button" onclick="document.getElementById('modal-pin').classList.remove('hidden')"
+                    class="flex items-center gap-2 h-11 px-4 rounded-xl border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50">
+                <i class="ri-key-2-line text-lg"></i> Crear mi PIN
+            </button>
+            {% if puede('dashboard') or puede('configuracion') %}
+            <a href="/" class="flex items-center gap-2 h-11 px-4 rounded-xl border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50">
+                <i class="ri-home-5-line text-lg"></i> Oficina
+            </a>
+            {% endif %}
+            <a href="/logout" class="flex items-center gap-2 h-11 px-4 rounded-xl border-2 border-rose-200 text-rose-500 text-sm font-bold hover:bg-rose-50">
+                <i class="ri-logout-box-r-line text-lg"></i>
+            </a>
+        </div>
+    </header>
+
+    <main class="px-6 lg:px-10 py-10">
+        <div class="max-w-[960px] mx-auto">
+            {% if accesos %}
+            <div class="grid grid-cols-2 lg:grid-cols-3 gap-5">
+                {% for a in accesos %}
+                <a href="{{ a.url }}" class="relative bg-white rounded-3xl border border-slate-200 shadow-sm p-8 flex flex-col items-center justify-center gap-4 text-center hover:border-[#0e6ba8] transition-colors min-h-[200px]">
+                    {% if a.contador %}
+                    <span class="absolute top-4 right-4 min-w-[2rem] h-8 px-2 rounded-full bg-[#0e6ba8] text-white text-sm font-bold flex items-center justify-center">{{ a.contador }}</span>
+                    {% endif %}
+                    <div class="w-20 h-20 rounded-2xl bg-[#0e6ba8]/10 text-[#0e6ba8] flex items-center justify-center">
+                        <i class="{{ a.icono or 'ri-apps-line' }} text-4xl"></i>
+                    </div>
+                    <span class="text-xl font-bold text-[#1d1d1f]">{{ a.titulo }}</span>
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="bg-white rounded-3xl border border-slate-200 p-16 text-center">
+                <i class="ri-tools-line text-5xl text-slate-300 block mb-3"></i>
+                <p class="text-lg font-bold text-[#1d1d1f]">No hay nada por hacer aquí todavía</p>
+            </div>
+            {% endif %}
+        </div>
+    </main>
+
+    <div id="modal-pin" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-xl font-bold text-[#1d1d1f]">Crear mi PIN de firma</h3>
+                <button type="button" onclick="document.getElementById('modal-pin').classList.add('hidden')" class="text-slate-400 hover:text-slate-700"><i class="ri-close-line text-2xl"></i></button>
+            </div>
+            <form action="{{ url_for('nucleo.planta_crear_pin') }}" method="POST" class="flex flex-col gap-4" autocomplete="off">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">No. empleado</label><input name="numero_empleado" required inputmode="numeric" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none text-lg"></div>
+                <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Tu contraseña del ERP</label><input name="password" type="password" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none text-lg"></div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">PIN (4 a 6)</label><input name="pin" type="password" required minlength="4" maxlength="6" inputmode="numeric" pattern="[0-9]*" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none text-lg tracking-widest"></div>
+                    <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Repite el PIN</label><input name="pin_confirma" type="password" required minlength="4" maxlength="6" inputmode="numeric" pattern="[0-9]*" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none text-lg tracking-widest"></div>
+                </div>
+                <p class="text-xs text-slate-500">No uses números repetidos ni seguidos (1111, 1234).</p>
+                <button type="submit" class="bg-[#0e6ba8] text-white py-3 font-bold rounded-xl hover:bg-[#1d1d1f]">Guardar PIN</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
