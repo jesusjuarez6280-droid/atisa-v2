@@ -46,8 +46,6 @@ def _proveedor(conn):
 def test_recibir_desde_la_pantalla_con_certificado(client, gente, db_alm):
     login(client, 'alm_pan_almacen', PASSWORD)
     mp = crear_material(db_alm, tipo='MP')
-    # test_nucleo_base supone que el lote 1 no tiene archivos: que el certificado no caiga en él.
-    crear_lote(db_alm, mp, fecha_caducidad=_dias(300))
     datos = {
         'proveedor_id': _proveedor(db_alm), 'documento': 'F-123', 'fecha': date.today().isoformat(),
         'p-0-material_id': mp, 'p-0-lote_proveedor': 'PROV-77', 'p-0-cantidad': '12.5', 'p-0-contenedores': '3',
@@ -58,7 +56,7 @@ def test_recibir_desde_la_pantalla_con_certificado(client, gente, db_alm):
     }
     r = client.post('/almacen/recepciones/nueva', data=datos, content_type='multipart/form-data')
     assert r.status_code == 302 and '/almacen/recepciones/' in r.headers['Location']
-    lote = db_alm.execute('SELECT * FROM lotes WHERE material_id = ? ORDER BY id DESC', (mp,)).fetchone()
+    lote = db_alm.execute('SELECT * FROM lotes WHERE material_id = ?', (mp,)).fetchone()
     assert lote['estatus'] == 'CUARENTENA' and lote['existencia'] == 12.5 and lote['lote_proveedor'] == 'PROV-77'
     archivo = db_alm.execute("SELECT * FROM archivos WHERE entidad = 'lotes' AND entidad_id = ?",
                              (lote['id'],)).fetchone()
