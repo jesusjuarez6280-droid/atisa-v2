@@ -1,0 +1,114 @@
+{% extends _layout|default("base.html") %}
+{% from 'nucleo/_firma.html' import campo_firma %}
+{% from 'nucleo/_lote.html' import chip_estatus as chip_lote %}
+{% from 'desviaciones/_macros.html' import etiqueta, clase_input %}
+{% block title %}Reportar desviación | ERP Atisa{% endblock %}
+
+{% block content %}
+{% include 'desviaciones/_estilos.html' %}
+<div class="p-10">
+    <header class="flex flex-wrap justify-between items-center gap-4 mb-8">
+        <div>
+            <h1 class="text-2xl font-bold text-[#1d1d1f]">Reportar</h1>
+            <p class="text-slate-500 mt-1">Una desviación, una queja de cliente o un hallazgo de auditoría</p>
+        </div>
+        <a href="{{ volver or url_for('desviaciones.lista') }}" class="flex items-center gap-2 h-11 px-4 rounded-xl border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50"><i class="ri-arrow-left-line"></i> Regresar</a>
+    </header>
+
+    <form action="{{ url_for('desviaciones.nueva') }}" method="POST" enctype="multipart/form-data" class="flex flex-col gap-6 max-w-[960px]" id="form-reporte">
+        {% for c in ('origen_tipo', 'origen_modulo', 'origen_id', 'origen_texto', 'origen_url', 'documento_folio') %}
+        {% if datos.get(c) %}<input type="hidden" name="{{ c }}" value="{{ datos.get(c) }}">{% endif %}
+        {% endfor %}
+
+        {% if datos.get('origen_texto') or datos.get('documento_folio') %}
+        <div class="bg-blue-50 border border-blue-100 rounded-2xl p-4 text-sm text-[#0e6ba8] flex items-center gap-3">
+            <i class="ri-links-line text-lg"></i>
+            <span>Se reporta desde <strong>{{ datos.get('origen_texto') or datos.get('documento_folio') }}</strong>{% if datos.get('documento_folio') and datos.get('origen_texto') %} · documento {{ datos.get('documento_folio') }}{% endif %}</span>
+        </div>
+        {% endif %}
+
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col gap-4">
+            <h2 class="text-lg font-bold text-[#1d1d1f]">Qué pasó</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>{{ etiqueta('Tipo') }}
+                    <select name="tipo" id="tipo" class="{{ clase_input }}">
+                        {% for k, n in sv.NOMBRE_TIPO.items() %}<option value="{{ k }}" {{ 'selected' if tipo == k }}>{{ n }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="md:col-span-2">{{ etiqueta('Título corto', opcional=True) }}<input name="titulo" value="{{ datos.get('titulo') or '' }}" maxlength="120" placeholder="Ej. pH fuera de rango en el granel" class="{{ clase_input }}"></div>
+            </div>
+            <div>{{ etiqueta('Qué pasó') }}<textarea name="descripcion" rows="4" required class="{{ clase_input }}">{{ datos.get('descripcion') or '' }}</textarea></div>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>{{ etiqueta('Cuándo ocurrió', opcional=True) }}<input type="date" name="fecha_ocurrio" value="{{ datos.get('fecha_ocurrio') or '' }}" max="{{ hoy }}" class="{{ clase_input }}"></div>
+                <div>{{ etiqueta('Cuándo se detectó') }}<input type="date" name="fecha_detecto" value="{{ datos.get('fecha_detecto') or hoy }}" max="{{ hoy }}" required class="{{ clase_input }}"></div>
+                <div>{{ etiqueta('Área') }}
+                    <select name="area" required class="{{ clase_input }}"><option value="">Elige…</option>{% for a in sv.AREAS %}<option {{ 'selected' if datos.get('area') == a }}>{{ a }}</option>{% endfor %}</select>
+                </div>
+                <div>{{ etiqueta('Quién lo detectó', opcional=True) }}<input name="detecto" value="{{ datos.get('detecto') or '' }}" placeholder="Quien firma" class="{{ clase_input }}"></div>
+            </div>
+            <div>{{ etiqueta('Corrección inmediata', opcional=True) }}<textarea name="correccion_inmediata" rows="2" placeholder="Lo que se hizo en el momento" class="{{ clase_input }}">{{ datos.get('correccion_inmediata') or '' }}</textarea></div>
+        </section>
+
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col gap-4" data-solo="QUEJA">
+            <h2 class="text-lg font-bold text-[#1d1d1f]">Queja del cliente</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>{{ etiqueta('Cliente') }}<input name="cliente" value="{{ datos.get('cliente') or '' }}" class="{{ clase_input }}"></div>
+                <div>{{ etiqueta('Contacto', opcional=True) }}<input name="cliente_contacto" value="{{ datos.get('cliente_contacto') or '' }}" class="{{ clase_input }}"></div>
+                <div>{{ etiqueta('Cantidad reclamada', opcional=True) }}<input name="cantidad_reclamada" value="{{ datos.get('cantidad_reclamada') or '' }}" placeholder="Ej. 20 frascos" class="{{ clase_input }}"></div>
+            </div>
+            <label class="flex items-center gap-3 text-sm font-semibold text-rose-600"><input type="checkbox" name="posible_reaccion_adversa" value="1" {{ 'checked' if datos.get('posible_reaccion_adversa') in (1, '1', 'on') }} class="w-5 h-5"> Hubo posible reacción adversa en animales (queda como crítica)</label>
+        </section>
+
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col gap-4" data-solo="HALLAZGO">
+            <h2 class="text-lg font-bold text-[#1d1d1f]">Hallazgo de auditoría</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>{{ etiqueta('Auditoría 5S registrada', opcional=True) }}
+                    <select name="auditoria_5s" class="{{ clase_input }}"><option value="">— Otra auditoría —</option>{% for a in auditorias %}<option value="{{ a.id }}">5S {{ a.area }} · {{ a.fecha }} ({{ a.calificacion }})</option>{% endfor %}</select>
+                </div>
+                <div>{{ etiqueta('Auditoría') }}<input name="auditoria" value="{{ datos.get('auditoria') or '' }}" placeholder="Ej. Visita SENASICA sep 2026" class="{{ clase_input }}"></div>
+            </div>
+            <div>{{ etiqueta('Requisito incumplido', opcional=True) }}<input name="requisito" value="{{ datos.get('requisito') or '' }}" placeholder="Numeral o requisito" class="{{ clase_input }}"></div>
+        </section>
+
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col gap-4">
+            <h2 class="text-lg font-bold text-[#1d1d1f]">De qué trata <span class="text-sm font-normal text-slate-400">(opcional)</span></h2>
+            {% if prellenados %}
+            <div class="flex flex-col gap-2">
+                {{ etiqueta('Lotes') }}
+                {% for l in prellenados %}
+                <label class="flex items-center gap-3 text-sm"><input type="checkbox" name="lote_id" value="{{ l.id }}" checked class="w-4 h-4"> <strong>{{ l.numero_lote }}</strong> {{ l.material_codigo }} · {{ l.material_nombre }} {{ chip_lote(l) }}</label>
+                {% endfor %}
+            </div>
+            {% endif %}
+            <div>{{ etiqueta('Agregar lotes (separados por coma)', opcional=True) }}
+                <input name="lotes_texto" list="dl-lotes" value="{{ datos.get('lotes_texto') or '' }}" placeholder="Número de lote · código del material" class="{{ clase_input }}">
+                <datalist id="dl-lotes">{% for l in opciones_lotes %}<option value="{{ l.numero_lote }} · {{ l.codigo }}">{{ l.nombre }} ({{ l.estatus }})</option>{% endfor %}</datalist>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>{{ etiqueta('Material') }}<select name="material_id" class="{{ clase_input }}"><option value="">—</option>{% for m in materiales %}<option value="{{ m.id }}" {{ 'selected' if datos.get('material_id')|string == m.id|string }}>{{ m.codigo }} · {{ m.nombre }}</option>{% endfor %}</select></div>
+                <div>{{ etiqueta('Equipo') }}<select name="equipo_id" class="{{ clase_input }}"><option value="">—</option>{% for e in equipos %}<option value="{{ e.id }}" {{ 'selected' if datos.get('equipo_id')|string == e.id|string }}>{{ e.codigo }} · {{ e.nombre }}</option>{% endfor %}</select></div>
+                <div>{{ etiqueta('Proveedor') }}<select name="proveedor_id" class="{{ clase_input }}"><option value="">—</option>{% for p in proveedores %}<option value="{{ p.id }}" {{ 'selected' if datos.get('proveedor_id')|string == p.id|string }}>{{ p.nombre }}</option>{% endfor %}</select></div>
+            </div>
+            <div>{{ etiqueta('Fotos o archivos (PDF, JPG o PNG)', opcional=True) }}<input type="file" name="archivos" multiple accept=".pdf,.jpg,.jpeg,.png" class="text-sm"></div>
+        </section>
+
+        {{ campo_firma('Realizó', numero=session.numero_empleado, titulo='Firma de quien reporta') }}
+        <div class="flex justify-end gap-3">
+            <a href="{{ volver or url_for('desviaciones.lista') }}" class="px-6 py-3 font-bold rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50">Cancelar</a>
+            <button type="submit" class="bg-[#0e6ba8] text-white px-8 py-3 font-bold rounded-xl hover:bg-[#1d1d1f] flex items-center gap-2"><i class="ri-send-plane-line"></i> Reportar</button>
+        </div>
+    </form>
+</div>
+<script>
+(function () {
+    var tipo = document.getElementById('tipo');
+    function mostrar() {
+        document.querySelectorAll('#form-reporte [data-solo]').forEach(function (s) {
+            s.classList.toggle('hidden', s.getAttribute('data-solo') !== tipo.value);
+        });
+    }
+    tipo.addEventListener('change', mostrar);
+    mostrar();
+})();
+</script>
+{% endblock %}

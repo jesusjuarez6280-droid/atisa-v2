@@ -1,0 +1,21 @@
+{#- Sección "Desviaciones" de la ficha del lote (gancho secciones_lote).
+    Contexto: lote_id, desviaciones, nombre_estatus, nombre_impacto. -#}
+{% from 'desviaciones/_macros.html' import chip_estatus, chip_impacto %}
+<div class="flex flex-col gap-3">
+    {% if desviaciones %}
+    <ul class="divide-y divide-slate-100 text-sm">
+        {% for d in desviaciones %}
+        <li class="py-2 flex flex-wrap items-center gap-3">
+            <a href="/desviaciones/{{ d.id }}" class="font-bold text-[#0e6ba8] hover:underline">{{ d.folio }}</a>
+            <span class="flex-1">{{ d.titulo }}{% if d.retenido %} <span class="text-xs text-violet-700">· la retuvo</span>{% endif %}</span>
+            {{ chip_impacto(d.impacto) }} {{ chip_estatus(d.estatus) }}
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-sm text-slate-500">Ninguna desviación afecta a este lote.</p>
+    {% endif %}
+    {% if puede('desviaciones') %}
+    <a href="{{ url_for('desviaciones.nueva', lotes=lote_id) }}" class="self-start flex items-center gap-2 h-10 px-4 rounded-xl border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50"><i class="ri-error-warning-line"></i> Reportar desviación de este lote</a>
+    {% endif %}
+</div>

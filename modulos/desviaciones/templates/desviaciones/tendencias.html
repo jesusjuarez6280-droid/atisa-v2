@@ -1,0 +1,71 @@
+{% extends _layout|default("base.html") %}
+{% block title %}Tendencias | Desviaciones | ERP Atisa{% endblock %}
+
+{% macro barras(lista, nombres=None) -%}
+{% set maximo = (lista|map(attribute='n')|max) if lista else 0 %}
+{% if lista and maximo %}
+<div class="flex flex-col gap-2">
+    {% for x in lista %}
+    <div class="flex items-center gap-3 text-sm">
+        <span class="w-36 shrink-0 truncate text-slate-600">{{ nombres.get(x.etiqueta, x.etiqueta) if nombres else x.etiqueta }}</span>
+        <div class="flex-1 h-5 bg-slate-100 rounded-md overflow-hidden"><div class="h-full rounded-md bg-[#0e6ba8]" style="width: {{ (100 * x.n / maximo)|round(1) }}%"></div></div>
+        <span class="w-8 text-right font-bold tabular-nums text-[#1d1d1f]">{{ x.n }}</span>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p class="text-sm text-slate-400">Sin datos en el periodo.</p>
+{% endif %}
+{%- endmacro %}
+
+{% block content %}
+{% include 'desviaciones/_estilos.html' %}
+<div class="p-10">
+    <header class="flex flex-wrap justify-between items-center gap-4 mb-8">
+        <div>
+            <h1 class="text-2xl font-bold text-[#1d1d1f]">Tendencias de desviaciones</h1>
+            <p class="text-slate-500 mt-1">Del {{ t.desde }} al {{ t.hasta }} · para la revisión por la dirección y las auditorías</p>
+        </div>
+        <div class="flex gap-2">
+            <a href="{{ url_for('desviaciones.lista') }}" class="flex items-center gap-2 h-11 px-4 rounded-xl border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50"><i class="ri-arrow-left-line"></i> Desviaciones</a>
+            <a href="{{ url_for('desviaciones.tendencias_excel') }}" hx-boost="false" class="flex items-center gap-2 h-11 px-4 rounded-xl border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50"><i class="ri-file-excel-2-line"></i> Excel</a>
+        </div>
+    </header>
+
+    {% set maximo_mes = (t.por_mes|map(attribute='n')|max) or 1 %}
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
+        <h2 class="text-lg font-bold text-[#1d1d1f] mb-4">Desviaciones por mes</h2>
+        <div class="flex items-end gap-2 h-48">
+            {% for m in t.por_mes %}
+            <div class="flex-1 flex flex-col items-center justify-end gap-1.5 h-full">
+                <span class="text-[10px] font-bold text-slate-500">{{ m.n }}</span>
+                <div class="w-full rounded-t-md bg-[#0e6ba8]" style="height: {{ (100 * m.n / maximo_mes)|round(1) }}%; min-height: 2px"></div>
+                <span class="text-[10px] text-slate-400">{{ m.etiqueta[5:] }}/{{ m.etiqueta[2:4] }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6"><h2 class="text-lg font-bold text-[#1d1d1f] mb-4">Por área</h2>{{ barras(t.por_area) }}</section>
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6"><h2 class="text-lg font-bold text-[#1d1d1f] mb-4">Por categoría de causa</h2>{{ barras(t.por_categoria) }}</section>
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6"><h2 class="text-lg font-bold text-[#1d1d1f] mb-4">Por clasificación</h2>{{ barras(t.por_clasificacion, sv.NOMBRE_CLASIFICACION) }}</section>
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6"><h2 class="text-lg font-bold text-[#1d1d1f] mb-4">Por tipo</h2>{{ barras(t.por_tipo, sv.NOMBRE_TIPO) }}</section>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+            <h2 class="text-lg font-bold text-[#1d1d1f] mb-4">Causas que se repiten</h2>
+            {% if t.repetidas %}
+            <ul class="divide-y divide-slate-100 text-sm">{% for r in t.repetidas %}<li class="py-2 flex items-center gap-3"><span class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 font-bold flex items-center justify-center shrink-0">{{ r.n }}</span><span class="flex-1"><strong>{{ r.categoria_causa }}</strong> en {{ r.area }}<br><span class="text-xs text-slate-400">{{ r.folios }}</span></span></li>{% endfor %}</ul>
+            {% else %}<p class="text-sm text-slate-400">Ninguna causa se repite en la misma área.</p>{% endif %}
+        </section>
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+            <h2 class="text-lg font-bold text-[#1d1d1f] mb-4">Acciones: a tiempo contra vencidas</h2>
+            {% set acc = t.acciones %}
+            {{ barras([{'etiqueta': 'Hechas a tiempo', 'n': acc.a_tiempo}, {'etiqueta': 'Hechas tarde', 'n': acc.tarde},
+                       {'etiqueta': 'Vencidas sin hacer', 'n': acc.vencidas}, {'etiqueta': 'Pendientes en plazo', 'n': acc.en_plazo}]) }}
+        </section>
+    </div>
+</div>
+{% endblock %}
