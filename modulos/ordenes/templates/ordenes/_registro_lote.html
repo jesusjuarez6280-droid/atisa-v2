@@ -1,0 +1,95 @@
+{#- Cuerpo del registro de lote: lo usan el detalle (pantalla) y el expediente (hoja carta).
+    Espera e (expediente.armar) y o (la orden). -#}
+{% macro quien(fid) -%}{% set f = e.firmas.get(fid) %}{% if f %}{{ f.nombre }} <span class="op-gris">{{ (f.ts or '')[:16] }}</span>{% else %}—{% endif %}{%- endmacro %}
+
+<h3 class="op-h3">Despeje de línea</h3>
+<table class="op-tabla w-full text-sm">
+    <thead><tr><th>Momento</th><th>Área limpia · sin materiales previos · equipos limpios · documentos retirados</th><th>Realizó</th><th>Verificó</th><th>Observaciones</th></tr></thead>
+    <tbody>
+    {% for m in ['Fabricación', 'Envasado'] %}{% set d = e.despejes.get(m) %}
+    <tr><td>{{ m }}</td><td>{{ 'Sí · Sí · Sí · Sí' if d else 'Pendiente' }}</td><td>{{ quien(d.realizo_firma_id) if d else '—' }}</td><td>{{ quien(d.verifico_firma_id) if d else '—' }}</td><td>{{ (d.observaciones or '') if d else '' }}</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+<h3 class="op-h3">Pesadas de materia prima</h3>
+<table class="op-tabla w-full text-sm">
+    <thead><tr><th>Material</th><th class="op-num">Teórico</th><th class="op-num">Pesado</th><th>Lote · caducidad</th><th>Báscula</th><th>Pesó</th><th>Verificó</th></tr></thead>
+    <tbody>
+    {% for c in e.mp %}
+    {% set lista = e.pesadas|selectattr('componente_id', 'equalto', c.id)|list %}
+    <tr><td><b>{{ c.codigo }}</b> {{ c.nombre }}{% if c.es_activo %} (activo){% endif %}</td>
+        <td class="op-num">{{ '%g'|format(c.cantidad_teorica) }} {{ c.unidad }} ± {{ '%g'|format(c.tolerancia_pct) }} %</td>
+        <td class="op-num {{ 'op-ok' if c.completo else 'op-fuera' }}">{{ '%g'|format(c.pesado) }}</td>
+        <td colspan="4">{% if not lista %}—{% endif %}
+            {% for p in lista %}<div>{{ '%g'|format(p.cantidad) }} {{ c.unidad }} · lote {{ p.numero_lote }} ({{ p.fecha_caducidad or 'sin caducidad' }}) · {{ p.equipo_codigo or '—' }}{% if p.calibracion %} [cal. {{ p.calibracion.folio or '' }} vence {{ p.calibracion.vencimiento or p.calibracion.vence or '' }}]{% endif %} · {{ quien(p.realizo_firma_id) }}{% if p.verifico_firma_id %} · verificó {{ quien(p.verifico_firma_id) }}{% endif %}{% if p.registro_posterior %} · <b>registro posterior</b>: {{ p.motivo_registro_posterior }}{% endif %}{% if p.motivo_otro_lote %} · otro lote: {{ p.motivo_otro_lote }}{% endif %}</div>{% endfor %}</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+<h3 class="op-h3">Pasos</h3>
+<table class="op-tabla w-full text-sm">
+    <thead><tr><th>#</th><th>Instrucción</th><th>Valores</th><th>Equipo</th><th>Inicio · fin</th><th>Firmas</th></tr></thead>
+    <tbody>
+    {% for p in e.pasos %}
+    <tr><td>{{ p.numero }}<br><span class="op-gris">{{ p.fase }}</span></td>
+        <td>{{ p.instruccion }}{% if p.es_critico %} <b>(crítico)</b>{% endif %}{% if p.comentario %}<br><i>{{ p.comentario }}</i>{% endif %}</td>
+        <td>{% for v in p.valores %}<div class="{{ 'op-fuera' if v.en_rango == 0 else '' }}">{{ v.nombre }}: {{ '%g'|format(v.valor) if v.valor is not none else '—' }} {{ v.unidad or '' }} <span class="op-gris">({{ '%g'|format(v.valor_min) if v.valor_min is not none else '—' }} a {{ '%g'|format(v.valor_max) if v.valor_max is not none else '—' }})</span></div>{% else %}—{% endfor %}
+            {% if p.justificacion %}<div>Justificación: {{ p.justificacion }} · {{ quien(p.justificacion_firma_id) }}</div>{% endif %}</td>
+        <td>{{ p.equipo_codigo or '—' }}{% if p.calibracion %}<br><span class="op-gris">cal. {{ p.calibracion.folio or '' }} vence {{ p.calibracion.vencimiento or p.calibracion.vence or '' }}</span>{% endif %}</td>
+        <td>{{ (p.inicio or '—')[:16] }}<br>{{ (p.fin or '—')[:16] }}{% if p.registro_posterior %}<br><b>registro posterior</b>: {{ p.motivo_registro_posterior }}{% endif %}</td>
+        <td>{% if p.realizo_firma_id %}Realizó: {{ quien(p.realizo_firma_id) }}{% if p.nivel_competencia is not none %} <span class="op-gris">({{ p.nivel_competencia }} %)</span>{% endif %}{% else %}{{ p.estatus }}{% endif %}{% if p.verifico_firma_id %}<br>Verificó: {{ quien(p.verifico_firma_id) }}{% endif %}</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+<h3 class="op-h3">Granel y rendimiento</h3>
+<table class="op-tabla w-full text-sm">
+    <tbody>
+    <tr><th>Teórico</th><td>{{ '%g'|format(o.tamano_lote) }} {{ o.unidad }}</td><th>Obtenido</th><td>{{ '%g'|format(o.granel_obtenido) if o.granel_obtenido is not none else '—' }} {{ o.unidad }}{% if e.granel_equipo %} · {{ e.granel_equipo.codigo }}{% endif %}</td></tr>
+    <tr><th>Rendimiento</th><td class="{{ 'op-fuera' if o.rendimiento_fuera else '' }}">{{ '%g %%'|format(o.rendimiento_pct) if o.rendimiento_pct is not none else '—' }} <span class="op-gris">(límites {{ '%g'|format(o.rendimiento_min) }}–{{ '%g'|format(o.rendimiento_max) }} %)</span></td><th>Registró</th><td>{{ quien(o.granel_firma_id) }}</td></tr>
+    {% if o.rendimiento_justificacion %}<tr><th>Justificación</th><td colspan="3">{{ o.rendimiento_justificacion }} · {{ quien(o.rendimiento_justificacion_firma_id) }}</td></tr>{% endif %}
+    {% if o.merma_granel %}<tr><th>Merma de granel</th><td colspan="3">{{ '%g'|format(o.merma_granel) }} {{ o.unidad }} · {{ o.motivo_merma }}</td></tr>{% endif %}
+    </tbody>
+</table>
+
+{% if e.hay_envasado %}
+<h3 class="op-h3">Envasado</h3>
+<table class="op-tabla w-full text-sm">
+    <thead><tr><th>Presentación</th><th class="op-num">Planeadas</th><th class="op-num">Buenas</th><th class="op-num">Rechazadas</th><th>Lote</th><th>Firmó</th></tr></thead>
+    <tbody>
+    {% for p in e.presentaciones if p.piezas_planeadas or p.piezas_buenas or p.piezas_rechazadas %}
+    <tr><td><b>{{ p.codigo }}</b> {{ p.nombre }}</td><td class="op-num">{{ p.piezas_planeadas }}</td><td class="op-num">{{ p.piezas_buenas }}</td><td class="op-num">{{ p.piezas_rechazadas }}</td><td>{{ p.numero_lote or '—' }}</td><td>{{ quien(p.firma_id) }}</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% set surtidas = e.pesadas|rejectattr('tipo', 'equalto', 'MP')|list %}
+{% if surtidas %}
+<table class="op-tabla w-full text-sm">
+    <thead><tr><th>Envase y empaque surtido</th><th class="op-num">Cantidad</th><th>Lote</th><th>Firmas</th></tr></thead>
+    <tbody>
+    {% for p in surtidas %}<tr><td><b>{{ p.codigo }}</b> {{ p.nombre }}</td><td class="op-num">{{ '%g'|format(p.cantidad) }} {{ p.unidad }}</td><td>{{ p.numero_lote }}</td><td>{{ quien(p.realizo_firma_id) }}{% if p.verifico_firma_id %} · verificó {{ quien(p.verifico_firma_id) }}{% endif %}</td></tr>{% endfor %}
+    </tbody>
+</table>
+{% endif %}
+{% if e.conciliaciones %}
+<h3 class="op-h3">Conciliación de material impreso</h3>
+<table class="op-tabla w-full text-sm">
+    <thead><tr><th>Material</th><th class="op-num">Entregadas</th><th class="op-num">Usadas</th><th class="op-num">Dañadas</th><th class="op-num">Devueltas</th><th class="op-num">Diferencia</th><th>Firmó</th></tr></thead>
+    <tbody>
+    {% for c in e.conciliaciones.values() %}{% set m = e.nombres_material.get(c.material_id) %}
+    <tr><td>{{ m.codigo if m else '' }} {{ m.nombre if m else '' }}</td><td class="op-num">{{ '%g'|format(c.entregadas) }}</td><td class="op-num">{{ '%g'|format(c.usadas) }}</td><td class="op-num">{{ '%g'|format(c.danadas) }}</td><td class="op-num">{{ '%g'|format(c.devueltas) }}</td>
+        <td class="op-num {{ 'op-fuera' if (c.diferencia|abs) > 0.000001 else 'op-ok' }}">{{ '%g'|format(c.diferencia) }}</td><td>{{ quien(c.firma_id) }}{% if c.justificacion %}<br>Justificación: {{ c.justificacion }} · {{ quien(c.justificacion_firma_id) }}{% endif %}</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+{% endif %}
+
+{% if e.desviaciones %}
+<h3 class="op-h3">Desviaciones ligadas</h3>
+<table class="op-tabla w-full text-sm">
+    <thead><tr><th>Dónde</th><th>Folio</th><th>Estatus</th><th>Clasificación</th></tr></thead>
+    <tbody>{% for d in e.desviaciones %}<tr><td>{{ d.donde }}</td><td>{% if d.url %}<a href="{{ d.url }}">{{ d.folio }}</a>{% else %}{{ d.folio }}{% endif %}</td><td>{{ d.estatus }}</td><td>{{ d.clasificacion or '' }}</td></tr>{% endfor %}</tbody>
+</table>
+{% endif %}

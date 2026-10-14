@@ -1,0 +1,66 @@
+{% extends _layout|default("base.html") %}
+{% from 'ordenes/_firmas.html' import chip_orden %}
+{% block title %}Órdenes de producción | ERP Atisa{% endblock %}
+{% block content %}
+{% include 'ordenes/_estilos.html' %}
+<div class="p-10">
+    <header class="flex flex-wrap justify-between items-center gap-4 mb-8">
+        <div>
+            <h1 class="text-2xl font-bold text-[#1d1d1f]">Órdenes de producción</h1>
+            <p class="text-slate-500 mt-1">Cada lote con su orden, sus pesadas, pasos y firmas</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="{{ url_for('ordenes.reporte') }}" hx-boost="false" class="flex items-center gap-2 h-11 px-4 rounded-xl border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50"><i class="ri-file-excel-2-line"></i> Reporte</a>
+            {% if puede('ordenes_planta') %}<a href="{{ url_for('ordenes.planta_lista') }}" hx-boost="false" class="flex items-center gap-2 h-11 px-4 rounded-xl border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50"><i class="ri-tablet-line"></i> Tablet</a>{% endif %}
+            {% if puede('ordenes_planear') %}
+            <a href="{{ url_for('ordenes.nueva') }}" class="bg-[#0e6ba8] text-white px-6 py-3 font-bold rounded-xl hover:bg-[#1d1d1f] flex items-center gap-2"><i class="ri-add-line text-lg"></i> Nueva orden</a>
+            {% endif %}
+        </div>
+    </header>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        {% for valor, texto, icono in [(kpis.en_proceso, 'En proceso', 'ri-loader-4-line'), (kpis.por_revisar, 'Terminadas por revisar', 'ri-file-search-line'),
+                                      (kpis.lotes_mes, 'Lotes producidos en el mes', 'ri-stack-line'),
+                                      (('%g %%'|format(kpis.rendimiento_mes)) if kpis.rendimiento_mes is not none else '—', 'Rendimiento promedio del mes', 'ri-line-chart-line')] %}
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-[#0e6ba8]/10 text-[#0e6ba8] flex items-center justify-center shrink-0"><i class="{{ icono }} text-xl"></i></div><div><p class="text-2xl font-bold text-[#1d1d1f] leading-none">{{ valor }}</p><p class="text-xs text-slate-500 font-medium mt-1">{{ texto }}</p></div></div></div>
+        {% endfor %}
+    </div>
+
+    <div class="flex flex-wrap gap-2 mb-4">
+        {% for clave, (texto, _) in pestanas.items() %}
+        <a href="{{ url_for('ordenes.lista', pestana=clave) }}" class="op-tab {{ 'activa' if clave == pestana else '' }}">{{ texto }} <span class="opacity-70">{{ conteos[clave] }}</span></a>
+        {% endfor %}
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full op-tabla text-sm">
+                <thead><tr><th>Folio</th><th>Producto</th><th>Lote</th><th class="op-num">Tamaño</th><th>Programada</th><th>Avance</th><th>Estatus</th></tr></thead>
+                <tbody>
+                {% for o in ordenes %}
+                <tr class="hover:bg-slate-50">
+                    <td><a href="{{ url_for('ordenes.detalle', orden_id=o.id) }}" class="font-bold text-[#0e6ba8]">{{ o.folio }}</a></td>
+                    <td class="font-semibold text-slate-700">{{ o.producto_codigo }} · {{ o.producto_nombre }}</td>
+                    <td>{{ o.numero_lote or '—' }}</td>
+                    <td class="op-num">{{ '%g'|format(o.tamano_lote) }} {{ o.unidad }}</td>
+                    <td>{{ o.fecha_programada or '—' }}</td>
+                    <td style="min-width:120px"><div class="flex items-center gap-2"><div class="op-barra flex-1"><span style="width: {{ o.avance }}%"></span></div><span class="text-xs font-bold tabular-nums">{{ o.avance }}%</span></div></td>
+                    <td>{{ chip_orden(o.estatus, nombres) }}
+                        {% if o.estatus == 'REVISADA' and o.granel_estatus %}<span class="op-chip {{ 'bg-emerald-50 text-emerald-600' if o.granel_estatus == 'APROBADO' else ('bg-rose-50 text-rose-600' if o.granel_estatus == 'RECHAZADO' else 'bg-amber-50 text-amber-600') }}">{{ {'APROBADO': 'Liberado', 'RECHAZADO': 'Rechazado', 'CUARENTENA': 'En cuarentena', 'RETENIDO': 'Retenido'}.get(o.granel_estatus, o.granel_estatus) }}</span>{% endif %}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="7" class="text-center text-slate-500" style="padding:3rem">No hay órdenes en esta pestaña.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% if paginas > 1 %}
+    <div class="flex items-center justify-center gap-2 mt-4">
+        {% if pagina > 1 %}<a href="{{ url_for('ordenes.lista', pestana=pestana, pagina=pagina - 1) }}" class="op-tab">‹ Anterior</a>{% endif %}
+        <span class="text-sm text-slate-500">Página {{ pagina }} de {{ paginas }}</span>
+        {% if pagina < paginas %}<a href="{{ url_for('ordenes.lista', pestana=pestana, pagina=pagina + 1) }}" class="op-tab">Siguiente ›</a>{% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

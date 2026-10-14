@@ -1,0 +1,65 @@
+{% extends _layout|default("base.html") %}
+{% block title %}Nueva orden | ERP Atisa{% endblock %}
+{% block content %}
+{% include 'ordenes/_estilos.html' %}
+<div class="p-10">
+    <header class="flex flex-wrap justify-between items-center gap-4 mb-8">
+        <div>
+            <h1 class="text-2xl font-bold text-[#1d1d1f]">Nueva orden de producción</h1>
+            <p class="text-slate-500 mt-1">Solo productos con fórmula vigente</p>
+        </div>
+        <a href="{{ url_for('ordenes.lista') }}" class="flex items-center gap-2 h-11 px-4 rounded-xl border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50"><i class="ri-arrow-left-line"></i> Órdenes</a>
+    </header>
+
+    {% if not formulas %}
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-16 text-center">
+        <i class="ri-flask-line text-5xl text-slate-300 block mb-3"></i>
+        <h3 class="text-lg font-bold text-[#1d1d1f]">No hay fórmulas vigentes</h3>
+        <p class="text-slate-500 mt-1">Crea y aprueba una fórmula en <a href="{{ url_for('ordenes.formulas') }}" class="text-[#0e6ba8] font-bold">Fórmulas maestras</a>.</p>
+    </div>
+    {% else %}
+    <form method="GET" action="{{ url_for('ordenes.nueva') }}" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6 grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+        <div class="md:col-span-2"><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Producto</label>
+            <select name="formula_id" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl" onchange="this.form.submit()">
+                <option value="">Elige…</option>
+                {% for f in formulas %}<option value="{{ f.id }}" {% if formula and formula.id == f.id %}selected{% endif %}>{{ f.codigo }} · {{ f.nombre }} (v{{ f.version }})</option>{% endfor %}
+            </select></div>
+        {% if formula %}
+        <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Tamaño de lote ({{ formula.unidad }})</label><input name="tamano_lote" type="number" step="any" min="0" value="{{ '%g'|format(tamano) }}" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl"></div>
+        {% for p in presentaciones %}
+        <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Piezas {{ p.codigo }} ({{ '%g'|format(p.contenido_por_pieza or 0) }} {{ formula.unidad }})</label><input name="piezas_{{ p.id }}" type="number" min="0" step="1" value="{{ piezas.get(p.id, 0) }}" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl"></div>
+        {% endfor %}
+        <div><button type="submit" class="h-12 px-5 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-50 w-full"><i class="ri-refresh-line"></i> Calcular disponibilidad</button></div>
+        {% endif %}
+    </form>
+
+    {% if formula %}
+    {% if necesario > tamano %}
+    <div class="bg-amber-50 border border-amber-100 rounded-2xl p-4 text-amber-800 font-semibold mb-6">Las piezas planeadas piden {{ '%g'|format(necesario) }} {{ formula.unidad }} de granel y el lote es de {{ '%g'|format(tamano) }}: no alcanza.</div>
+    {% endif %}
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-6">
+        <div class="px-6 py-4 border-b border-slate-100"><h2 class="text-lg font-bold text-[#1d1d1f]">Disponibilidad</h2><p class="text-xs text-slate-500">Es aviso, no candado: el candado está al pesar.</p></div>
+        <table class="w-full op-tabla text-sm">
+            <thead><tr><th>Material</th><th class="op-num">Pide la orden</th><th class="op-num">Aprobado y vigente</th><th class="op-num">En cuarentena</th><th class="op-num">Falta</th></tr></thead>
+            <tbody>
+            {% for d in disponibilidad %}
+            <tr><td><span class="font-semibold">{{ d.codigo }}</span> · {{ d.nombre }} <span class="text-xs text-slate-400">{{ d.tipo }}</span></td>
+                <td class="op-num">{{ '%g'|format(d.cantidad) }} {{ d.unidad }}</td><td class="op-num">{{ '%g'|format(d.aprobado) }}</td>
+                <td class="op-num">{{ '%g'|format(d.cuarentena) }}</td><td class="op-num {{ 'op-fuera' if d.falta > 0 else 'op-ok' }}">{{ '%g'|format(d.falta) }}</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <form method="POST" action="{{ url_for('ordenes.nueva') }}" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="formula_id" value="{{ formula.id }}">
+        <input type="hidden" name="tamano_lote" value="{{ tamano }}">
+        {% for p in presentaciones %}<input type="hidden" name="piezas_{{ p.id }}" value="{{ piezas.get(p.id, 0) }}">{% endfor %}
+        <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Fecha programada</label><input name="fecha_programada" type="date" value="{{ hoy }}" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl"></div>
+        <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Observaciones</label><input name="observaciones" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl"></div>
+        <button type="submit" class="h-12 bg-[#0e6ba8] text-white font-bold rounded-xl hover:bg-[#1d1d1f]">Crear orden en borrador</button>
+    </form>
+    {% endif %}
+    {% endif %}
+</div>
+{% endblock %}

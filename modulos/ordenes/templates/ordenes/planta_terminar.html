@@ -1,0 +1,53 @@
+{% extends 'ordenes/_planta.html' %}
+{% from 'ordenes/_firmas.html' import firma, csrf %}
+{% block titulo %}Terminar orden{% endblock %}
+{% block subtitulo %}{{ o.folio }} · {{ o.producto_nombre }} · Lote {{ o.numero_lote or '—' }}{% endblock %}
+{% block volver %}
+<a href="{{ url_for('ordenes.planta_orden', orden_id=o.id) }}" class="flex items-center gap-2 h-11 px-4 rounded-xl border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50"><i class="ri-arrow-left-line text-lg"></i> Orden</a>
+{% endblock %}
+{% block contenido %}
+{% if o.estatus in ('TERMINADA', 'REVISADA') %}
+<div class="bg-emerald-50 border border-emerald-100 rounded-2xl p-6 text-emerald-700 font-semibold">La orden ya está terminada.</div>
+{% else %}
+{% if problemas %}
+<section class="bg-rose-50 border border-rose-100 rounded-3xl p-6 flex flex-col gap-4">
+    <h2 class="font-bold text-rose-600">Pendientes de desviación</h2>
+    {% for p in problemas %}
+    <div class="bg-white rounded-2xl border border-rose-100 p-4 flex flex-col gap-3">
+        <p class="font-semibold text-[#1d1d1f]">{{ p.texto }}</p>
+        {% if p.reportar %}<a href="{{ p.reportar }}" class="inline-flex h-12 px-5 rounded-xl bg-rose-500 text-white font-bold items-center gap-2 w-max"><i class="ri-alarm-warning-line"></i> Reportar desviación</a>
+        {% elif not desviaciones_instalado %}
+        <form method="POST" action="{{ url_for('ordenes.planta_justificar', orden_id=o.id) }}" class="flex flex-col gap-3">
+            {{ csrf() }}<input type="hidden" name="origen" value="{{ p.origen }}"><input type="hidden" name="origen_id" value="{{ p.origen_id }}">
+            <textarea name="justificacion" required rows="2" placeholder="Justificación del supervisor" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl"></textarea>
+            {{ firma('realizo', 'Justifica (supervisor)') }}
+            <button type="submit" class="h-12 rounded-xl bg-[#1d1d1f] text-white font-bold">Guardar justificación</button>
+        </form>
+        {% endif %}
+    </div>
+    {% endfor %}
+</section>
+{% endif %}
+{% set otros = e.faltantes|reject('in', problemas|map(attribute='texto')|list)|list %}
+{% if otros %}
+<section class="bg-white rounded-3xl border border-slate-200 p-6">
+    <h2 class="text-lg font-bold text-[#1d1d1f] mb-3">Todavía falta</h2>
+    <ul class="flex flex-col gap-2">{% for f in otros %}<li class="flex items-center gap-2 text-slate-700"><i class="ri-checkbox-blank-circle-line text-slate-400"></i> {{ f }}</li>{% endfor %}</ul>
+</section>
+{% endif %}
+{% if not e.faltantes and o.estatus == 'EN_PROCESO' %}
+<form method="POST" class="flex flex-col gap-6">
+    {{ csrf() }}
+    {% if (o.granel_existencia or 0) > 0.000001 %}
+    <section class="bg-white rounded-3xl border border-slate-200 p-6">
+        <h2 class="text-lg font-bold text-[#1d1d1f] mb-2">Merma de granel</h2>
+        <p class="text-slate-600 mb-3">Quedan <span class="font-bold">{{ '%g'|format(o.granel_existencia) }} {{ o.unidad }}</span> de granel: se dan de baja como merma.</p>
+        <input name="motivo_merma" required placeholder="Motivo de la merma" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl">
+    </section>
+    {% endif %}
+    {{ firma('realizo', 'Termina (supervisor)') }}
+    <button type="submit" class="op-btn-grande rounded-2xl bg-emerald-500 text-white font-bold">Terminar orden</button>
+</form>
+{% endif %}
+{% endif %}
+{% endblock %}

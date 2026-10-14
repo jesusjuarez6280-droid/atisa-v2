@@ -1,0 +1,104 @@
+{% extends 'ordenes/_planta.html' %}
+{% from 'ordenes/_firmas.html' import firma, firmado, csrf %}
+{% block titulo %}Envasado{% endblock %}
+{% block subtitulo %}{{ o.folio }} · {{ o.producto_nombre }} · Lote {{ o.numero_lote or '—' }}{% endblock %}
+{% block volver %}
+<a href="{{ url_for('ordenes.planta_orden', orden_id=o.id) }}" class="flex items-center gap-2 h-11 px-4 rounded-xl border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50"><i class="ri-arrow-left-line text-lg"></i> Orden</a>
+{% endblock %}
+{% block contenido %}
+{% set abierta = o.estatus in ('EMITIDA', 'EN_PROCESO') %}
+{% if not o.granel_lote_id %}
+<div class="bg-amber-50 border border-amber-100 rounded-2xl p-6 text-amber-800 font-semibold">Primero registra el granel obtenido.</div>
+{% elif 'Envasado' not in e.despejes %}
+<div class="bg-amber-50 border border-amber-100 rounded-2xl p-5 text-amber-800 font-semibold flex items-center justify-between gap-3">
+    <span>Primero el despeje de línea de envasado.</span>
+    {% if abierta %}<a href="{{ url_for('ordenes.planta_despeje', orden_id=o.id, momento='Envasado') }}" class="h-11 px-5 rounded-xl bg-[#0e6ba8] text-white font-bold flex items-center">Hacer despeje</a>{% endif %}
+</div>
+{% else %}
+<div class="bg-white rounded-2xl border border-slate-200 p-5 text-sm text-slate-600">Granel disponible: <span class="font-bold text-[#1d1d1f]">{{ '%g'|format(o.granel_existencia or 0) }} {{ o.unidad }}</span></div>
+
+{% if e.surtido %}
+<section class="bg-white rounded-3xl border border-slate-200 p-6">
+    <h2 class="text-lg font-bold text-[#1d1d1f] mb-4 flex items-center gap-2"><i class="ri-inbox-unarchive-line text-[#0e6ba8]"></i> Surtir envase y empaque</h2>
+    <div class="flex flex-col gap-3">
+        {% for c in e.surtido %}
+        <a href="{{ url_for('ordenes.planta_pesar', orden_id=o.id, componente_id=c.id) }}" class="flex items-center gap-4 p-4 rounded-2xl border border-slate-200 hover:border-[#0e6ba8]">
+            <span class="w-10 h-10 rounded-xl flex items-center justify-center text-xl {{ 'bg-emerald-50 text-emerald-600' if c.completo else 'bg-slate-100 text-slate-500' }}"><i class="{{ 'ri-check-line' if c.completo else 'ri-inbox-line' }}"></i></span>
+            <div class="flex-1 min-w-0"><p class="font-bold text-[#1d1d1f] truncate">{{ c.codigo }} · {{ c.nombre }} {% if c.es_impreso %}<span class="op-chip bg-violet-50 text-violet-700">Impreso</span>{% endif %}</p>
+                <p class="text-sm text-slate-500">Para {{ c.presentacion_codigo }} · {{ '%g'|format(c.pesado) }} de {{ '%g'|format(c.cantidad_teorica) }} {{ c.unidad }}</p></div>
+            <i class="ri-arrow-right-s-line text-2xl text-slate-400"></i>
+        </a>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+{% if e.pasos_env %}
+<section class="bg-white rounded-3xl border border-slate-200 p-6">
+    <h2 class="text-lg font-bold text-[#1d1d1f] mb-4 flex items-center gap-2"><i class="ri-list-check-3 text-[#0e6ba8]"></i> Pasos de envasado</h2>
+    <div class="flex flex-col gap-3">
+        {% for p in e.pasos_env %}
+        <a href="{{ url_for('ordenes.planta_paso', orden_id=o.id, paso_id=p.id) }}" class="flex items-center gap-4 p-4 rounded-2xl border border-slate-200 hover:border-[#0e6ba8]">
+            <span class="w-10 h-10 rounded-xl flex items-center justify-center font-bold {{ 'bg-emerald-50 text-emerald-600' if p.estatus == 'Hecho' else 'bg-slate-100 text-slate-500' }}">{{ p.numero }}</span>
+            <p class="flex-1 font-semibold text-[#1d1d1f] truncate">{{ p.instruccion }}</p>
+            <i class="ri-arrow-right-s-line text-2xl text-slate-400"></i>
+        </a>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+{% for pr in e.presentaciones if pr.piezas_planeadas > 0 or pr.piezas_buenas > 0 %}
+<section class="bg-white rounded-3xl border border-slate-200 p-6">
+    <div class="flex items-start justify-between gap-3 mb-4">
+        <div><h2 class="text-lg font-bold text-[#1d1d1f]">{{ pr.codigo }} · {{ pr.nombre }}</h2>
+            <p class="text-sm text-slate-500">Planeadas {{ pr.piezas_planeadas }} · Buenas {{ pr.piezas_buenas }} · Rechazadas {{ pr.piezas_rechazadas }} · {{ '%g'|format(pr.contenido_por_pieza or 0) }} {{ o.unidad }} por pieza</p></div>
+        {% if pr.lote_id %}<span class="op-chip bg-amber-50 text-amber-600">Lote {{ pr.numero_lote }} · {{ pr.lote_estatus|lower }}</span>{% endif %}
+    </div>
+    {% if abierta %}
+    <form method="POST" action="{{ url_for('ordenes.planta_envasar', orden_id=o.id, presentacion_id=pr.presentacion_id) }}" class="flex flex-col gap-4">
+        {{ csrf() }}
+        <div class="grid grid-cols-2 gap-3">
+            <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Piezas buenas</label><input name="buenas" type="number" min="0" step="1" inputmode="numeric" class="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-2xl font-bold tabular-nums"></div>
+            <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Piezas rechazadas</label><input name="rechazadas" type="number" min="0" step="1" inputmode="numeric" class="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-2xl font-bold tabular-nums"></div>
+        </div>
+        {{ firma('realizo', 'Envasó') }}
+        <button type="submit" class="h-16 rounded-2xl bg-[#0e6ba8] text-white text-lg font-bold hover:bg-[#1d1d1f]">Registrar envasado</button>
+    </form>
+    {% endif %}
+</section>
+{% endfor %}
+
+{% if e.impresos %}
+<section class="bg-white rounded-3xl border border-slate-200 p-6">
+    <h2 class="text-lg font-bold text-[#1d1d1f] mb-1 flex items-center gap-2"><i class="ri-price-tag-3-line text-[#0e6ba8]"></i> Conciliación de material impreso</h2>
+    <p class="text-sm text-slate-500 mb-4">Entregadas = usadas + dañadas + devueltas. Las devueltas se registran en "Surtir" → Devolver sobrante.</p>
+    <div class="flex flex-col gap-4">
+        {% for m in e.impresos %}
+        {% set cc = e.conciliaciones.get(m.material_id) %}
+        <div class="p-4 rounded-2xl border {{ 'border-rose-200 bg-rose-50' if cc and (cc.diferencia|abs) > 0.000001 else 'border-slate-200' }}">
+            <p class="font-bold text-[#1d1d1f]">{{ m.codigo }} · {{ m.nombre }}</p>
+            <p class="text-sm text-slate-500 mb-3">Entregadas {{ '%g'|format(m.entregadas) }} · Devueltas {{ '%g'|format(m.devueltas) }}
+                {% if cc %} · Usadas {{ '%g'|format(cc.usadas) }} · Dañadas {{ '%g'|format(cc.danadas) }} · Diferencia <span class="{{ 'op-fuera' if (cc.diferencia|abs) > 0.000001 else 'op-ok' }}">{{ '%g'|format(cc.diferencia) }}</span>{% endif %}</p>
+            {% if cc and (cc.diferencia|abs) > 0.000001 and not cc.justificacion_firma_id %}
+                {% if reportes.get(m.material_id) %}<a href="{{ reportes[m.material_id] }}" class="inline-flex h-12 px-5 rounded-xl bg-rose-500 text-white font-bold items-center gap-2 mb-3"><i class="ri-alarm-warning-line"></i> Reportar desviación</a>{% endif %}
+            {% endif %}
+            {% if abierta %}
+            <form method="POST" action="{{ url_for('ordenes.planta_conciliar', orden_id=o.id, material_id=m.material_id) }}" class="flex flex-col gap-3">
+                {{ csrf() }}
+                <div class="grid grid-cols-2 gap-3">
+                    <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Usadas</label><input name="usadas" type="number" min="0" step="any" required class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-xl font-bold"></div>
+                    <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Dañadas</label><input name="danadas" type="number" min="0" step="any" value="0" class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-xl font-bold"></div>
+                </div>
+                {{ firma('realizo', 'Concilió') }}
+                <button type="submit" class="h-14 rounded-2xl bg-[#1d1d1f] text-white font-bold">{{ 'Corregir conciliación' if cc else 'Guardar conciliación' }}</button>
+            </form>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+<a href="{{ url_for('ordenes.planta_terminar', orden_id=o.id) }}" class="op-btn-grande rounded-2xl bg-[#0e6ba8] text-white font-bold flex items-center justify-center gap-2">Ir a terminar <i class="ri-arrow-right-line"></i></a>
+{% endif %}
+{% endblock %}

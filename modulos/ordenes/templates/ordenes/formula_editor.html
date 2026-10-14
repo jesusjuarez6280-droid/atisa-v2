@@ -1,0 +1,209 @@
+{% extends _layout|default("base.html") %}
+{% from 'nucleo/_firma.html' import campo_firma %}
+{% block title %}Fórmula {{ f.material_codigo }} v{{ f.version }} | ERP Atisa{% endblock %}
+{% block content %}
+{% include 'ordenes/_estilos.html' %}
+{% set etiquetas = {'BORRADOR': ('Borrador', 'bg-slate-100 text-slate-600'), 'EN_REVISION': ('En revisión', 'bg-amber-50 text-amber-600'), 'VIGENTE': ('Vigente', 'bg-emerald-50 text-emerald-600'), 'OBSOLETA': ('Obsoleta', 'bg-slate-100 text-slate-400')} %}
+{% set entrada = 'w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none' %}
+<div class="p-10">
+    <header class="flex flex-wrap justify-between items-start gap-4 mb-6">
+        <div>
+            <p class="text-xs font-bold text-slate-500 uppercase">Fórmula maestra{% if f.codigo_documento %} · {{ f.codigo_documento }}{% endif %}</p>
+            <h1 class="text-2xl font-bold text-[#1d1d1f]">{{ f.material_codigo }} · {{ f.material_nombre }} <span class="text-slate-400">v{{ f.version }}</span></h1>
+            <div class="flex flex-wrap items-center gap-2 mt-2">
+                <span class="op-chip {{ etiquetas[f.estatus][1] }}">{{ etiquetas[f.estatus][0] }}</span>
+                {% for v in versiones if v.id != f.id %}<a href="{{ url_for('ordenes.formula_editor', formula_id=v.id) }}" class="op-chip bg-slate-50 text-slate-500">v{{ v.version }} · {{ etiquetas[v.estatus][0] }}</a>{% endfor %}
+            </div>
+            <p class="text-sm text-slate-500 mt-2">Elaboró {{ f.elaboro or '—' }}
+                {% if f.reviso_firma_id %} · Revisó {{ firmas[f.reviso_firma_id].nombre }} ({{ firmas[f.reviso_firma_id].ts[:16] }}){% endif %}
+                {% if f.aprobo_firma_id %} · Aprobó {{ firmas[f.aprobo_firma_id].nombre }} ({{ firmas[f.aprobo_firma_id].ts[:16] }}){% endif %}</p>
+            {% if f.cambios %}<p class="text-sm text-slate-600 mt-1"><b>Cambios:</b> {{ f.cambios }}</p>{% endif %}
+        </div>
+        <a href="{{ url_for('ordenes.formulas') }}" class="flex items-center gap-2 h-11 px-4 rounded-xl border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50"><i class="ri-arrow-left-line"></i> Fórmulas</a>
+    </header>
+
+    {# Flujo de aprobación #}
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        {% if editable %}
+        <form method="POST" action="{{ url_for('ordenes.formula_enviar', formula_id=f.id) }}" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex items-center justify-between gap-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <p class="text-sm text-slate-600">Cuando esté completa, envíala a revisión (producción revisa y calidad aprueba).</p>
+            <button type="submit" class="h-11 px-5 bg-[#0e6ba8] text-white font-bold rounded-xl hover:bg-[#1d1d1f] shrink-0">Enviar a revisión</button>
+        </form>
+        {% endif %}
+        {% if f.estatus == 'EN_REVISION' %}
+            {% if not f.reviso_firma_id and puede('ordenes_planear') %}
+            <form method="POST" action="{{ url_for('ordenes.formula_revisar', formula_id=f.id) }}" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col gap-4">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <h2 class="font-bold text-[#1d1d1f]">Revisó (producción)</h2>
+                {{ campo_firma('Revisó', numero=session.numero_empleado, id='firma-revisar') }}
+                <button type="submit" class="h-12 bg-[#0e6ba8] text-white font-bold rounded-xl hover:bg-[#1d1d1f]">Firmar revisión</button>
+            </form>
+            {% endif %}
+            {% if f.reviso_firma_id and tiene_facultad('aprobar_maestros') %}
+            <form method="POST" action="{{ url_for('ordenes.formula_aprobar', formula_id=f.id) }}" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col gap-4">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <h2 class="font-bold text-[#1d1d1f]">Aprobó (calidad)</h2>
+                <p class="text-sm text-slate-500">Al aprobarla queda vigente{% if versiones|selectattr('estatus', 'equalto', 'VIGENTE')|list %} y la versión vigente actual pasa a obsoleta{% endif %}.</p>
+                {{ campo_firma('Aprobó', numero=session.numero_empleado, id='firma-aprobar') }}
+                <button type="submit" class="h-12 bg-emerald-500 text-white font-bold rounded-xl">Aprobar fórmula</button>
+            </form>
+            {% endif %}
+            {% if puede('ordenes_planear') or tiene_facultad('aprobar_maestros') %}
+            <form method="POST" action="{{ url_for('ordenes.formula_regresar', formula_id=f.id) }}" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex items-center justify-between gap-4">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <p class="text-sm text-slate-600">¿Hay algo que corregir? Regrésala a borrador.</p>
+                <button type="submit" class="h-11 px-5 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-50 shrink-0">Regresar a borrador</button>
+            </form>
+            {% endif %}
+        {% endif %}
+        {% if f.estatus == 'VIGENTE' and puede('ordenes_planear') %}
+        <form method="POST" action="{{ url_for('ordenes.formula_nueva_version', formula_id=f.id) }}" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col gap-3">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <h2 class="font-bold text-[#1d1d1f]">Nueva versión</h2>
+            <p class="text-sm text-slate-500">Una fórmula vigente no se edita: se copia como borrador.</p>
+            <input name="cambios" required placeholder="¿Qué va a cambiar?" class="{{ entrada }}">
+            <button type="submit" class="h-11 bg-[#0e6ba8] text-white font-bold rounded-xl hover:bg-[#1d1d1f]">Crear versión {{ f.version + 1 }}</button>
+        </form>
+        {% endif %}
+    </div>
+
+    <div class="flex flex-wrap gap-2 mb-4">
+        {% for clave, texto in [('datos', 'Datos'), ('materias', 'Materias primas'), ('pasos', 'Pasos'), ('empaque', 'Envase y empaque')] %}
+        <a href="{{ url_for('ordenes.formula_editor', formula_id=f.id, pestana=clave) }}" class="op-tab {{ 'activa' if pestana == clave else '' }}">{{ texto }}</a>
+        {% endfor %}
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+    {% if pestana == 'materias' %}
+        <table class="w-full op-tabla text-sm mb-6">
+            <thead><tr><th>#</th><th>Materia prima</th><th class="op-num">Cantidad por lote</th><th class="op-num">%</th><th class="op-num">Tolerancia</th><th>Activo</th><th>Notas</th><th></th></tr></thead>
+            <tbody>
+            {% for c in componentes %}
+            <tr><td>{{ loop.index }}</td><td><b>{{ c.codigo }}</b> {{ c.nombre }}</td><td class="op-num">{{ '%g'|format(c.cantidad) }} {{ c.unidad }}</td>
+                <td class="op-num">{{ '%.2f'|format(100 * c.cantidad / total) if total else '—' }}</td><td class="op-num">± {{ '%g'|format(c.tolerancia_pct) }} %</td>
+                <td>{{ 'Sí' if c.es_activo else '' }}</td><td>{{ c.notas or '' }}</td>
+                <td class="text-right">{% if editable %}<form method="POST" action="{{ url_for('ordenes.formula_componente_quitar', formula_id=f.id, item_id=c.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="text-rose-500" title="Quitar"><i class="ri-delete-bin-line"></i></button></form>{% endif %}</td></tr>
+            {% else %}<tr><td colspan="8" class="text-slate-500">Sin materias primas.</td></tr>{% endfor %}
+            {% if componentes %}<tr><td></td><td class="font-bold">Total</td><td class="op-num font-bold">{{ '%g'|format(total) }}</td><td class="op-num">100.00</td><td colspan="4"></td></tr>{% endif %}
+            </tbody>
+        </table>
+        {% if editable %}
+        <form method="POST" action="{{ url_for('ordenes.formula_componente', formula_id=f.id) }}" class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="md:col-span-2"><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Materia prima</label>
+                <select name="material_id" required class="{{ entrada }}">{% for m in materias %}<option value="{{ m.id }}">{{ m.codigo }} · {{ m.nombre }} ({{ m.unidad }})</option>{% endfor %}</select></div>
+            <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Cantidad por lote estándar</label><input name="cantidad" type="number" step="any" min="0" required class="{{ entrada }}"></div>
+            <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Tolerancia %</label><input name="tolerancia_pct" type="number" step="any" min="0" value="1" class="{{ entrada }}"></div>
+            <label class="flex items-center gap-2 text-sm font-semibold text-slate-600"><input type="checkbox" name="es_activo" value="1"> Es activo</label>
+            <div class="md:col-span-2"><input name="notas" placeholder="Notas" class="{{ entrada }}"></div>
+            <button type="submit" class="h-12 bg-[#0e6ba8] text-white font-bold rounded-xl hover:bg-[#1d1d1f]">Agregar</button>
+        </form>
+        {% endif %}
+    {% elif pestana == 'pasos' %}
+        <table class="w-full op-tabla text-sm mb-6">
+            <thead><tr><th>#</th><th>Fase</th><th>Instrucción</th><th>Valores a capturar</th><th>Equipo</th><th>Tarea (Expertise)</th><th></th></tr></thead>
+            <tbody>
+            {% for p in pasos %}
+            <tr><td>{{ p.numero }}</td><td>{{ p.fase }}</td><td>{{ p.instruccion }}{% if p.minutos %} <span class="text-slate-400">· {{ p.minutos }} min</span>{% endif %}{% if p.es_critico %} <span class="op-chip bg-amber-50 text-amber-600">Crítico</span>{% endif %}{% if p.imagen_ruta %} <i class="ri-image-line text-slate-400"></i>{% endif %}</td>
+                <td>{% for x in p.parametros %}<div>{{ x.nombre }} {{ '%g'|format(x.valor_min) if x.valor_min is not none else '—' }}–{{ '%g'|format(x.valor_max) if x.valor_max is not none else '—' }} {{ x.unidad or '' }}</div>{% endfor %}</td>
+                <td>{{ p.equipo_tipo or '' }}</td><td>{{ p.tarea_nombre or '' }}</td>
+                <td class="text-right">{% if editable %}<form method="POST" action="{{ url_for('ordenes.formula_paso_quitar', formula_id=f.id, item_id=p.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="text-rose-500" title="Quitar"><i class="ri-delete-bin-line"></i></button></form>{% endif %}</td></tr>
+            {% else %}<tr><td colspan="7" class="text-slate-500">Sin pasos.</td></tr>{% endfor %}
+            </tbody>
+        </table>
+        {% if editable %}
+        {% if procesos %}
+        <form method="POST" action="{{ url_for('ordenes.formula_importar', formula_id=f.id) }}" class="flex flex-wrap items-end gap-3 mb-6 p-4 bg-slate-50 rounded-2xl">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="flex-1"><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Importar de un proceso</label>
+                <select name="receta_id" class="{{ entrada }}">{% for r in procesos %}<option value="{{ r.id }}">{{ r.nombre }}</option>{% endfor %}</select></div>
+            <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Fase</label><select name="fase" class="{{ entrada }}"><option>Fabricación</option><option>Envasado</option></select></div>
+            <button type="submit" class="h-12 px-5 rounded-xl border border-slate-200 font-bold text-slate-600 bg-white hover:bg-slate-50">Importar pasos</button>
+        </form>
+        {% endif %}
+        <form method="POST" action="{{ url_for('ordenes.formula_paso', formula_id=f.id) }}" class="flex flex-col gap-3">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <div class="md:col-span-3"><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Instrucción</label><input name="instruccion" required class="{{ entrada }}"></div>
+                <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Fase</label><select name="fase" class="{{ entrada }}"><option>Fabricación</option><option>Envasado</option></select></div>
+                <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Minutos (temporizador)</label><input name="minutos" type="number" min="0" value="0" class="{{ entrada }}"></div>
+                <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Tipo de equipo</label><input name="equipo_tipo" list="tipos-equipo" placeholder="Mezcladora, Tanque…" class="{{ entrada }}">
+                    <datalist id="tipos-equipo">{% for t in tipos_equipo %}<option value="{{ t }}">{% endfor %}</datalist></div>
+                <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Tarea de la Matriz de Expertise</label>
+                    <select name="competencia_tarea_id" class="{{ entrada }}"><option value="">Ninguna</option>{% for t in tareas %}<option value="{{ t.id }}">{{ t.nombre }}</option>{% endfor %}</select></div>
+                <label class="flex items-center gap-2 text-sm font-semibold text-slate-600"><input type="checkbox" name="es_critico" value="1"> Crítico (lo verifica otra persona)</label>
+            </div>
+            <p class="text-xs font-bold text-slate-500 uppercase mt-2">Valores a capturar</p>
+            {% for i in range(3) %}
+            <div class="grid grid-cols-4 gap-2">
+                <input name="param_nombre" placeholder="Nombre (Temperatura…)" class="{{ entrada }}">
+                <input name="param_unidad" placeholder="Unidad" class="{{ entrada }}">
+                <input name="param_min" type="number" step="any" placeholder="Mínimo" class="{{ entrada }}">
+                <input name="param_max" type="number" step="any" placeholder="Máximo" class="{{ entrada }}">
+            </div>
+            {% endfor %}
+            <button type="submit" class="h-12 bg-[#0e6ba8] text-white font-bold rounded-xl hover:bg-[#1d1d1f] w-max px-8">Agregar paso</button>
+        </form>
+        {% endif %}
+    {% elif pestana == 'empaque' %}
+        <table class="w-full op-tabla text-sm mb-6">
+            <thead><tr><th>Presentación</th><th>Material</th><th class="op-num">Por pieza</th><th class="op-num">Tolerancia</th><th></th></tr></thead>
+            <tbody>
+            {% for x in empaque %}
+            <tr><td><b>{{ x.presentacion_codigo }}</b> {{ x.presentacion_nombre }}</td><td>{{ x.codigo }} · {{ x.nombre }} <span class="text-xs text-slate-400">{{ x.tipo }}{% if x.es_impreso %} · impreso{% endif %}</span></td>
+                <td class="op-num">{{ '%g'|format(x.cantidad_por_pieza) }} {{ x.unidad }}</td><td class="op-num">± {{ '%g'|format(x.tolerancia_pct) }} %</td>
+                <td class="text-right">{% if editable %}<form method="POST" action="{{ url_for('ordenes.formula_empaque_quitar', formula_id=f.id, item_id=x.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="text-rose-500" title="Quitar"><i class="ri-delete-bin-line"></i></button></form>{% endif %}</td></tr>
+            {% else %}<tr><td colspan="5" class="text-slate-500">Sin envase ni empaque.</td></tr>{% endfor %}
+            </tbody>
+        </table>
+        {% if editable %}
+        {% if presentaciones %}
+        <form method="POST" action="{{ url_for('ordenes.formula_empaque', formula_id=f.id) }}" class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end mb-6">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Presentación</label><select name="presentacion_id" class="{{ entrada }}">{% for p in presentaciones %}<option value="{{ p.id }}">{{ p.codigo }} · {{ p.nombre }}</option>{% endfor %}</select></div>
+            <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Material</label><select name="material_id" class="{{ entrada }}">{% for m in envases %}<option value="{{ m.id }}">{{ m.codigo }} · {{ m.nombre }} ({{ m.tipo }})</option>{% endfor %}</select></div>
+            <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Cantidad por pieza</label><input name="cantidad_por_pieza" type="number" step="any" min="0" required class="{{ entrada }}"></div>
+            <button type="submit" class="h-12 bg-[#0e6ba8] text-white font-bold rounded-xl hover:bg-[#1d1d1f]">Agregar</button>
+        </form>
+        {% endif %}
+        <form method="POST" action="{{ url_for('ordenes.formula_presentacion', formula_id=f.id) }}" class="grid grid-cols-1 md:grid-cols-5 gap-3 items-end p-4 bg-slate-50 rounded-2xl">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <p class="md:col-span-5 text-xs font-bold text-slate-500 uppercase">Presentación nueva de este producto</p>
+            <input name="codigo" required placeholder="Código (PT-…)" class="{{ entrada }}">
+            <input name="nombre" required placeholder="Nombre (Bolsa 1 kg)" class="{{ entrada }}">
+            <input name="unidad" value="pza" class="{{ entrada }}">
+            <input name="contenido_por_pieza" type="number" step="any" min="0" required placeholder="Contenido por pieza ({{ f.unidad }})" class="{{ entrada }}">
+            <button type="submit" class="h-12 rounded-xl border border-slate-200 bg-white font-bold text-slate-600 hover:bg-slate-50">Agregar presentación</button>
+        </form>
+        {% endif %}
+    {% else %}
+        <form method="POST" action="{{ url_for('ordenes.formula_datos', formula_id=f.id) }}" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Tamaño de lote estándar ({{ f.unidad }})</label><input name="tamano_lote" type="number" step="any" min="0" value="{{ '%g'|format(f.tamano_lote) }}" {% if not editable %}disabled{% endif %} class="{{ entrada }}"></div>
+            <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Rendimiento mínimo %</label><input name="rendimiento_min" type="number" step="any" value="{{ '%g'|format(f.rendimiento_min) }}" {% if not editable %}disabled{% endif %} class="{{ entrada }}"></div>
+            <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Rendimiento máximo %</label><input name="rendimiento_max" type="number" step="any" value="{{ '%g'|format(f.rendimiento_max) }}" {% if not editable %}disabled{% endif %} class="{{ entrada }}"></div>
+            <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Código del documento</label><input name="codigo_documento" value="{{ f.codigo_documento or '' }}" {% if not editable %}disabled{% endif %} class="{{ entrada }}"></div>
+            <div class="md:col-span-2"><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Qué cambió respecto a la versión anterior</label><input name="cambios" value="{{ f.cambios or '' }}" {% if not editable %}disabled{% endif %} class="{{ entrada }}"></div>
+            {% if editable %}<button type="submit" class="h-12 bg-[#0e6ba8] text-white font-bold rounded-xl hover:bg-[#1d1d1f]">Guardar datos</button>{% endif %}
+        </form>
+    {% endif %}
+    </div>
+
+    {% if editable %}
+    <details class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mt-6">
+        <summary class="font-bold text-slate-700 cursor-pointer">¿No está el material? Dar de alta una materia prima, envase o empaque</summary>
+        <form method="POST" action="{{ url_for('ordenes.formula_material') }}" class="grid grid-cols-1 md:grid-cols-6 gap-3 items-end mt-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="volver" value="{{ url_for('ordenes.formula_editor', formula_id=f.id, pestana=pestana) }}">
+            <select name="tipo" class="{{ entrada }}"><option value="MP">Materia prima</option><option value="ME">Envase (ME)</option><option value="EM">Empaque (EM)</option></select>
+            <input name="codigo" required placeholder="Código" class="{{ entrada }}">
+            <input name="nombre" required placeholder="Nombre" class="{{ entrada }}">
+            <input name="unidad" placeholder="Unidad (kg, pza…)" class="{{ entrada }}">
+            <label class="flex items-center gap-2 text-sm font-semibold text-slate-600"><input type="checkbox" name="es_impreso" value="1"> Impreso (etiqueta, caja)</label>
+            <button type="submit" class="h-12 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-50">Dar de alta</button>
+        </form>
+    </details>
+    {% endif %}
+</div>
+{% endblock %}

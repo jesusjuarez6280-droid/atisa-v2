@@ -1,0 +1,58 @@
+{% extends 'ordenes/_planta.html' %}
+{% from 'ordenes/_firmas.html' import firma, csrf %}
+{% block titulo %}Granel obtenido{% endblock %}
+{% block subtitulo %}{{ o.folio }} · {{ o.producto_nombre }} · Lote {{ o.numero_lote or '—' }}{% endblock %}
+{% block volver %}
+<a href="{{ url_for('ordenes.planta_orden', orden_id=o.id) }}" class="flex items-center gap-2 h-11 px-4 rounded-xl border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50"><i class="ri-arrow-left-line text-lg"></i> Orden</a>
+{% endblock %}
+{% block contenido %}
+<section class="op-grid-4">
+    <div class="bg-white rounded-2xl border border-slate-200 p-5"><p class="text-xs font-bold text-slate-500 uppercase">Teórico</p><p class="text-3xl font-bold text-[#1d1d1f] tabular-nums">{{ '%g'|format(o.tamano_lote) }} <span class="text-base text-slate-500">{{ o.unidad }}</span></p></div>
+    <div class="bg-white rounded-2xl border border-slate-200 p-5"><p class="text-xs font-bold text-slate-500 uppercase">Límites</p><p class="text-3xl font-bold text-[#1d1d1f] tabular-nums">{{ '%g'|format(o.rendimiento_min) }}–{{ '%g'|format(o.rendimiento_max) }} %</p></div>
+    {% if o.granel_lote_id %}
+    <div class="bg-white rounded-2xl border border-slate-200 p-5"><p class="text-xs font-bold text-slate-500 uppercase">Obtenido</p><p class="text-3xl font-bold text-[#1d1d1f] tabular-nums">{{ '%g'|format(o.granel_obtenido) }}</p></div>
+    <div class="bg-white rounded-2xl border border-slate-200 p-5"><p class="text-xs font-bold text-slate-500 uppercase">Rendimiento</p><p class="text-3xl font-bold tabular-nums {{ 'op-fuera' if o.rendimiento_fuera else 'op-ok' }}">{{ '%g'|format(o.rendimiento_pct) }} %</p></div>
+    {% endif %}
+</section>
+
+{% if o.granel_lote_id %}
+<div class="bg-emerald-50 border border-emerald-100 rounded-2xl p-5 text-emerald-700 font-semibold">Granel registrado: lote {{ o.numero_lote }} en cuarentena.</div>
+{% if e.problemas|selectattr('origen', 'equalto', 'orden_granel')|list %}
+<section class="bg-rose-50 border border-rose-100 rounded-3xl p-6 flex flex-col gap-4">
+    <p class="font-bold text-rose-600">El rendimiento salió fuera de los límites de la fórmula.</p>
+    {% if reportar %}<a href="{{ reportar }}" class="op-btn-grande rounded-2xl bg-rose-500 text-white font-bold flex items-center justify-center gap-2"><i class="ri-alarm-warning-line"></i> Reportar desviación</a>
+    {% elif not desviaciones_instalado %}
+    <form method="POST" action="{{ url_for('ordenes.planta_justificar', orden_id=o.id) }}" class="flex flex-col gap-4">
+        {{ csrf() }}<input type="hidden" name="origen" value="orden_granel"><input type="hidden" name="origen_id" value="{{ o.id }}">
+        <input type="hidden" name="volver" value="{{ url_for('ordenes.planta_granel', orden_id=o.id) }}">
+        <textarea name="justificacion" required rows="2" placeholder="Justificación del supervisor" class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl"></textarea>
+        {{ firma('realizo', 'Justifica (supervisor)') }}
+        <button type="submit" class="h-14 rounded-2xl bg-[#1d1d1f] text-white font-bold">Guardar justificación</button>
+    </form>
+    {% endif %}
+</section>
+{% endif %}
+<a href="{{ url_for('ordenes.planta_envasado', orden_id=o.id) }}" class="op-btn-grande rounded-2xl bg-[#0e6ba8] text-white font-bold flex items-center justify-center gap-2">Ir a envasado <i class="ri-arrow-right-line"></i></a>
+{% elif o.estatus in ('EMITIDA', 'EN_PROCESO') %}
+<form method="POST" class="flex flex-col gap-6">
+    {{ csrf() }}
+    <section class="bg-white rounded-3xl border border-slate-200 p-6">
+        <h2 class="text-lg font-bold text-[#1d1d1f] mb-4">Cantidad real obtenida ({{ o.unidad }})</h2>
+        <input name="cantidad" type="number" step="any" min="0" required inputmode="decimal" class="w-full px-6 py-5 bg-slate-50 border border-slate-200 rounded-2xl text-4xl font-bold tabular-nums focus:border-[#0e6ba8] outline-none">
+    </section>
+    <section class="bg-white rounded-3xl border border-slate-200 p-6">
+        <h2 class="text-lg font-bold text-[#1d1d1f] mb-4">Báscula o tanque con que se midió</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {% for q in equipos %}
+            <label class="flex items-center gap-3 p-4 rounded-2xl border border-slate-200 {{ '' if q.apto else 'op-deshabilitado' }}">
+                <input type="radio" name="equipo_id" value="{{ q.id }}" class="w-6 h-6" {% if not q.apto %}disabled{% endif %}>
+                <div><p class="font-bold text-[#1d1d1f]">{{ q.codigo }} · {{ q.nombre }}</p>{% if not q.apto %}<p class="text-sm text-rose-600 font-semibold">{{ q.razon }}</p>{% endif %}</div>
+            </label>
+            {% else %}<p class="text-slate-500">No hay básculas ni tanques dados de alta.</p>{% endfor %}
+        </div>
+    </section>
+    {{ firma('realizo', 'Registra (supervisor)') }}
+    <button type="submit" class="op-btn-grande rounded-2xl bg-[#0e6ba8] text-white font-bold hover:bg-[#1d1d1f]">Registrar granel</button>
+</form>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,111 @@
+{% extends 'ordenes/_planta.html' %}
+{% from 'ordenes/_firmas.html' import firma, csrf, registro_posterior %}
+{% set es_mp = c.tipo == 'MP' %}
+{% block titulo %}{{ 'Pesar' if es_mp else 'Surtir' }} · {{ c.codigo }} {{ c.nombre }}{% endblock %}
+{% block subtitulo %}{{ o.folio }} · {{ o.producto_nombre }} · Lote {{ o.numero_lote or '—' }}{% endblock %}
+{% block volver %}
+<a href="{{ url_for('ordenes.planta_orden' if es_mp else 'ordenes.planta_envasado', orden_id=o.id) }}" class="flex items-center gap-2 h-11 px-4 rounded-xl border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50"><i class="ri-arrow-left-line text-lg"></i> Volver</a>
+{% endblock %}
+{% block contenido %}
+<section class="op-grid-4">
+    <div class="bg-white rounded-2xl border border-slate-200 p-5"><p class="text-xs font-bold text-slate-500 uppercase">Pide la orden</p><p class="text-3xl font-bold text-[#1d1d1f] tabular-nums">{{ '%g'|format(c.cantidad_teorica) }} <span class="text-base text-slate-500">{{ c.unidad }}</span></p></div>
+    <div class="bg-white rounded-2xl border border-slate-200 p-5"><p class="text-xs font-bold text-slate-500 uppercase">Llevas</p><p class="text-3xl font-bold tabular-nums {{ 'op-ok' if c.completo else 'text-[#1d1d1f]' }}">{{ '%g'|format(c.pesado) }}</p></div>
+    <div class="bg-white rounded-2xl border border-slate-200 p-5"><p class="text-xs font-bold text-slate-500 uppercase">Falta</p><p class="text-3xl font-bold text-[#1d1d1f] tabular-nums">{{ '%g'|format(c.falta) }}</p></div>
+    <div class="bg-white rounded-2xl border border-slate-200 p-5"><p class="text-xs font-bold text-slate-500 uppercase">Máximo (± {{ '%g'|format(c.tolerancia_pct) }} %)</p><p class="text-3xl font-bold text-[#1d1d1f] tabular-nums">{{ '%g'|format((c.maximo * 10000)|round / 10000) }}</p></div>
+</section>
+
+{% if falta_despeje %}
+<div class="bg-amber-50 border border-amber-100 rounded-2xl p-5 text-amber-800 font-semibold flex items-center justify-between gap-3">
+    <span>Primero el despeje de línea de {{ momento|lower }}.</span>
+    <a href="{{ url_for('ordenes.planta_despeje', orden_id=o.id, momento=momento) }}" class="h-11 px-5 rounded-xl bg-[#0e6ba8] text-white font-bold flex items-center">Hacer despeje</a>
+</div>
+{% elif c.completo %}
+<div class="bg-emerald-50 border border-emerald-100 rounded-2xl p-5 text-emerald-700 font-semibold">Línea completa: lo {{ 'pesado' if es_mp else 'surtido' }} está dentro de la tolerancia.</div>
+{% endif %}
+
+{% if o.estatus in ('EMITIDA', 'EN_PROCESO') and not falta_despeje and c.pesado < c.maximo %}
+<form method="POST" class="flex flex-col gap-6">
+    {{ csrf() }}
+    <section class="bg-white rounded-3xl border border-slate-200 p-6">
+        <h2 class="text-lg font-bold text-[#1d1d1f] mb-4">1. Lote</h2>
+        <div class="flex flex-col gap-3">
+            {% for l in lotes %}
+            <label class="flex items-center gap-4 p-4 rounded-2xl border {{ 'border-[#0e6ba8]' if l.sugerido else 'border-slate-200' }} {{ '' if l.disponible else 'op-deshabilitado' }}">
+                <input type="radio" name="lote_id" value="{{ l.id }}" class="w-6 h-6" {% if l.sugerido %}checked{% endif %} {% if not l.disponible %}disabled{% endif %} required>
+                <div class="flex-1">
+                    <p class="font-bold text-[#1d1d1f]">{{ l.numero_lote }} {% if l.sugerido %}<span class="op-chip bg-blue-50 text-[#0e6ba8]">Sugerido</span>{% endif %}</p>
+                    <p class="text-sm text-slate-500">Existencia {{ '%g'|format(l.existencia) }} {{ c.unidad }} · Caducidad {{ l.caducidad or '—' }}</p>
+                    {% if not l.disponible %}<p class="text-sm text-rose-600 font-semibold">{{ l.razon }}</p>{% endif %}
+                </div>
+            </label>
+            {% else %}
+            <p class="text-rose-600 font-semibold">No hay lotes con existencia de {{ c.codigo }}.</p>
+            {% endfor %}
+        </div>
+        <div class="mt-4"><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Motivo (si eliges otro lote que no es el sugerido)</label><input name="motivo_otro_lote" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl"></div>
+    </section>
+
+    <section class="bg-white rounded-3xl border border-slate-200 p-6">
+        <h2 class="text-lg font-bold text-[#1d1d1f] mb-4">2. Báscula {% if not es_mp %}<span class="text-sm font-normal text-slate-500">(opcional al contar piezas)</span>{% endif %}</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {% for q in equipos %}
+            <label class="flex items-center gap-3 p-4 rounded-2xl border border-slate-200 {{ '' if q.apto else 'op-deshabilitado' }}">
+                <input type="radio" name="equipo_id" value="{{ q.id }}" class="w-6 h-6" {% if not q.apto %}disabled{% endif %} {% if es_mp %}required{% endif %}>
+                <div class="flex-1">
+                    <p class="font-bold text-[#1d1d1f]">{{ q.codigo }} · {{ q.nombre }}</p>
+                    {% if not q.apto %}<p class="text-sm text-rose-600 font-semibold">{{ q.razon }}</p>{% if q.verificar_url %}<a href="{{ q.verificar_url }}" class="text-sm font-bold text-[#0e6ba8]">Verificar ahora</a>{% endif %}{% endif %}
+                    {% for a in q.avisos %}<p class="text-xs text-amber-600">{{ a }}</p>{% endfor %}
+                </div>
+            </label>
+            {% else %}<p class="text-slate-500">No hay básculas dadas de alta.</p>{% endfor %}
+        </div>
+    </section>
+
+    <section class="bg-white rounded-3xl border border-slate-200 p-6">
+        <h2 class="text-lg font-bold text-[#1d1d1f] mb-4">3. Cantidad neta ({{ c.unidad }})</h2>
+        <input name="cantidad" type="number" step="any" min="0" inputmode="decimal" required placeholder="{{ '%g'|format(c.falta) }}"
+               class="w-full px-6 py-5 bg-slate-50 border border-slate-200 rounded-2xl text-4xl font-bold tabular-nums focus:border-[#0e6ba8] outline-none">
+    </section>
+
+    <div class="op-grid-2">
+        {{ firma('realizo', 'Pesó' if es_mp else 'Surtió') }}
+        {{ firma('verifico', 'Verificó (otra persona)', requerido=verificar) }}
+    </div>
+    {{ registro_posterior() }}
+    <button type="submit" class="op-btn-grande rounded-2xl bg-[#0e6ba8] text-white font-bold hover:bg-[#1d1d1f]">Guardar {{ 'pesada' if es_mp else 'surtido' }}</button>
+</form>
+{% endif %}
+
+{% if pesadas %}
+<section class="bg-white rounded-3xl border border-slate-200 overflow-hidden">
+    <h2 class="text-lg font-bold text-[#1d1d1f] px-6 pt-6 pb-3">Registrado</h2>
+    <table class="w-full op-tabla text-sm">
+        <thead><tr><th>Hora</th><th>Lote</th><th class="op-num">Cantidad</th><th>Báscula</th><th>Pesó</th><th>Verificó</th></tr></thead>
+        <tbody>
+        {% for p in pesadas %}
+        <tr><td>{{ (p.ts or '')[:16] }}{% if p.registro_posterior %} <span class="op-chip bg-amber-50 text-amber-600">Posterior</span>{% endif %}</td><td>{{ p.numero_lote }}</td>
+            <td class="op-num {{ 'op-fuera' if p.cantidad < 0 else '' }}">{{ '%g'|format(p.cantidad) }}</td><td>{{ p.equipo_codigo or '—' }}</td><td>{{ p.realizo or '—' }}</td><td>{{ p.verifico or '—' }}</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% if o.estatus in ('EMITIDA', 'EN_PROCESO') %}
+<details class="bg-white rounded-3xl border border-slate-200 p-6">
+    <summary class="font-bold text-[#1d1d1f] cursor-pointer">Devolver sobrante a su lote</summary>
+    <form method="POST" action="{{ url_for('ordenes.planta_devolver', orden_id=o.id, componente_id=c.id) }}" class="flex flex-col gap-4 mt-4">
+        {{ csrf() }}
+        <div class="grid grid-cols-2 gap-3">
+            <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Lote</label>
+                <select name="lote_id" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl">
+                    {% for p in pesadas|unique(attribute='lote_id') %}<option value="{{ p.lote_id }}">{{ p.numero_lote }}</option>{% endfor %}
+                </select></div>
+            <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Cantidad</label><input name="cantidad" type="number" step="any" min="0" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl"></div>
+        </div>
+        <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Motivo</label><input name="motivo" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl"></div>
+        {{ firma('realizo', 'Devuelve') }}
+        <button type="submit" class="h-14 rounded-2xl border-2 border-slate-200 font-bold text-slate-700 hover:bg-slate-50">Registrar devolución</button>
+    </form>
+</details>
+{% endif %}
+{% endif %}
+{% endblock %}

@@ -1,0 +1,11 @@
+{#- Sección "Órdenes de producción" en la ficha del lote (gancho secciones_lote). -#}
+{% set d = datos if datos is defined else (contexto.datos if contexto is defined else {}) %}
+{% if d.fabricado %}
+<p class="text-sm text-slate-600">Fabricado en <a href="{{ url_for('ordenes.detalle', orden_id=d.fabricado.id) }}" class="font-bold text-[#0e6ba8]">{{ d.fabricado.folio }}</a>
+    · rendimiento {{ ('%g %%'|format(d.fabricado.rendimiento)) if d.fabricado.rendimiento is not none else '—' }} · {{ d.fabricado.estatus }}
+    · <a href="{{ url_for('ordenes.expediente', orden_id=d.fabricado.id) }}" hx-boost="false" target="_blank" class="font-bold text-[#0e6ba8]">Ver expediente</a></p>
+{% elif d.usado %}
+<ul class="text-sm text-slate-600 flex flex-col gap-1">
+    {% for u in d.usado %}<li>Usado en <a href="{{ url_for('ordenes.detalle', orden_id=u.id) }}" class="font-bold text-[#0e6ba8]">{{ u.folio }}</a>{% if u.numero_lote %} (lote {{ u.numero_lote }}){% endif %}: {{ '%g'|format(u.cantidad) }}</li>{% endfor %}
+</ul>
+{% endif %}

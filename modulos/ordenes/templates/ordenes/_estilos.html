@@ -1,0 +1,29 @@
+{#- Clases que el Tailwind precompilado no trae y que usan las pantallas de Órdenes. -#}
+<style>
+    .op-barra{height:.75rem;background:#e2e8f0;border-radius:9999px;overflow:hidden}
+    .op-barra > span{display:block;height:100%;background:#0e6ba8;border-radius:9999px}
+    .op-btn-grande{min-height:4.5rem;font-size:1.25rem}
+    .op-tabla td,.op-tabla th{padding:.6rem .9rem;text-align:left;vertical-align:top}
+    .op-tabla thead th{font-size:.7rem;text-transform:uppercase;color:#64748b;background:#f8fafc;font-weight:700}
+    .op-tabla tbody tr{border-top:1px solid #f1f5f9}
+    .op-num{font-variant-numeric:tabular-nums;text-align:right}
+    .op-fuera{color:#e11d48;font-weight:700}
+    .op-ok{color:#059669;font-weight:700}
+    .op-chip{display:inline-flex;align-items:center;gap:.35rem;padding:.2rem .6rem;border-radius:.45rem;font-size:.75rem;font-weight:700}
+    .op-tab{padding:.6rem 1rem;border-radius:.75rem;font-size:.875rem;font-weight:700;color:#64748b}
+    .op-tab.activa{background:#0e6ba8;color:#fff}
+    .op-tab:hover:not(.activa){background:#f1f5f9}
+    .op-deshabilitado{opacity:.55}
+    .op-grid-2{display:grid;gap:1rem;grid-template-columns:repeat(1,minmax(0,1fr))}
+    @media (min-width:768px){.op-grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    .op-grid-4{display:grid;gap:1rem;grid-template-columns:repeat(2,minmax(0,1fr))}
+    @media (min-width:1024px){.op-grid-4{grid-template-columns:repeat(4,minmax(0,1fr))}}
+    .normal-case{text-transform:none}
+    .opacity-70{opacity:.7}
+    .pb-3{padding-bottom:.75rem}
+    .max-h-\[90vh\]{max-height:90vh}
+    @media (min-width:640px){.sm\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media (min-width:768px){.md\:grid-cols-5{grid-template-columns:repeat(5,minmax(0,1fr))}
+        .md\:grid-cols-6{grid-template-columns:repeat(6,minmax(0,1fr))}
+        .md\:col-span-3{grid-column:span 3 / span 3}.md\:col-span-5{grid-column:span 5 / span 5}}
+</style>

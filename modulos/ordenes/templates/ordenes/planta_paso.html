@@ -1,0 +1,141 @@
+{% extends 'ordenes/_planta.html' %}
+{% from 'ordenes/_firmas.html' import firma, firmado, csrf, registro_posterior %}
+{% block titulo %}Paso {{ p.numero }} · {{ p.fase }}{% endblock %}
+{% block subtitulo %}{{ o.folio }} · {{ o.producto_nombre }} · Lote {{ o.numero_lote or '—' }}{% endblock %}
+{% block volver %}
+<a href="{{ url_for('ordenes.planta_orden', orden_id=o.id) if p.fase == 'Fabricación' else url_for('ordenes.planta_envasado', orden_id=o.id) }}" class="flex items-center gap-2 h-11 px-4 rounded-xl border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50"><i class="ri-arrow-left-line text-lg"></i> Volver</a>
+{% endblock %}
+
+{% macro formulario(posterior=False) %}
+<form method="POST" action="{{ url_for('ordenes.planta_paso_firmar', orden_id=o.id, paso_id=p.id) }}" class="flex flex-col gap-6">
+    {{ csrf() }}
+    {% if posterior %}<input type="hidden" name="registro_posterior" value="1">{% endif %}
+    {% if p.equipo_tipo %}
+    <section class="bg-white rounded-3xl border border-slate-200 p-6">
+        <h2 class="text-lg font-bold text-[#1d1d1f] mb-4">Equipo usado ({{ p.equipo_tipo }})</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {% for q in equipos %}
+            <label class="flex items-center gap-3 p-4 rounded-2xl border border-slate-200 {{ '' if q.apto else 'op-deshabilitado' }}">
+                <input type="radio" name="equipo_id" value="{{ q.id }}" class="w-6 h-6" required {% if not q.apto %}disabled{% endif %}>
+                <div><p class="font-bold text-[#1d1d1f]">{{ q.codigo }} · {{ q.nombre }}</p>{% if not q.apto %}<p class="text-sm text-rose-600 font-semibold">{{ q.razon }}</p>{% endif %}</div>
+            </label>
+            {% else %}<p class="text-rose-600 font-semibold">No hay equipos del tipo {{ p.equipo_tipo }}.</p>{% endfor %}
+        </div>
+    </section>
+    {% endif %}
+    {% if p.valores %}
+    <section class="bg-white rounded-3xl border border-slate-200 p-6">
+        <h2 class="text-lg font-bold text-[#1d1d1f] mb-4">Valores medidos</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {% for v in p.valores %}
+            <div>
+                <label class="text-sm font-bold text-slate-600 mb-1 block">{{ v.nombre }} {% if v.unidad %}({{ v.unidad }}){% endif %}
+                    <span class="font-normal text-slate-500">· rango {{ '%g'|format(v.valor_min) if v.valor_min is not none else '—' }} a {{ '%g'|format(v.valor_max) if v.valor_max is not none else '—' }}</span></label>
+                <input name="valor_{{ v.id }}" type="number" step="any" required inputmode="decimal" class="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-2xl font-bold tabular-nums focus:border-[#0e6ba8] outline-none">
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+    <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Comentario</label><textarea name="comentario" rows="2" class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl"></textarea></div>
+    <div class="op-grid-2">
+        {{ firma('realizo', 'Realizó') }}
+        {{ firma('verifico', 'Verificó (otra persona)', requerido=p.es_critico, nota='Paso crítico: lo verifica otra persona.' if p.es_critico else None) }}
+    </div>
+    {% if posterior %}
+    <div class="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex flex-col gap-3">
+        <div class="grid grid-cols-2 gap-3">
+            <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Hora real de inicio</label><input type="datetime-local" name="inicio_real" required class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl"></div>
+            <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Hora real de término</label><input type="datetime-local" name="fin_real" required class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl"></div>
+        </div>
+        <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Motivo</label><input name="motivo_registro_posterior" required placeholder="Ej. falló la tablet" class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl"></div>
+    </div>
+    {% else %}
+    {{ registro_posterior(con_inicio=True) }}
+    {% endif %}
+    <button type="submit" class="op-btn-grande rounded-2xl bg-[#0e6ba8] text-white font-bold hover:bg-[#1d1d1f]">Terminar y firmar</button>
+</form>
+{% endmacro %}
+
+{% block contenido %}
+<section class="bg-white rounded-3xl overflow-hidden border border-slate-200 shadow-sm">
+    {% if p.imagen_ruta %}<img src="{{ url_for('static', filename=p.imagen_ruta) }}" alt="" class="w-full object-cover" style="max-height:380px" onerror="this.style.display='none'">{% endif %}
+    <div class="bg-[#1d1d1f] px-6 sm:px-10 py-10">
+        <div class="flex items-center gap-2 mb-4">
+            <span class="op-chip bg-white/15 text-white">Paso {{ p.numero }}</span>
+            {% if p.es_critico %}<span class="op-chip bg-amber-100 text-amber-800">Crítico</span>{% endif %}
+            <span class="op-chip {{ 'bg-emerald-100 text-emerald-600' if p.estatus == 'Hecho' else 'bg-white/15 text-white' }}">{{ p.estatus }}</span>
+        </div>
+        <h2 class="text-white text-2xl sm:text-3xl font-extrabold leading-tight">{{ p.instruccion }}</h2>
+    </div>
+    {% if p.minutos and p.estatus != 'Hecho' %}
+    <div class="px-6 sm:px-10 py-6 flex items-center justify-between gap-4 border-t border-slate-100">
+        <div><p class="text-xs font-bold text-slate-500 uppercase">Temporizador</p><p id="op-reloj" class="text-5xl font-bold text-[#1d1d1f] tabular-nums" data-segundos="{{ p.minutos * 60 }}" data-inicio="{{ p.inicio or '' }}">{{ '%02d'|format(p.minutos) }}:00</p></div>
+        <button type="button" id="op-reloj-btn" class="h-14 px-6 rounded-2xl border-2 border-slate-200 font-bold text-slate-700 hover:bg-slate-50"><i class="ri-play-line"></i> Iniciar reloj</button>
+    </div>
+    {% endif %}
+</section>
+
+{% if p.estatus == 'Hecho' %}
+<section class="bg-white rounded-3xl border border-slate-200 p-6 flex flex-col gap-3">
+    <p class="text-sm text-slate-500">Inicio {{ p.inicio or '—' }} · Fin {{ p.fin or '—' }}{% if p.equipo_codigo %} · Equipo {{ p.equipo_codigo }}{% endif %}{% if p.registro_posterior %} · <span class="op-chip bg-amber-50 text-amber-600">Registro posterior: {{ p.motivo_registro_posterior }}</span>{% endif %}</p>
+    {% for v in p.valores %}<p class="text-lg"><span class="font-semibold">{{ v.nombre }}:</span> <span class="{{ 'op-ok' if v.en_rango else 'op-fuera' }}">{{ '%g'|format(v.valor) if v.valor is not none else '—' }} {{ v.unidad or '' }}</span></p>{% endfor %}
+    <p>Realizó: {{ firmado(firmas.get(p.realizo_firma_id)) }}</p>
+    {% if p.verifico_firma_id %}<p>Verificó: {{ firmado(firmas.get(p.verifico_firma_id)) }}</p>{% endif %}
+</section>
+{% if p.fuera_de_rango %}
+<section class="bg-rose-50 border border-rose-100 rounded-3xl p-6 flex flex-col gap-4">
+    <p class="font-bold text-rose-600">Un valor salió fuera de rango.</p>
+    {% if p.justificacion_firma_id %}<p class="text-sm">Justificación: {{ p.justificacion }} · {{ firmado(firmas.get(p.justificacion_firma_id)) }}</p>
+    {% elif tiene_desv %}<p class="text-sm font-semibold text-emerald-700">Ya tiene su desviación ligada.</p>
+    {% elif reportar %}<a href="{{ reportar }}" class="op-btn-grande rounded-2xl bg-rose-500 text-white font-bold flex items-center justify-center gap-2"><i class="ri-alarm-warning-line"></i> Reportar desviación</a>
+    {% elif not desviaciones_instalado %}
+    <form method="POST" action="{{ url_for('ordenes.planta_justificar', orden_id=o.id) }}" class="flex flex-col gap-4">
+        {{ csrf() }}<input type="hidden" name="origen" value="orden_paso"><input type="hidden" name="origen_id" value="{{ p.id }}">
+        <input type="hidden" name="volver" value="{{ url_for('ordenes.planta_paso', orden_id=o.id, paso_id=p.id) }}">
+        <textarea name="justificacion" required rows="2" placeholder="Justificación del supervisor" class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl"></textarea>
+        {{ firma('realizo', 'Justifica (supervisor)') }}
+        <button type="submit" class="h-14 rounded-2xl bg-[#1d1d1f] text-white font-bold">Guardar justificación</button>
+    </form>
+    {% endif %}
+</section>
+{% endif %}
+{% if siguiente %}
+<a href="{{ url_for('ordenes.planta_paso', orden_id=o.id, paso_id=siguiente.id) }}" class="op-btn-grande rounded-2xl bg-[#0e6ba8] text-white font-bold flex items-center justify-center gap-2">Siguiente paso <i class="ri-arrow-right-line"></i></a>
+{% endif %}
+{% elif bloqueo %}
+<div class="bg-amber-50 border border-amber-100 rounded-2xl p-6 text-amber-800 text-lg font-semibold">{{ bloqueo }}</div>
+{% elif o.estatus not in ('EMITIDA', 'EN_PROCESO') %}
+<div class="bg-amber-50 border border-amber-100 rounded-2xl p-6 text-amber-800 font-semibold">La orden ya no está en proceso.</div>
+{% elif p.estatus == 'Pendiente' %}
+<form method="POST" action="{{ url_for('ordenes.planta_paso_iniciar', orden_id=o.id, paso_id=p.id) }}">
+    {{ csrf() }}
+    <button type="submit" class="w-full op-btn-grande rounded-2xl bg-[#0e6ba8] text-white font-bold hover:bg-[#1d1d1f]"><i class="ri-play-circle-line"></i> Iniciar paso</button>
+</form>
+<details class="bg-white rounded-3xl border border-slate-200 p-6">
+    <summary class="font-bold text-slate-700 cursor-pointer">Capturar como registro posterior (se trabajó en papel)</summary>
+    <div class="mt-4">{{ formulario(posterior=True) }}</div>
+</details>
+{% else %}
+<p class="text-sm text-slate-500">Iniciado: {{ p.inicio }}</p>
+{{ formulario() }}
+{% endif %}
+
+<script>
+(function () {
+    var reloj = document.getElementById('op-reloj'), btn = document.getElementById('op-reloj-btn');
+    if (!reloj || !btn) return;
+    var total = parseInt(reloj.dataset.segundos, 10), restante = total, timer = null;
+    function pintar() {
+        var s = Math.abs(restante), m = Math.floor(s / 60), r = s % 60;
+        reloj.textContent = (restante < 0 ? '+' : '') + (m < 10 ? '0' : '') + m + ':' + (r < 10 ? '0' : '') + r;
+        reloj.style.color = restante <= 0 ? '#059669' : '';
+    }
+    btn.addEventListener('click', function () {
+        if (timer) { clearInterval(timer); timer = null; btn.innerHTML = '<i class="ri-play-line"></i> Seguir'; return; }
+        timer = setInterval(function () { restante -= 1; pintar(); }, 1000);
+        btn.innerHTML = '<i class="ri-pause-line"></i> Pausar';
+    });
+})();
+</script>
+{% endblock %}
