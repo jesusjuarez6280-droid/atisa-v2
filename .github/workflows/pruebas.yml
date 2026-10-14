@@ -1,0 +1,38 @@
+name: Pruebas
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pruebas-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pruebas:
+    name: Pruebas (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # Windows porque así corre el ERP en planta; Ubuntu por si se usa Gunicorn.
+        os: [windows-latest, ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt -r requirements-dev.txt
+      - name: Compilar
+        run: python -m py_compile erp.py wsgi.py
+      - name: Pruebas
+        run: python -m pytest -q tests
