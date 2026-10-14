@@ -1,0 +1,44 @@
+{#- Firmas del módulo Órdenes sobre nucleo/_firma.html (campo_firma con prefijo), para que quepan dos
+    en un mismo formulario (Realizó + Verificó). Envía <prefijo>_firma_numero y <prefijo>_firma_pin.
+        {% from 'ordenes/_firmas.html' import firma %}
+        {{ firma('realizo', 'Realizó') }}  {{ firma('verifico', 'Verificó (otra persona)', requerido=False) }}
+    requerido=False quita el "required" de los campos (la firma se vuelve opcional). -#}
+{% from 'nucleo/_firma.html' import campo_firma %}
+{% macro firma(prefijo, titulo, numero=None, requerido=True, nota=None, significado='Realizó') -%}
+<div class="op-firma flex flex-col gap-2">
+    {% if nota %}<p class="text-xs text-slate-500">{{ nota }}</p>{% endif %}
+    {{ campo_firma(significado, numero=numero, id='f-' ~ prefijo ~ '-' ~ (titulo|lower|replace(' ', '-')|replace('(', '')|replace(')', '')),
+                   titulo=titulo ~ ('' if requerido else ' · opcional'), prefijo=prefijo ~ '_') }}
+</div>
+{% if not requerido %}<script>document.currentScript.previousElementSibling.querySelectorAll('[required]').forEach(function (c) { c.removeAttribute('required'); });</script>{% endif %}
+{%- endmacro %}
+
+{% macro firmado(f, vacio='—') -%}
+{% if f %}<span class="inline-flex items-center gap-1.5 text-sm text-emerald-700 font-semibold"><i class="ri-quill-pen-line"></i> {{ f.nombre }} <span class="text-slate-400 font-normal">{{ (f.ts or '')[:16] }}</span></span>{% else %}<span class="text-slate-400 text-sm">{{ vacio }}</span>{% endif %}
+{%- endmacro %}
+
+{% macro csrf() -%}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{%- endmacro %}
+
+{% macro registro_posterior(con_inicio=False) -%}
+<details class="bg-amber-50 border border-amber-100 rounded-2xl p-4">
+    <summary class="text-sm font-bold text-amber-800 cursor-pointer">Registro posterior (se trabajó en papel)</summary>
+    <div class="mt-4 flex flex-col gap-3">
+        <label class="flex items-center gap-2 text-sm font-semibold text-slate-700"><input type="checkbox" name="registro_posterior" value="1" class="w-5 h-5"> Marcar como registro posterior</label>
+        <div class="grid grid-cols-2 gap-3">
+            {% if con_inicio %}
+            <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Hora real de inicio</label><input type="datetime-local" name="inicio_real" class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl"></div>
+            <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Hora real de término</label><input type="datetime-local" name="fin_real" class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl"></div>
+            {% else %}
+            <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Hora real</label><input type="datetime-local" name="hora_real" class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl"></div>
+            {% endif %}
+        </div>
+        <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Motivo</label><input name="motivo_registro_posterior" placeholder="Ej. falló la tablet" class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl"></div>
+    </div>
+</details>
+{%- endmacro %}
+
+{% macro chip_orden(estatus, nombres) -%}
+{% set c = {'BORRADOR': 'bg-slate-100 text-slate-600', 'EMITIDA': 'bg-blue-50 text-[#0e6ba8]', 'EN_PROCESO': 'bg-amber-50 text-amber-600',
+            'TERMINADA': 'bg-violet-50 text-violet-700', 'REVISADA': 'bg-emerald-50 text-emerald-600', 'CANCELADA': 'bg-rose-50 text-rose-600'} %}
+<span class="px-2.5 py-1 rounded-md text-xs font-bold {{ c.get(estatus, 'bg-slate-100 text-slate-600') }}">{{ nombres.get(estatus, estatus) }}</span>
+{%- endmacro %}

@@ -1,0 +1,32 @@
+{% extends 'ordenes/_planta.html' %}
+{% block titulo %}Órdenes en proceso{% endblock %}
+{% block contenido %}
+{% if ordenes %}
+<div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+    {% for x in ordenes %}
+    <a href="{{ url_for('ordenes.planta_orden', orden_id=x.o.id) }}" class="bg-white rounded-3xl border border-slate-200 shadow-sm p-7 flex flex-col gap-4 hover:border-[#0e6ba8] transition-colors">
+        <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+                <p class="text-xs font-bold text-slate-500 uppercase">{{ x.o.folio }}</p>
+                <p class="text-xl font-bold text-[#1d1d1f] truncate">{{ x.o.producto_nombre }}</p>
+                <p class="text-sm text-slate-500">Lote <span class="font-bold text-[#1d1d1f]">{{ x.o.numero_lote }}</span> · {{ '%g'|format(x.o.tamano_lote) }} {{ x.o.unidad }}</p>
+            </div>
+            <span class="text-2xl font-bold text-[#0e6ba8] tabular-nums">{{ x.avance }}%</span>
+        </div>
+        <div class="op-barra"><span style="width: {{ x.avance }}%"></span></div>
+        <div class="flex flex-wrap gap-2">
+            {% for b in x.bloques %}
+            <span class="op-chip {{ 'bg-emerald-50 text-emerald-600' if b.listo else 'bg-slate-100 text-slate-500' }}"><i class="{{ 'ri-check-line' if b.listo else 'ri-time-line' }}"></i>{{ b.titulo }}</span>
+            {% endfor %}
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<div class="bg-white rounded-3xl border border-slate-200 p-16 text-center">
+    <i class="ri-file-list-3-line text-5xl text-slate-300 block mb-3"></i>
+    <p class="text-lg font-bold text-[#1d1d1f]">No hay órdenes emitidas</p>
+    <p class="text-slate-500 mt-1">Cuando producción emita una orden aparece aquí.</p>
+</div>
+{% endif %}
+{% endblock %}

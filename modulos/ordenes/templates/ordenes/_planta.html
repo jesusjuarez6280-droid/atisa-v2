@@ -1,0 +1,50 @@
+{#- Marco de las pantallas de tablet del módulo (pantalla completa, sin menú lateral).
+    {% extends 'ordenes/_planta.html' %} con los bloques titulo, subtitulo, volver y contenido. -#}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>{% block titulo %}Órdenes en proceso{% endblock %} | ERP Atisa</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/remixicon.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/estilos.css') }}">
+    {% if tailwind_estatico %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+    {% else %}
+    <script src="{{ url_for('static', filename='js/tailwind.js') }}"></script>
+    {% endif %}
+    {% include 'nucleo/_utilidades.html' %}
+    {% include 'ordenes/_estilos.html' %}
+</head>
+<body class="bg-[#f5f5f7] min-h-screen" style="font-family: Inter, sans-serif;">
+    {% include '_flashes.html' %}
+    <header class="bg-white border-b border-slate-100 px-6 lg:px-10 h-[80px] flex items-center justify-between sticky top-0 z-40">
+        <div class="flex items-center gap-4 min-w-0">
+            <div class="w-12 h-12 bg-blue-50 text-[#0e6ba8] rounded-xl flex items-center justify-center text-2xl shrink-0"><i class="ri-file-list-3-line"></i></div>
+            <div class="min-w-0">
+                <h1 class="text-[#1d1d1f] text-lg font-bold leading-tight truncate">{{ self.titulo() }}</h1>
+                <p class="text-slate-500 text-xs mt-0.5 truncate">{% block subtitulo %}Sesión: <span class="font-semibold text-slate-600">{{ session.get('nombre') }}</span>{% endblock %}</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+            {% block volver %}
+            <a href="{{ url_for('nucleo.planta') }}" class="flex items-center gap-2 h-11 px-4 rounded-xl border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50"><i class="ri-home-5-line text-lg"></i> <span class="hidden sm:inline">Planta</span></a>
+            {% endblock %}
+        </div>
+    </header>
+    <main class="px-4 sm:px-6 lg:px-10 py-8">
+        <div class="max-w-[960px] mx-auto flex flex-col gap-6">
+            {% block contenido %}{% endblock %}
+        </div>
+    </main>
+    <script>
+        // Anti doble toque: bloquea el botón mientras se envía.
+        document.addEventListener('submit', function (e) {
+            if (e.defaultPrevented) return;
+            e.target.querySelectorAll('button[type="submit"]').forEach(function (b) { b.disabled = true; b.classList.add('opacity-60'); });
+            setTimeout(function () { e.target.querySelectorAll('button[type="submit"]').forEach(function (b) { b.disabled = false; b.classList.remove('opacity-60'); }); }, 5000);
+        });
+    </script>
+</body>
+</html>

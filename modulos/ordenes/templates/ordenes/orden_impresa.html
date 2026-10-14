@@ -1,0 +1,39 @@
+{% extends 'nucleo/_impresion.html' %}
+{% block hoja_titulo %}Orden de producción{% endblock %}
+{% block hoja_codigo %}Fórmula v{{ o.formula_version }}{% if o.formula_documento %} · {{ o.formula_documento }}{% endif %}{% endblock %}
+{% block hoja_folio %}{{ o.folio }} · Lote {{ o.numero_lote or 'por asignar' }}{% endblock %}
+{% block hoja_estilos %}<style>.linea{display:inline-block;min-width:90px;border-bottom:1px solid #1d1d1f}.h3{font-size:11pt;margin:14px 0 4px;color:#0e6ba8}</style>{% endblock %}
+{% block hoja_cuerpo %}
+<p style="font-size:9pt">Para contingencia: si la tablet falla, se llena a mano y después se captura en el sistema marcada como <b>registro posterior</b>.</p>
+<table>
+    <tr><th>Producto</th><td>{{ o.producto_codigo }} · {{ o.producto_nombre }}</td><th>Tamaño de lote</th><td>{{ '%g'|format(o.tamano_lote) }} {{ o.unidad }}</td></tr>
+    <tr><th>Caducidad</th><td>{{ o.fecha_caducidad or '—' }}</td><th>Programada</th><td>{{ o.fecha_programada or '—' }}</td></tr>
+</table>
+<p class="h3"><b>Despeje de línea</b></p>
+<table><tr><th>Momento</th><th>Área limpia</th><th>Sin materiales previos</th><th>Equipos limpios</th><th>Docs. retirados</th><th>Realizó</th><th>Verificó</th></tr>
+{% for m in ['Fabricación', 'Envasado'] %}<tr><td>{{ m }}</td><td>☐</td><td>☐</td><td>☐</td><td>☐</td><td></td><td></td></tr>{% endfor %}</table>
+<p class="h3"><b>Materiales</b></p>
+<table>
+    <tr><th>Material</th><th>Cantidad teórica</th><th>Tolerancia</th><th>Lote</th><th>Pesado</th><th>Báscula</th><th>Pesó</th><th>Verificó</th></tr>
+    {% for c in comps %}
+    <tr><td>{{ c.codigo }} {{ c.nombre }}{% if c.presentacion_id %} <span style="color:#86868b">(envase/empaque)</span>{% endif %}</td><td>{{ '%g'|format(c.cantidad) }} {{ c.unidad }}</td><td>± {{ '%g'|format(c.tolerancia_pct) }} %</td><td></td><td></td><td></td><td></td><td></td></tr>
+    {% endfor %}
+</table>
+<p class="h3"><b>Pasos</b></p>
+<table>
+    <tr><th>#</th><th>Instrucción</th><th>Valores a capturar</th><th>Equipo</th><th>Inicio</th><th>Fin</th><th>Realizó</th><th>Verificó</th></tr>
+    {% for p in pasos %}
+    <tr><td>{{ p.numero }}</td><td>{{ p.instruccion }}{% if p.es_critico %} <b>(crítico)</b>{% endif %}{% if p.minutos %} · {{ p.minutos }} min{% endif %}</td>
+        <td>{% for v in p.parametros %}{{ v.nombre }} ({{ '%g'|format(v.valor_min) if v.valor_min is not none else '—' }} a {{ '%g'|format(v.valor_max) if v.valor_max is not none else '—' }} {{ v.unidad or '' }}): <span class="linea"></span><br>{% endfor %}</td>
+        <td>{{ p.equipo_tipo or '' }}</td><td></td><td></td><td></td><td></td></tr>
+    {% endfor %}
+</table>
+<p class="h3"><b>Granel y envasado</b></p>
+<table>
+    <tr><th>Granel obtenido</th><td><span class="linea"></span> {{ o.unidad }}</td><th>Rendimiento</th><td><span class="linea"></span> % (límites {{ '%g'|format(o.rendimiento_min) }}–{{ '%g'|format(o.rendimiento_max) }})</td></tr>
+    {% for p in e.presentaciones if p.piezas_planeadas %}
+    <tr><th>{{ p.codigo }} · {{ p.piezas_planeadas }} planeadas</th><td>Buenas <span class="linea"></span></td><th>Rechazadas</th><td><span class="linea"></span></td></tr>
+    {% endfor %}
+</table>
+{% endblock %}
+{% block hoja_firmas %}<div><br><br>Terminó (supervisor)</div><div><br><br>Revisó (producción)</div>{% endblock %}

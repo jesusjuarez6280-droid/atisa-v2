@@ -1,0 +1,74 @@
+{% extends 'ordenes/_planta.html' %}
+{% from 'ordenes/_firmas.html' import firmado %}
+{% block titulo %}{{ o.producto_nombre }}{% endblock %}
+{% block subtitulo %}{{ o.folio }} · Lote <span class="font-bold text-slate-600">{{ o.numero_lote or '—' }}</span> · {{ '%g'|format(o.tamano_lote) }} {{ o.unidad }}{% endblock %}
+{% block volver %}
+<a href="{{ url_for('ordenes.planta_lista') }}" class="flex items-center gap-2 h-11 px-4 rounded-xl border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50"><i class="ri-arrow-left-line text-lg"></i> <span class="hidden sm:inline">Órdenes</span></a>
+{% endblock %}
+{% block contenido %}
+<div class="bg-white rounded-3xl border border-slate-200 p-6 flex items-center gap-4">
+    <span class="text-xs font-bold text-slate-500 whitespace-nowrap">Avance</span>
+    <div class="op-barra flex-1"><span style="width: {{ e.avance }}%"></span></div>
+    <span class="text-lg font-bold text-[#1d1d1f] tabular-nums">{{ e.avance }}%</span>
+</div>
+{% if o.estatus not in ('EMITIDA', 'EN_PROCESO') %}
+<div class="bg-amber-50 border border-amber-100 rounded-2xl p-5 text-amber-800 font-semibold">Esta orden está {{ o.estatus|lower|replace('_', ' ') }}: ya no se registra nada en planta.</div>
+{% endif %}
+
+{# Despeje de fabricación #}
+<section class="bg-white rounded-3xl border border-slate-200 p-6">
+    <div class="flex items-center justify-between gap-3">
+        <h2 class="text-lg font-bold text-[#1d1d1f] flex items-center gap-2"><i class="ri-brush-line text-[#0e6ba8]"></i> Despeje de línea · fabricación</h2>
+        {% if 'Fabricación' in e.despejes %}<span class="op-chip bg-emerald-50 text-emerald-600"><i class="ri-check-line"></i> Listo</span>
+        {% else %}<a href="{{ url_for('ordenes.planta_despeje', orden_id=o.id, momento='Fabricación') }}" class="h-12 px-6 rounded-xl bg-[#0e6ba8] text-white font-bold flex items-center hover:bg-[#1d1d1f]">Hacer despeje</a>{% endif %}
+    </div>
+</section>
+
+{# Pesadas #}
+<section class="bg-white rounded-3xl border border-slate-200 p-6">
+    <h2 class="text-lg font-bold text-[#1d1d1f] flex items-center gap-2 mb-4"><i class="ri-scales-3-line text-[#0e6ba8]"></i> Pesadas</h2>
+    <div class="flex flex-col gap-3">
+        {% for c in e.mp %}
+        <a href="{{ url_for('ordenes.planta_pesar', orden_id=o.id, componente_id=c.id) }}" class="flex items-center gap-4 p-4 rounded-2xl border border-slate-200 hover:border-[#0e6ba8]">
+            <span class="w-10 h-10 rounded-xl flex items-center justify-center text-xl {{ 'bg-emerald-50 text-emerald-600' if c.completo else 'bg-slate-100 text-slate-500' }}"><i class="{{ 'ri-check-line' if c.completo else 'ri-scales-3-line' }}"></i></span>
+            <div class="flex-1 min-w-0">
+                <p class="font-bold text-[#1d1d1f] truncate">{{ c.codigo }} · {{ c.nombre }} {% if c.es_activo %}<span class="op-chip bg-violet-50 text-violet-700">Activo</span>{% endif %}</p>
+                <p class="text-sm text-slate-500 tabular-nums">{{ '%g'|format(c.pesado) }} de {{ '%g'|format(c.cantidad_teorica) }} {{ c.unidad }}</p>
+            </div>
+            <i class="ri-arrow-right-s-line text-2xl text-slate-400"></i>
+        </a>
+        {% else %}<p class="text-slate-500">La orden no tiene materias primas.</p>{% endfor %}
+    </div>
+</section>
+
+{# Pasos #}
+<section class="bg-white rounded-3xl border border-slate-200 p-6">
+    <h2 class="text-lg font-bold text-[#1d1d1f] flex items-center gap-2 mb-4"><i class="ri-list-check-3 text-[#0e6ba8]"></i> Pasos de fabricación</h2>
+    <div class="flex flex-col gap-3">
+        {% for p in e.pasos_fab %}
+        <a href="{{ url_for('ordenes.planta_paso', orden_id=o.id, paso_id=p.id) }}" class="flex items-center gap-4 p-4 rounded-2xl border border-slate-200 hover:border-[#0e6ba8]">
+            <span class="w-10 h-10 rounded-xl flex items-center justify-center font-bold {{ 'bg-emerald-50 text-emerald-600' if p.estatus == 'Hecho' else ('bg-amber-50 text-amber-600' if p.estatus == 'En curso' else 'bg-slate-100 text-slate-500') }}">{{ p.numero }}</span>
+            <div class="flex-1 min-w-0">
+                <p class="font-semibold text-[#1d1d1f] truncate">{{ p.instruccion }}</p>
+                <p class="text-xs text-slate-500">{{ p.estatus }}{% if p.es_critico %} · crítico{% endif %}{% if p.fuera_de_rango %} · <span class="op-fuera">fuera de rango</span>{% endif %}</p>
+            </div>
+            <i class="ri-arrow-right-s-line text-2xl text-slate-400"></i>
+        </a>
+        {% else %}<p class="text-slate-500">Sin pasos de fabricación.</p>{% endfor %}
+    </div>
+</section>
+
+{# Granel, envasado y terminar #}
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    {% for b in e.bloques if b.clave in ('granel', 'envasado', 'terminar') %}
+    <a href="{{ url_for('ordenes.planta_' ~ b.clave, orden_id=o.id) }}" class="op-btn-grande bg-white rounded-3xl border border-slate-200 p-6 flex items-center justify-between gap-3 hover:border-[#0e6ba8]">
+        <span class="font-bold text-[#1d1d1f]">{{ b.titulo }}</span>
+        <span class="op-chip {{ 'bg-emerald-50 text-emerald-600' if b.listo else 'bg-slate-100 text-slate-500' }}">{{ 'Listo' if b.listo else 'Pendiente' }}</span>
+    </a>
+    {% endfor %}
+</div>
+
+{% if reportar %}
+<a href="{{ reportar }}" class="op-btn-grande bg-white rounded-3xl border-2 border-rose-200 text-rose-600 font-bold flex items-center justify-center gap-2 hover:bg-rose-50"><i class="ri-alarm-warning-line"></i> Reportar desviación</a>
+{% endif %}
+{% endblock %}

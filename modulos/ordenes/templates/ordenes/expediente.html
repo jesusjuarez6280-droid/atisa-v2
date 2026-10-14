@@ -1,0 +1,21 @@
+{% extends 'nucleo/_impresion.html' %}
+{% block hoja_titulo %}Expediente de lote{% endblock %}
+{% block hoja_codigo %}{{ codigo_formato or 'Registro de producción' }}{% endblock %}
+{% block hoja_folio %}{{ o.folio }} · Lote {{ o.numero_lote or '—' }}{% endblock %}
+{% block hoja_estilos %}<style>.op-h3{font-size:11pt;margin:14px 0 4px;color:#0e6ba8}.op-gris{color:#86868b;font-size:8pt}.op-fuera{color:#be123c;font-weight:700}.op-ok{color:#047857}.op-num{text-align:right}</style>{% endblock %}
+{% block hoja_cuerpo %}
+<table>
+    <tr><th>Producto</th><td>{{ o.producto_codigo }} · {{ o.producto_nombre }}</td><th>Lote</th><td><b>{{ o.numero_lote or '—' }}</b></td></tr>
+    <tr><th>Fórmula</th><td>v{{ o.formula_version }}{% if o.formula_documento %} · {{ o.formula_documento }}{% endif %}</td><th>Tamaño</th><td>{{ '%g'|format(o.tamano_lote) }} {{ o.unidad }}</td></tr>
+    <tr><th>Fabricación</th><td>{{ (o.fecha_inicio or '—')[:10] }}</td><th>Caducidad</th><td>{{ o.fecha_caducidad or '—' }}</td></tr>
+    <tr><th>Estatus</th><td>{{ nombres.get(o.estatus, o.estatus) }}{% if o.granel_estatus %} · granel {{ o.granel_estatus|lower }}{% endif %}</td><th>Emitió</th><td>{% set f = e.firmas.get(o.emitio_firma_id) %}{{ f.nombre if f else '—' }} {{ (f.ts or '')[:16] if f else '' }}</td></tr>
+</table>
+{% include 'ordenes/_registro_lote.html' %}
+{% endblock %}
+{% block hoja_firmas %}
+{% for etiqueta, fid in [('Terminó (supervisor)', o.termino_firma_id), ('Revisó (producción)', o.reviso_firma_id)] %}
+{% set f = e.firmas.get(fid) %}
+<div>{% if f %}<b>{{ f.nombre }}</b><br>{{ f.ts }}<br>{% else %}<br><br>{% endif %}{{ etiqueta }}</div>
+{% endfor %}
+<div><br><br>Liberó (calidad)</div>
+{% endblock %}

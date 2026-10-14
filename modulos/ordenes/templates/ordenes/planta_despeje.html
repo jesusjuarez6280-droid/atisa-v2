@@ -1,0 +1,30 @@
+{% extends 'ordenes/_planta.html' %}
+{% from 'ordenes/_firmas.html' import firma, csrf %}
+{% block titulo %}Despeje de línea · {{ momento|lower }}{% endblock %}
+{% block subtitulo %}{{ o.folio }} · {{ o.producto_nombre }} · Lote {{ o.numero_lote or '—' }}{% endblock %}
+{% block volver %}
+<a href="{{ url_for('ordenes.planta_orden', orden_id=o.id) }}" class="flex items-center gap-2 h-11 px-4 rounded-xl border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50"><i class="ri-arrow-left-line text-lg"></i> Orden</a>
+{% endblock %}
+{% block contenido %}
+{% if hecho %}
+<div class="bg-emerald-50 border border-emerald-100 rounded-2xl p-6 text-emerald-700 font-semibold">El despeje de {{ momento|lower }} ya está registrado ({{ hecho.ts }}).</div>
+{% else %}
+<form method="POST" class="flex flex-col gap-6">
+    {{ csrf() }}
+    <input type="hidden" name="momento" value="{{ momento }}">
+    <section class="bg-white rounded-3xl border border-slate-200 p-6 flex flex-col gap-4">
+        {% for clave, nombre in checks %}
+        <label class="flex items-center gap-4 p-4 rounded-2xl border border-slate-200 text-lg font-semibold text-[#1d1d1f] cursor-pointer hover:bg-slate-50">
+            <input type="checkbox" name="{{ clave }}" value="1" class="w-7 h-7"> {{ nombre }}
+        </label>
+        {% endfor %}
+        <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Observaciones</label><textarea name="observaciones" rows="2" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl"></textarea></div>
+    </section>
+    <div class="op-grid-2">
+        {{ firma('realizo', 'Realizó el despeje') }}
+        {{ firma('verifico', 'Verificó (supervisor)') }}
+    </div>
+    <button type="submit" class="op-btn-grande rounded-2xl bg-[#0e6ba8] text-white font-bold hover:bg-[#1d1d1f]">Registrar despeje</button>
+</form>
+{% endif %}
+{% endblock %}
