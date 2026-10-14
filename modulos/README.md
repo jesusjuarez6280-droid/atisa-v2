@@ -130,6 +130,7 @@ Para el resto: `registro.verificaciones_liberacion(conn, lote_id)`, `registro.se
 - Componentes: `{% from 'nucleo/_firma.html' import campo_firma, firmado %}`,
   `{% from 'nucleo/_lote.html' import chip_estatus, caducidad %}` y
   `{% extends 'nucleo/_impresion.html' %}` para hojas carta.
+  Estas macros funcionan importadas sin `with context` (lo que usan es global de Jinja).
 - En plantillas hay `puede('permiso')`, `tiene_facultad('liberar_lotes')`, `enlace(...)` y `dias_hasta(fecha)`.
 - Tailwind está precompilado: solo clases que existan en `static/css/tailwind.css` o en
   `nucleo/_utilidades.html`. Si falta una, va en un `<style>` de la plantilla del módulo.
