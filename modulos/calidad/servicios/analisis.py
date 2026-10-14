@@ -436,8 +436,9 @@ def analisis_por_equipo(conn, equipo_id, desde) -> list:
     sale fuera de tolerancia). Un renglón por resultado capturado con ese equipo."""
     return [dict(r) for r in conn.execute(
         'SELECT a.id AS analisis_id, a.folio, a.estatus AS analisis_estatus, l.id AS lote_id, l.numero_lote, '
-        'l.estatus AS lote_estatus, m.codigo AS material_codigo, m.nombre AS material_nombre, p.prueba, '
-        "r.fecha_analisis, r.valido, '/calidad/analisis/' || a.id AS url "
+        'l.estatus AS lote_estatus, m.codigo AS material_codigo, m.nombre AS material_nombre, '
+        "m.codigo || ' · ' || m.nombre AS material, p.prueba, r.fecha_analisis, r.fecha_analisis AS fecha, r.valido, "
+        "'/calidad/analisis/' || a.id AS url "
         'FROM cc_resultados r JOIN cc_analisis a ON a.id = r.analisis_id JOIN lotes l ON l.id = a.lote_id '
         'JOIN materiales m ON m.id = l.material_id JOIN cc_especificacion_pruebas p ON p.id = r.prueba_id '
         'WHERE r.equipo_id = ? AND r.fecha_analisis >= ? ORDER BY r.fecha_analisis, a.id',

@@ -539,6 +539,9 @@ def test_analisis_por_equipo(conn, gente):
     hoy = date.today().isoformat()
     filas = registro.consulta('analisis_por_equipo', conn, eq, hoy)
     assert [f['analisis_id'] for f in filas] == [aid] and filas[0]['prueba'] == 'Valoración'
+    # Equipos lee estos campos de cada renglón.
+    assert {'lote_id', 'fecha', 'numero_lote', 'folio', 'material', 'url'} <= set(filas[0])
+    assert filas[0]['fecha'] == hoy and filas[0]['url'] == f'/calidad/analisis/{aid}'
     manana = (date.today() + timedelta(days=1)).isoformat()
     assert registro.consulta('analisis_por_equipo', conn, eq, manana) == []
 
