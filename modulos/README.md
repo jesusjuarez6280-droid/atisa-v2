@@ -133,7 +133,7 @@ módulo no está instalado devuelven `None` / el default y el botón simplemente
 Para el resto: `registro.verificaciones_liberacion(conn, lote_id)`, `registro.secciones_lote(conn, lote_id)`.
 
 Consultas acordadas entre módulos (quién la ofrece → quién la usa). Ambas devuelven una
-lista de dicts, más reciente primero; lista vacía si no hay nada:
+lista de dicts (lista vacía si no hay nada):
 
 | Consulta | Ofrece → usa | Llamada | Cada elemento |
 |---|---|---|---|
