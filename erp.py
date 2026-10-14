@@ -43,6 +43,24 @@ def _cargar_secret_key():
 
 app.secret_key = _cargar_secret_key()
 
+# === LOG DE ERRORES A ARCHIVO ===
+# Todo error inesperado (y los avisos de la app) quedan en logs/erp.log, con rotación
+# (5 archivos de 2 MB). Antes muchos errores se tragaban en silencio y no había forma
+# de saber qué falló en planta.
+import logging
+from logging.handlers import RotatingFileHandler
+LOGS_DIR = os.environ.get('ATISA_LOGS', os.path.join(os.path.dirname(os.path.abspath(DB_PATH)), 'logs'))
+try:
+    os.makedirs(LOGS_DIR, exist_ok=True)
+    _manejador_log = RotatingFileHandler(os.path.join(LOGS_DIR, 'erp.log'), maxBytes=2_000_000,
+                                         backupCount=5, encoding='utf-8')
+    _manejador_log.setLevel(logging.WARNING)
+    _manejador_log.setFormatter(logging.Formatter('%(asctime)s %(levelname)s [%(funcName)s] %(message)s'))
+    app.logger.addHandler(_manejador_log)
+    app.logger.setLevel(logging.INFO)
+except OSError:
+    pass   # sin permiso de escritura: el ERP sigue funcionando, solo sin archivo de log
+
 # === BLINDAJE DE LA SESIÓN (cookies + expiración) ===
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,     # el cookie NO es legible por JavaScript (mitiga robo por XSS)
@@ -117,6 +135,20 @@ def _bloquear_archivos_privados():
 # === CSRF — protege TODAS las peticiones POST contra falsificación de solicitudes ===
 app.config['WTF_CSRF_TIME_LIMIT'] = None   # el token vive toda la sesión (intranet)
 csrf = CSRFProtect(app)
+
+@app.errorhandler(500)
+def _error_interno(e):
+    """Error inesperado: queda en logs/erp.log (Flask lo registra) y el usuario ve un
+    aviso claro en vez de 'Internal Server Error'."""
+    if request.headers.get('HX-Request'):
+        flash('Algo salió mal y no se guardó. El error quedó registrado para revisarlo.', 'error')
+        resp = make_response('', 200)
+        resp.headers['HX-Refresh'] = 'true'
+        return resp
+    try:
+        return render_template('error.html'), 500
+    except Exception:   # si hasta la plantilla falla, texto plano
+        return 'Algo salió mal. El error quedó registrado.', 500
 
 @app.errorhandler(CSRFError)
 def _manejar_csrf(e):
@@ -393,11 +425,36 @@ def _auditar(tipo, accion, ruta='', detalle='', usuario=None, rol=None):
         conn.commit()
         conn.close()
     except Exception:
-        pass
+        app.logger.warning('No se pudo registrar en la bitácora: %s %s', tipo, ruta, exc_info=True)
 
 # Rutas cuyo POST NO se registra como 'cambio' de datos:
 #  - /login ya se registra aparte como 'acceso' (evita el doble registro).
 _AUDIT_POST_IGNORAR = {'/login'}
+
+# Campos que NUNCA se copian a la bitácora.
+_AUDIT_CAMPOS_OCULTOS = {'csrf_token', 'password', 'passw', 'password_actual', 'password_nueva',
+                         'password_confirma', 'nueva_password'}
+
+def _detalle_formulario(max_valor=60, max_total=400):
+    """Resumen legible de lo que se envió ('campo=valor; ...') para la bitácora:
+    qué registro y qué datos se tocaron (trazabilidad BPM). Omite contraseñas y el
+    token CSRF; de los archivos solo guarda el nombre."""
+    partes = []
+    for campo in request.form:
+        if campo in _AUDIT_CAMPOS_OCULTOS or 'password' in campo.lower():
+            continue
+        valores = [v.strip() for v in request.form.getlist(campo) if v and v.strip()]
+        if not valores:
+            continue
+        valor = ', '.join(valores)
+        if len(valor) > max_valor:
+            valor = valor[:max_valor - 1] + '…'
+        partes.append(f'{campo}={valor}')
+    for campo, archivo in request.files.items():
+        if archivo and archivo.filename:
+            partes.append(f'{campo}=[archivo {secure_filename(archivo.filename)}]')
+    texto = '; '.join(partes)
+    return texto if len(texto) <= max_total else texto[:max_total - 1] + '…'
 
 @app.after_request
 def _auditar_cambios(response):
@@ -409,9 +466,9 @@ def _auditar_cambios(response):
                 and response.status_code < 400
                 and request.path not in _AUDIT_POST_IGNORAR
                 and not request.path.startswith('/static')):
-            _auditar('cambio', 'Modificación de datos', request.path)
+            _auditar('cambio', 'Modificación de datos', request.path, detalle=_detalle_formulario())
     except Exception:
-        pass
+        app.logger.warning('Falló la auditoría automática de %s', request.path, exc_info=True)
     return response
 
 def _festivos_mexico(anio):
@@ -2533,7 +2590,8 @@ def perfil_kpi_eliminar():
         conn.execute('DELETE FROM puesto_kpis WHERE id = ?', (kid,))
         conn.commit()
     except Exception:
-        pass
+        app.logger.exception('No se pudo eliminar el KPI %s', kid)
+        flash('No se pudo eliminar el KPI.', 'error')
     finally:
         conn.close()
     return hx_redirect(url_for('perfil_detalle', pid=pid))
@@ -2726,7 +2784,8 @@ def candidato_recomendacion():
             conn.execute('UPDATE candidatos SET recomendacion=? WHERE id=?', (rec, cid))
             conn.commit()
         except Exception:
-            pass
+            app.logger.exception('No se pudo actualizar la recomendación del candidato %s', cid)
+            flash('No se pudo guardar la recomendación.', 'error')
         finally:
             conn.close()
     return hx_redirect(url_for('vacante_detalle', vid=vid))
@@ -2743,7 +2802,8 @@ def candidato_eliminar():
         conn.execute('DELETE FROM candidatos WHERE id=?', (cid,))
         conn.commit()
     except Exception:
-        pass
+        app.logger.exception('No se pudo eliminar el candidato %s', cid)
+        flash('No se pudo eliminar el candidato.', 'error')
     finally:
         conn.close()
     return hx_redirect(url_for('vacante_detalle', vid=vid))
@@ -4511,7 +4571,8 @@ def cardex_evento_eliminar():
         conn.execute("DELETE FROM cardex_eventos WHERE id = ?", (eid,))
         conn.commit()
     except Exception:
-        pass
+        app.logger.exception('No se pudo eliminar el evento de cardex %s', eid)
+        flash('No se pudo eliminar el evento.', 'error')
     finally:
         conn.close()
     return hx_redirect(url_for('cardex_detalle', numero_empleado=num))
