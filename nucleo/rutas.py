@@ -204,6 +204,9 @@ def pin_borrar():
 
 
 # --- Ayudas para plantillas (todas las pantallas) ------------------------------
+# dias_hasta es global de Jinja (no del contexto): así funciona también dentro de las
+# macros importadas sin 'with context', como caducidad() de nucleo/_lote.html.
+@bp.app_template_global()
 def dias_hasta(fecha):
     """Días de hoy a 'AAAA-MM-DD' (negativo si ya pasó); None si la fecha no es válida."""
     from datetime import date
@@ -215,4 +218,4 @@ def dias_hasta(fecha):
 
 @bp.app_context_processor
 def _ayudas_plantillas():
-    return {'dias_hasta': dias_hasta, 'ROLES_INFO': ROLES_INFO, 'FACULTADES': FACULTADES}
+    return {'ROLES_INFO': ROLES_INFO, 'FACULTADES': FACULTADES}
