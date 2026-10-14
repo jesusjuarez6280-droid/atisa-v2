@@ -16,10 +16,32 @@ import calendar
 import time
 
 app = Flask(__name__)
-# Llave de sesión: en producción se toma de la variable de entorno ATISA_SECRET_KEY
-# (NUNCA se hornea en el código, porque el repo es público y quien la vea podría
-# falsificar cookies de sesión). El valor por defecto es solo para desarrollo local.
-app.secret_key = os.environ.get('ATISA_SECRET_KEY') or 'atisa-dev-key-CAMBIAR-en-produccion'
+
+# Ruta de la base de datos (configurable para pruebas o para moverla de carpeta).
+DB_PATH = os.environ.get('ATISA_DB', 'base_planta.db')
+
+def _cargar_secret_key():
+    """Llave de sesión. Prioridad: variable de entorno ATISA_SECRET_KEY; si no existe,
+    se genera UNA vez una llave aleatoria y se guarda en '.secret_key' junto a la base
+    (archivo ignorado por git). Nunca hay una llave fija en el código: el repo es
+    público y con ella cualquiera podría fabricar una cookie de administrador."""
+    llave = os.environ.get('ATISA_SECRET_KEY')
+    if llave:
+        return llave
+    ruta = os.path.join(os.path.dirname(os.path.abspath(DB_PATH)), '.secret_key')
+    try:
+        with open(ruta, 'r', encoding='utf-8') as fh:
+            llave = fh.read().strip()
+    except OSError:
+        llave = ''
+    if len(llave) < 32:
+        import secrets
+        llave = secrets.token_hex(32)
+        with open(ruta, 'w', encoding='utf-8') as fh:
+            fh.write(llave)
+    return llave
+
+app.secret_key = _cargar_secret_key()
 
 # === BLINDAJE DE LA SESIÓN (cookies + expiración) ===
 app.config.update(
@@ -32,6 +54,9 @@ app.config.update(
 
 # === Política de contraseñas y anti-fuerza-bruta en el login ===
 MIN_PASSWORD = 8
+# Contraseña con la que nace el admin en una base nueva. Es pública (está en el repo),
+# así que quien entre con ella queda OBLIGADO a cambiarla antes de usar el sistema.
+PASSWORD_INICIAL_ADMIN = 'admin123'
 def _password_debil(passw):
     """Devuelve un mensaje si la contraseña es débil, o None si es aceptable."""
     if not passw or len(passw) < MIN_PASSWORD:
@@ -73,6 +98,21 @@ def _destino_interno(destino, default):
 # === CACHÉ EN MEMORIA (catálogos que casi no cambian) ===
 cache = Cache(config={'CACHE_TYPE': 'SimpleCache', 'CACHE_DEFAULT_TIMEOUT': 300})
 cache.init_app(app)
+
+# === ARCHIVOS PRIVADOS ===
+# Expedientes, contratos y responsivas firmadas se guardan en static/contratos/, pero
+# Flask sirve /static/ sin pedir sesión. Se bloquea el acceso directo: esos archivos
+# solo salen por las rutas que validan login y permiso (ver_documento, ver_contrato,
+# normativa_archivo).
+_PREFIJOS_PRIVADOS = ('/static/contratos/', '/static/documentos_legales/')
+
+@app.before_request
+def _bloquear_archivos_privados():
+    # normpath resuelve trucos como /static/css/../contratos/x.pdf o //static//contratos
+    import posixpath
+    ruta = posixpath.normpath('/' + request.path.replace('\\', '/').lstrip('/')).lower() + '/'
+    if ruta.startswith(_PREFIJOS_PRIVADOS):
+        abort(404)
 
 # === CSRF — protege TODAS las peticiones POST contra falsificación de solicitudes ===
 app.config['WTF_CSRF_TIME_LIMIT'] = None   # el token vive toda la sesión (intranet)
@@ -253,9 +293,65 @@ ALLOWED_EXTENSIONS = {'pdf', 'jpg', 'jpeg', 'png'}
 def extension_permitida(filename):
     return '.' in (filename or '') and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+# === RESPALDO AUTOMÁTICO DIARIO DE LA BASE ===
+# La primera petición de cada día copia la base a respaldos/ con la API de respaldo
+# de SQLite (copia consistente aunque haya usuarios escribiendo, incluye el WAL).
+# Se conservan los últimos RESPALDOS_A_CONSERVAR días. Corre en un hilo aparte para
+# no frenar a quien hizo la petición. Para copias fuera del sitio, sincroniza la
+# carpeta respaldos/ (USB, NAS, OneDrive...).
+import threading
+RESPALDOS_DIR = os.environ.get('ATISA_RESPALDOS', os.path.join(os.path.dirname(os.path.abspath(DB_PATH)), 'respaldos'))
+RESPALDOS_A_CONSERVAR = 30
+_respaldo_lock = threading.Lock()
+_respaldo_ultimo_dia = None
+
+def respaldar_bd(destino=None):
+    """Copia la base a 'destino' (o a respaldos/base_planta_AAAA-MM-DD.db) y depura
+    los respaldos viejos. Devuelve la ruta del respaldo."""
+    os.makedirs(RESPALDOS_DIR, exist_ok=True)
+    destino = destino or os.path.join(RESPALDOS_DIR, f"base_planta_{datetime.now():%Y-%m-%d}.db")
+    temporal = destino + '.tmp'
+    origen = sqlite3.connect(DB_PATH, timeout=30.0)
+    try:
+        copia = sqlite3.connect(temporal)
+        try:
+            origen.backup(copia)
+        finally:
+            copia.close()
+    finally:
+        origen.close()
+    os.replace(temporal, destino)   # nunca deja un respaldo a medias con el nombre final
+    viejos = sorted(f for f in os.listdir(RESPALDOS_DIR)
+                    if f.startswith('base_planta_') and f.endswith('.db'))
+    for f in viejos[:-RESPALDOS_A_CONSERVAR]:
+        try:
+            os.remove(os.path.join(RESPALDOS_DIR, f))
+        except OSError:
+            pass
+    return destino
+
+def _respaldo_en_hilo():
+    try:
+        respaldar_bd()
+    except Exception:
+        app.logger.exception('Falló el respaldo automático de la base')
+
+@app.before_request
+def _respaldo_diario():
+    global _respaldo_ultimo_dia
+    hoy = datetime.now().strftime('%Y-%m-%d')
+    if _respaldo_ultimo_dia == hoy or os.environ.get('ATISA_SIN_RESPALDO'):
+        return
+    with _respaldo_lock:
+        if _respaldo_ultimo_dia == hoy:
+            return
+        _respaldo_ultimo_dia = hoy
+        if not os.path.exists(os.path.join(RESPALDOS_DIR, f'base_planta_{hoy}.db')) and os.path.exists(DB_PATH):
+            threading.Thread(target=_respaldo_en_hilo, daemon=True).start()
+
 # --- 1. CONFIGURACIÓN DE LA BASE DE DATOS ---
 def get_db_connection():
-    conn = sqlite3.connect('base_planta.db', timeout=5.0)
+    conn = sqlite3.connect(DB_PATH, timeout=5.0)
     conn.row_factory = sqlite3.Row
     # PRAGMAs de rendimiento (por conexión, costo ~microsegundos)
     conn.execute('PRAGMA synchronous = NORMAL;')   # rápido y seguro junto a WAL
@@ -285,7 +381,7 @@ def _auditar(tipo, accion, ruta='', detalle='', usuario=None, rol=None):
     """Inserta una línea en el registro de auditoría. A prueba de fallos:
     si algo sale mal (BD ocupada, tabla vieja), se ignora en silencio."""
     try:
-        conn = sqlite3.connect('base_planta.db', timeout=3.0)
+        conn = sqlite3.connect(DB_PATH, timeout=3.0)
         try:
             ip = request.remote_addr if request else None
         except Exception:
@@ -451,7 +547,9 @@ def inicializar_bd():
                       ('jefe_inmediato', 'TEXT'), ('tipo_contrato', 'TEXT'), ('fecha_fin_contrato', 'TEXT'),
                       ('salario_diario', 'TEXT'), ('tipo_jornada', 'TEXT'), ('turno', 'TEXT'),
                       ('infonavit', 'TEXT'), ('fonacot', 'TEXT'), ('banco_clabe', 'TEXT'),
-                      ('fecha_baja', 'TEXT'), ('motivo_baja', 'TEXT')]:
+                      ('fecha_baja', 'TEXT'), ('motivo_baja', 'TEXT'),
+                      # Seguridad · obliga a cambiar la contraseña inicial en el siguiente acceso
+                      ('debe_cambiar_password', 'INTEGER DEFAULT 0')]:
         if col not in cols_usuarios:
             try:
                 conn.execute(f'ALTER TABLE usuarios ADD COLUMN {col} {tipo}')
@@ -824,10 +922,10 @@ def inicializar_bd():
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM usuarios WHERE username = 'admin'")
     if not cursor.fetchone():
-        hash_pass = generate_password_hash("admin123")
+        hash_pass = generate_password_hash(PASSWORD_INICIAL_ADMIN)
         conn.execute('''
-            INSERT INTO usuarios (numero_empleado, nombre_completo, username, password_hash, rol) 
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO usuarios (numero_empleado, nombre_completo, username, password_hash, rol, debe_cambiar_password)
+            VALUES (?, ?, ?, ?, ?, 1)
         ''', ('0001', 'Ing. Jesús Armando Juárez Cabrera', 'admin', hash_pass, 'admin'))
 
     # === MÓDULO M3 · PERFIL DE PUESTO & KPIs ===
@@ -1088,7 +1186,8 @@ def login_required(f):
         # queda con un rol "congelado" del login ni sigue navegando ya dado de baja).
         conn = get_db_connection()
         u = conn.execute(
-            'SELECT nombre_completo, rol, estatus FROM usuarios WHERE id = ?', (session['user_id'],)
+            'SELECT nombre_completo, rol, estatus, debe_cambiar_password FROM usuarios WHERE id = ?',
+            (session['user_id'],)
         ).fetchone()
         conn.close()
         if not u or u['estatus'] != 1:
@@ -1097,6 +1196,9 @@ def login_required(f):
             return hx_redirect(url_for('login'))
         session['rol'] = u['rol']
         session['nombre'] = u['nombre_completo']
+        # Contraseña inicial / temporal: no se usa el sistema hasta cambiarla.
+        if u['debe_cambiar_password'] and request.endpoint != 'cambiar_password':
+            return hx_redirect(url_for('cambiar_password'))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -1174,6 +1276,12 @@ def login():
         conn.close()
         if usuario and check_password_hash(usuario['password_hash'], password):
             _login_limpiar(clave)
+            if password == PASSWORD_INICIAL_ADMIN and not usuario['debe_cambiar_password']:
+                # Bases creadas antes de este cambio: el admin sigue con la contraseña pública.
+                conn = get_db_connection()
+                conn.execute('UPDATE usuarios SET debe_cambiar_password = 1 WHERE id = ?', (usuario['id'],))
+                conn.commit()
+                conn.close()
             session.permanent = True          # activa la expiración de 8 h
             session['user_id'] = usuario['id']
             session['username'] = usuario['username']
@@ -1194,6 +1302,38 @@ def logout():
     _auditar('acceso', 'Cierre de sesión', '/logout')
     session.clear()
     return hx_redirect(url_for('login'))
+
+@app.route('/cambiar_password', methods=['GET', 'POST'])
+@login_required
+def cambiar_password():
+    """Cambio de contraseña del usuario en sesión (obligatorio si tiene la inicial)."""
+    if request.method == 'POST':
+        actual = request.form.get('password_actual') or ''
+        nueva = request.form.get('password_nueva') or ''
+        confirma = request.form.get('password_confirma') or ''
+        conn = get_db_connection()
+        u = conn.execute('SELECT password_hash FROM usuarios WHERE id = ?', (session['user_id'],)).fetchone()
+        error = None
+        if not u or not check_password_hash(u['password_hash'], actual):
+            error = 'La contraseña actual no es correcta.'
+        elif nueva != confirma:
+            error = 'La nueva contraseña y su confirmación no coinciden.'
+        elif nueva == actual or nueva == PASSWORD_INICIAL_ADMIN:
+            error = 'La nueva contraseña debe ser distinta a la anterior.'
+        else:
+            error = _password_debil(nueva)
+        if error:
+            conn.close()
+            flash(error, 'error')
+            return full_page('cambiar_password.html')
+        conn.execute('UPDATE usuarios SET password_hash = ?, debe_cambiar_password = 0 WHERE id = ?',
+                     (generate_password_hash(nueva), session['user_id']))
+        conn.commit()
+        conn.close()
+        _auditar('acceso', 'Cambio de contraseña', '/cambiar_password')
+        flash('Contraseña actualizada.', 'success')
+        return hx_redirect(url_for(landing_endpoint()))
+    return full_page('cambiar_password.html')
 
 @app.route('/sin_acceso')
 @login_required
@@ -1626,13 +1766,25 @@ def reportes():
     conn.close()
     return render_page('reportes.html', reportes_asistencia=reportes_asistencia, periodo=periodo)
 
+# Datos de la plantilla que SÍ pueden salir en el Excel general de Reportes.
+# Lista fija en código (no inyectable). Los datos sensibles se consultan solo en el
+# expediente individual, dentro del sistema.
+COLUMNAS_EXPORTABLES_USUARIOS = [
+    'numero_empleado', 'nombre_completo', 'puesto', 'area', 'rol', 'estatus',
+    'fecha_ingreso', 'tipo_contrato', 'fecha_fin_contrato', 'tipo_jornada', 'turno',
+    'jefe_inmediato', 'fecha_baja',
+]
+
 @app.route('/exportar_excel')
 @login_required
 @requiere_modulo('reportes')
 def exportar_excel():
     conn = get_db_connection()
     try:
-        df_usuarios = pd.read_sql_query("SELECT * FROM usuarios WHERE rol != 'admin'", conn)
+        # Columnas EXPLÍCITAS: nunca contraseñas ni datos personales sensibles
+        # (CURP, RFC, NSS, domicilio, salario, CLABE...). Ver COLUMNAS_EXPORTABLES_USUARIOS.
+        df_usuarios = pd.read_sql_query(
+            f"SELECT {', '.join(COLUMNAS_EXPORTABLES_USUARIOS)} FROM usuarios WHERE rol != 'admin'", conn)
         df_inventario = pd.read_sql_query('SELECT * FROM inventario_activos', conn)
         df_asignaciones = pd.read_sql_query('''
             SELECT a.id, u.nombre_completo, i.categoria, i.descripcion,
@@ -4553,7 +4705,7 @@ def avisos_eliminar():
 if __name__ == '__main__':
     inicializar_bd()
     # El modo debug expone el depurador de Werkzeug (ejecución de código) y trazas de
-    # error: peligroso en producción. En local queda activo por comodidad; para
-    # producción, define la variable de entorno ATISA_DEBUG=false.
-    debug = os.environ.get('ATISA_DEBUG', 'true').lower() in ('1', 'true', 'yes')
+    # error: como el ERP escucha en toda la red (0.0.0.0), queda APAGADO por defecto.
+    # Para desarrollar en tu PC: define ATISA_DEBUG=true.
+    debug = os.environ.get('ATISA_DEBUG', 'false').lower() in ('1', 'true', 'yes')
     app.run(debug=debug, host='0.0.0.0', port=5001)
