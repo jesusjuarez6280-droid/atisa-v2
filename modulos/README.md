@@ -101,6 +101,16 @@ except (firmas.FirmaInvalida, inventario.ErrorInventario) as e:
 ```
 
 Firma primero y después las demás escrituras. El PIN nunca se escribe en la bitácora.
+Dos firmas en un mismo formulario: `campo_firma('Realizó', id='f1', prefijo='realizo_')` y
+`campo_firma('Verificó', id='f2', prefijo='verifico_')` envían `realizo_firma_numero`,
+`verifico_firma_pin`, etc. Sin prefijo los nombres siguen siendo `firma_numero` y `firma_pin`.
+
+Números de lote: `inventario.crear_lote()` sin `numero_lote` lo genera solo con el formato del
+parámetro `nucleo.formato_lote_recepcion` (origen RECEPCION/INICIAL/DEVOLUCION, p. ej. `MP-26-0001`)
+o `nucleo.formato_lote_produccion` (origen PRODUCCION, por defecto `{AA}{MM}{###}` → `2610015`).
+Para conocer el número antes de crear el lote (p. ej. al emitir la orden):
+`folios.numero_lote(conn, parametro('nucleo.formato_lote_produccion', conn), TIPO=..., COD=...)`.
+El admin cambia ambos formatos en Configuración → Parámetros.
 
 ## 5. Ganchos (sección 8 del diseño)
 

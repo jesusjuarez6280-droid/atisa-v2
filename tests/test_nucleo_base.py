@@ -111,6 +111,18 @@ def test_macros_de_lote_sin_with_context():
     assert 'Retenido' in html and 'vencido' in html
 
 
+def test_dos_firmas_en_un_formulario_con_prefijo():
+    with erp.app.test_request_context():
+        html = erp.app.jinja_env.from_string(
+            "{% from 'nucleo/_firma.html' import campo_firma %}"
+            "{{ campo_firma('Realizó', id='f1', prefijo='realizo_') }}"
+            "{{ campo_firma('Verificó', id='f2', prefijo='verifico_') }}"
+            "{{ campo_firma('Aprobó') }}").render()
+    for nombre in ('realizo_firma_numero', 'realizo_firma_pin', 'verifico_firma_numero',
+                   'verifico_firma_pin', 'verifico_firma_significado', '"firma_numero"', '"firma_pin"'):
+        assert nombre in html, nombre
+
+
 def test_ganchos_llegan_a_tablero_pendientes_planta_y_liberacion(client, db):
     crear_usuario(db, 'reg_admin', rol='admin', numero='7103')
     db.execute("INSERT INTO prb_cosas (nombre, bloquea) VALUES ('Bloqueadora', 1)")
