@@ -1,0 +1,185 @@
+{% extends _layout|default("base.html") %}
+{% from 'almacen/_nav.html' import encabezado, campo_csrf with context %}
+{% from 'nucleo/_lote.html' import chip_estatus, caducidad with context %}
+{% from 'nucleo/_firma.html' import campo_firma %}
+{% block title %}Lote {{ lote.numero_lote }} | ERP Atisa{% endblock %}
+{% block content %}
+<div class="p-10">
+    {{ encabezado('Lote ' ~ lote.numero_lote, lote.material_codigo ~ ' · ' ~ lote.material_nombre, 'existencias', 'ri-barcode-box-line') }}
+
+    {% if lote.caducado %}
+    <div class="alm-aviso alm-aviso-rojo mb-4"><i class="ri-error-warning-line"></i> Caducó el {{ lote.fecha_caducidad }}: no se puede usar ni vender. Destrúyelo o devuélvelo al proveedor.</div>
+    {% elif lote.reanalisis_vencido %}
+    <div class="alm-aviso alm-aviso-ambar mb-4"><i class="ri-time-line"></i> El reanálisis venció el {{ lote.fecha_reanalisis }}: está bloqueado hasta que Calidad lo reanalice.</div>
+    {% elif not lote.disponible and lote.existencia > 0 %}
+    <div class="alm-aviso alm-aviso-azul mb-4"><i class="ri-information-line"></i> {{ lote.motivo_no_disponible }}</div>
+    {% endif %}
+
+    <div class="alm-card mb-6">
+        <div class="alm-seccion flex flex-wrap items-start justify-between gap-4">
+            <dl class="alm-dl flex-1">
+                <div><dt>Estatus</dt><dd>{{ chip_estatus(lote) }}</dd></div>
+                <div><dt>Existencia</dt><dd>{{ lote.existencia|cant }} {{ lote.unidad }}</dd></div>
+                <div><dt>Lote interno</dt><dd class="alm-mono">{{ lote.numero_lote }}</dd></div>
+                <div><dt>Lote del proveedor</dt><dd class="alm-mono">{{ lote.lote_proveedor or '—' }}</dd></div>
+                <div><dt>Proveedor</dt><dd>{{ proveedor.nombre if proveedor else '—' }}</dd></div>
+                <div><dt>Entrada</dt><dd>{{ lote.fecha_entrada }}</dd></div>
+                <div><dt>Caducidad</dt><dd>{{ caducidad(lote.fecha_caducidad, dias_aviso) }}</dd></div>
+                <div><dt>Reanálisis</dt><dd>{{ lote.fecha_reanalisis or '—' }}</dd></div>
+                <div><dt>Ubicación</dt><dd>{{ lote.ubicacion or '—' }}</dd></div>
+                <div><dt>Origen</dt><dd>
+                    {% if partida %}<a class="text-[#0e6ba8] hover:underline" href="{{ url_for('almacen.recepcion_detalle', recepcion_id=partida.recepcion_id) }}">Recepción {{ partida.folio }}</a>
+                    {% elif lote.origen == 'PRODUCCION' %}Orden {{ lote.origen_folio or '' }}
+                    {% elif lote.origen == 'DEVOLUCION' and padre %}Devolución de cliente del lote <a class="text-[#0e6ba8] hover:underline" href="{{ url_for('almacen.ficha_lote', lote_id=padre.id) }}">{{ padre.numero_lote }}</a>
+                    {% elif lote.origen == 'INICIAL' %}Inventario inicial {{ lote.origen_folio or '' }}
+                    {% else %}{{ lote.origen|capitalize }} {{ lote.origen_folio or '' }}{% endif %}
+                </dd></div>
+            </dl>
+            <div class="flex flex-col gap-2">
+                <a href="{{ url_for('almacen.etiqueta', lote_id=lote.id) }}" hx-boost="false" target="_blank" class="alm-btn alm-btn-primario"><i class="ri-printer-line"></i> Etiqueta</a>
+                <a href="{{ url_for('almacen.kardex_material', material_id=lote.material_id) }}" class="alm-btn"><i class="ri-file-list-3-line"></i> Kárdex del material</a>
+            </div>
+        </div>
+        {% if devolucion %}
+        <div class="alm-seccion text-sm text-slate-600">Devolución {{ devolucion.folio }} de <strong>{{ devolucion.cliente }}</strong> ({{ devolucion.motivo }}). En el producto viene impreso el lote <strong class="alm-mono">{{ padre.numero_lote if padre else '' }}</strong>.</div>
+        {% endif %}
+        <div class="alm-seccion">
+            <details class="alm-plegable">
+                <summary class="text-sm font-bold text-[#0e6ba8]"><i class="ri-edit-line"></i> Corregir caducidad, reanálisis o ubicación</summary>
+                <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+                    {% if puede_operar %}
+                    <form method="post" action="{{ url_for('almacen.corregir_lote', lote_id=lote.id) }}" class="flex flex-col gap-3">
+                        {{ campo_csrf() }}<input type="hidden" name="campo" value="ubicacion">
+                        <p class="alm-titulo">Ubicación</p>
+                        <select name="valor" class="alm-input" required>
+                            {% for u in ubicaciones %}<option value="{{ u.codigo }}" {{ 'selected' if u.codigo == lote.ubicacion }}>{{ u.codigo }} · {{ u.nombre }}</option>{% endfor %}
+                        </select>
+                        <input name="motivo" required placeholder="Motivo" class="alm-input">
+                        <button class="alm-btn alm-btn-primario">Cambiar ubicación</button>
+                    </form>
+                    {% endif %}
+                    {% for campo, nombre in [('fecha_caducidad', 'Caducidad'), ('fecha_reanalisis', 'Reanálisis')] %}
+                    <form method="post" action="{{ url_for('almacen.corregir_lote', lote_id=lote.id) }}" class="flex flex-col gap-3">
+                        {{ campo_csrf() }}<input type="hidden" name="campo" value="{{ campo }}">
+                        <p class="alm-titulo">{{ nombre }} <span class="text-xs text-slate-500 font-normal">firma quien libera lotes</span></p>
+                        <input type="date" name="valor" value="{{ lote[campo] or '' }}" class="alm-input" required>
+                        <input name="motivo" required placeholder="Motivo (p. ej. reanálisis RA-…)" class="alm-input">
+                        {{ campo_firma('Aprobó', numero=session.numero_empleado, id='firma-' ~ campo) }}
+                        <button class="alm-btn alm-btn-primario">Corregir {{ nombre|lower }}</button>
+                    </form>
+                    {% endfor %}
+                </div>
+            </details>
+        </div>
+    </div>
+
+    {% for s in secciones %}
+    <div class="alm-card mb-6">
+        <div class="alm-seccion"><h2 class="alm-titulo mb-3"><i class="ri-puzzle-line text-[#0e6ba8]"></i> {{ s.titulo }}</h2>{{ s.html }}</div>
+    </div>
+    {% endfor %}
+
+    <div class="alm-card mb-6">
+        <div class="alm-seccion"><h2 class="alm-titulo"><i class="ri-file-list-3-line text-[#0e6ba8]"></i> Kárdex</h2></div>
+        <div class="alm-scroll">
+            <table class="alm-tabla">
+                <thead><tr><th>Fecha</th><th>Movimiento</th><th class="alm-num">Cantidad</th><th class="alm-num">Saldo</th><th>Folio</th><th>Motivo</th><th>Quién</th></tr></thead>
+                <tbody>
+                {% for m in kardex %}
+                <tr>
+                    <td class="whitespace-nowrap text-slate-600">{{ m.ts }}</td>
+                    <td><span class="alm-chip">{{ m.tipo|replace('_', ' ')|lower|capitalize }}</span></td>
+                    <td class="alm-num font-semibold {{ 'text-emerald-600' if m.cantidad > 0 else 'text-rose-600' }}">{{ '+' if m.cantidad > 0 }}{{ m.cantidad|cant }}</td>
+                    <td class="alm-num">{{ m.saldo|cant }}</td>
+                    <td class="alm-mono">{{ m.folio or '' }}</td>
+                    <td class="text-slate-600">{{ m.motivo or '' }}</td>
+                    <td class="text-slate-600">{{ m.usuario }}{% if m.firma_nombre %}<br><span class="text-xs text-emerald-700">{{ m.firma_significado }}: {{ m.firma_nombre }}</span>{% endif %}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
+        <div class="alm-card">
+            <div class="alm-seccion"><h2 class="alm-titulo"><i class="ri-history-line text-[#0e6ba8]"></i> Historial</h2></div>
+            <table class="alm-tabla">
+                <thead><tr><th>Fecha</th><th>Cambio</th><th>Motivo</th></tr></thead>
+                <tbody>
+                {% for h in historial %}
+                <tr>
+                    <td class="whitespace-nowrap text-slate-600">{{ h.ts }}</td>
+                    <td><strong>{{ h.campo|replace('_', ' ')|capitalize }}</strong>: {{ h.valor_anterior or '—' }} → {{ h.valor_nuevo or '—' }}</td>
+                    <td class="text-slate-600">{{ h.motivo }}{% if h.folio %} · {{ h.folio }}{% endif %}<br><span class="text-xs">{{ h.usuario }}{% if h.firma_nombre %} · <span class="text-emerald-700">{{ h.firma_significado }}: {{ h.firma_nombre }}</span>{% endif %}</span></td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="alm-card">
+            <div class="alm-seccion"><h2 class="alm-titulo"><i class="ri-git-branch-line text-[#0e6ba8]"></i> Trazabilidad</h2></div>
+            <div class="alm-seccion">
+                <p class="alm-label">Hacia atrás: de qué se hizo</p>
+                {% for t in traza.hacia_atras %}
+                <p class="text-sm py-1" style="padding-left:{{ (t.nivel - 1) * 1.25 }}rem">
+                    <span class="alm-chip">{{ {'GRANEL': 'Granel', 'LOTE_VENDIDO': 'Lote vendido', 'CONSUMO': 'Consumo'}.get(t.relacion, t.relacion) }}</span>
+                    <a href="{{ url_for('almacen.ficha_lote', lote_id=t.lote_id) }}" class="font-semibold text-[#0e6ba8] hover:underline alm-mono">{{ t.numero_lote }}</a>
+                    {{ t.material_codigo }} {% if t.cantidad %}· {{ t.cantidad|cant }}{% endif %} {% if t.folio %}· {{ t.folio }}{% endif %}
+                </p>
+                {% else %}<p class="text-sm text-slate-500">{{ 'Material recibido de proveedor.' if lote.origen in ('RECEPCION', 'INICIAL') else 'Sin registros.' }}</p>{% endfor %}
+            </div>
+            <div class="alm-seccion">
+                <p class="alm-label">Hacia adelante: en qué se usó y a quién se vendió</p>
+                {% for t in traza.hacia_adelante %}
+                <p class="text-sm py-1" style="padding-left:{{ (t.nivel - 1) * 1.25 }}rem">
+                    {% if t.relacion == 'VENTA' %}
+                    <span class="alm-chip">Venta</span> {{ t.cliente }} · {{ (-t.cantidad if t.cantidad < 0 else t.cantidad)|cant }} · <span class="alm-mono">{{ t.folio or '' }}</span> · {{ t.fecha }} <span class="text-slate-500">(lote {{ t.numero_lote }})</span>
+                    {% else %}
+                    <span class="alm-chip">{{ {'PRODUCIDO': 'Producido', 'PRESENTACION': 'Presentación', 'DEVOLUCION': 'Devolución'}.get(t.relacion, t.relacion) }}</span>
+                    <a href="{{ url_for('almacen.ficha_lote', lote_id=t.lote_id) }}" class="font-semibold text-[#0e6ba8] hover:underline alm-mono">{{ t.numero_lote }}</a>
+                    {{ t.material_codigo }} {% if t.folio %}· {{ t.folio }}{% endif %}
+                    {% endif %}
+                </p>
+                {% else %}<p class="text-sm text-slate-500">Aún no se ha usado ni vendido.</p>{% endfor %}
+            </div>
+        </div>
+    </div>
+
+    {% if partida or certificados %}
+    <div class="alm-card mb-6">
+        <div class="alm-seccion"><h2 class="alm-titulo"><i class="ri-inbox-archive-line text-[#0e6ba8]"></i> Recepción</h2></div>
+        {% if partida %}
+        <div class="alm-seccion">
+            <dl class="alm-dl">
+                <div><dt>Folio</dt><dd><a class="text-[#0e6ba8] hover:underline" href="{{ url_for('almacen.recepcion_detalle', recepcion_id=partida.recepcion_id) }}">{{ partida.folio }}</a>{% if partida.rec_estatus == 'Anulada' %} <span class="alm-chip">Anulada</span>{% endif %}</dd></div>
+                <div><dt>Fecha</dt><dd>{{ partida.fecha }}</dd></div>
+                <div><dt>Factura o remisión</dt><dd>{{ partida.documento or '—' }}</dd></div>
+                <div><dt>Recibió</dt><dd>{{ partida.recibio }}</dd></div>
+                <div><dt>Cantidad y contenedores</dt><dd>{{ partida.cantidad|cant }} {{ lote.unidad }} en {{ partida.contenedores }}</dd></div>
+                <div><dt>Inspección</dt><dd class="text-sm">
+                    {% for campo, texto in [('empaque_integro', 'Empaque íntegro'), ('identificacion_ok', 'Identificación correcta'), ('trae_certificado', 'Trae certificado'), ('limpio', 'Limpio y sin plagas')] %}
+                    <span class="{{ 'text-emerald-600' if partida[campo] else 'text-rose-600' }}"><i class="{{ 'ri-check-line' if partida[campo] else 'ri-close-line' }}"></i> {{ texto }}</span><br>
+                    {% endfor %}
+                    {% if partida.temperatura %}Temperatura: {{ partida.temperatura }}{% endif %}
+                </dd></div>
+                {% if partida.aviso_proveedor %}<div><dt>Aviso</dt><dd class="text-amber-600">{{ partida.aviso_proveedor }}</dd></div>{% endif %}
+                {% if partida.observaciones %}<div><dt>Observaciones</dt><dd>{{ partida.observaciones }}</dd></div>{% endif %}
+            </dl>
+        </div>
+        {% endif %}
+        {% if certificados %}
+        <div class="alm-seccion">
+            <p class="alm-label">Certificados y documentos</p>
+            {% for a in certificados %}<a href="/archivo/{{ a.id }}" hx-boost="false" target="_blank" class="alm-btn alm-btn-sm mr-2"><i class="ri-file-text-line"></i> {{ a.descripcion or a.nombre_original }}</a>{% endfor %}
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% if etiquetas %}
+    <p class="text-xs text-slate-500">Última etiqueta: {{ etiquetas[0].estatus }} · {{ etiquetas[0].copias }} copia{{ '' if etiquetas[0].copias == 1 else 's' }} · {{ etiquetas[0].usuario }} · {{ etiquetas[0].ts }}</p>
+    {% endif %}
+</div>
+{% endblock %}

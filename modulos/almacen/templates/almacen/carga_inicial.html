@@ -1,0 +1,55 @@
+{% extends _layout|default("base.html") %}
+{% from 'almacen/_nav.html' import encabezado, campo_csrf with context %}
+{% from 'nucleo/_firma.html' import campo_firma %}
+{% block title %}Carga inicial | ERP Atisa{% endblock %}
+{% block content %}
+<div class="p-10">
+    {{ encabezado('Carga inicial del inventario', 'Para arrancar con lo que ya hay en almacén', 'existencias', 'ri-upload-cloud-2-line') }}
+    <div class="alm-card alm-seccion mb-6">
+        <h2 class="alm-titulo mb-2">1. Descarga las plantillas</h2>
+        <div class="flex flex-wrap gap-2">
+            <a href="{{ url_for('almacen.plantilla_materiales') }}" hx-boost="false" class="alm-btn"><i class="ri-file-excel-2-line"></i> Plantilla de materiales</a>
+            <a href="{{ url_for('almacen.plantilla_existencias') }}" hx-boost="false" class="alm-btn"><i class="ri-file-excel-2-line"></i> Plantilla de existencias por lote</a>
+        </div>
+        <p class="text-xs text-slate-500 mt-2">Tipos: MP, ME, EM, GR, PT. Fechas como AAAA-MM-DD. Estatus: CUARENTENA (si viene vacío), APROBADO, RECHAZADO o RETENIDO; los que no vienen en cuarentena los firma quien libera lotes.</p>
+    </div>
+    <form method="post" action="{{ url_for('almacen.carga_inicial') }}" enctype="multipart/form-data" class="alm-card alm-seccion mb-6">
+        {{ campo_csrf() }}
+        <h2 class="alm-titulo mb-4">2. Súbelas para revisar</h2>
+        <div class="alm-campos">
+            <div><label class="alm-label" for="materiales">Materiales (.xlsx)</label><input id="materiales" type="file" name="materiales" accept=".xlsx" class="alm-input"></div>
+            <div><label class="alm-label" for="existencias">Existencias por lote (.xlsx)</label><input id="existencias" type="file" name="existencias" accept=".xlsx" class="alm-input"></div>
+        </div>
+        <button class="alm-btn alm-btn-primario mt-4"><i class="ri-search-eye-line"></i> Ver vista previa</button>
+    </form>
+
+    {% if vista_previa %}
+    {% set v = vista_previa %}
+    <div class="alm-card mb-6">
+        <div class="alm-seccion"><h2 class="alm-titulo">3. Vista previa</h2>
+            <p class="text-sm text-slate-600 mt-1">{{ v.materiales|length }} materiales y {{ v.existencias|length }} lotes.</p></div>
+        {% if v.errores %}
+        <div class="alm-seccion">
+            <div class="alm-aviso alm-aviso-rojo mb-3">Hay {{ v.errores|length }} error{{ '' if v.errores|length == 1 else 'es' }}: no se creará nada hasta corregirlos y volver a subir.</div>
+            <table class="alm-tabla"><thead><tr><th>Hoja</th><th>Renglón</th><th>Error</th></tr></thead><tbody>
+            {% for e in v.errores %}<tr><td>{{ e.hoja }}</td><td>{{ e.renglon }}</td><td>{{ e.error }}</td></tr>{% endfor %}
+            </tbody></table>
+        </div>
+        {% endif %}
+        {% if v.existencias %}
+        <div class="alm-scroll"><table class="alm-tabla">
+            <thead><tr><th>Material</th><th>Lote</th><th>Lote proveedor</th><th class="alm-num">Cantidad</th><th>Caducidad</th><th>Estatus</th><th>Ubicación</th></tr></thead>
+            <tbody>{% for r in v.existencias[:200] %}<tr><td>{{ r.codigo_material }}</td><td class="alm-mono">{{ r.lote }}</td><td>{{ r.lote_proveedor }}</td><td class="alm-num">{{ r.cantidad }} {{ r.unidad }}</td><td>{{ r.fecha_caducidad }}</td><td>{{ r.estatus or 'CUARENTENA' }}</td><td>{{ r.ubicacion }}</td></tr>{% endfor %}</tbody>
+        </table></div>
+        {% endif %}
+        {% if not v.errores %}
+        <form method="post" action="{{ url_for('almacen.carga_inicial_confirmar') }}" class="alm-seccion grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+            {{ campo_csrf() }}<input type="hidden" name="datos" value="{{ v.json }}">
+            {% if v.requiere_firma %}{{ campo_firma('Liberó', numero=session.numero_empleado, titulo='Firma de quien libera lotes (hay lotes dictaminados)') }}{% endif %}
+            <div><button class="alm-btn alm-btn-primario" style="height:3.2rem"><i class="ri-check-double-line"></i> Confirmar carga</button></div>
+        </form>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

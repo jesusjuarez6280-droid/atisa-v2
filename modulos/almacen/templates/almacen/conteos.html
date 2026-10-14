@@ -1,0 +1,50 @@
+{% extends _layout|default("base.html") %}
+{% from 'almacen/_nav.html' import encabezado, paginacion, campo_csrf with context %}
+{% block title %}Conteos | ERP Atisa{% endblock %}
+{% block content %}
+<div class="p-10">
+    {{ encabezado('Conteos físicos', 'Conteo ciego: quien cuenta no ve la existencia del sistema', 'conteos', 'ri-list-check-2') }}
+    {% if puede_operar %}
+    <form method="post" action="{{ url_for('almacen.conteo_nuevo') }}" class="alm-card alm-seccion mb-6">
+        {{ campo_csrf() }}
+        <h2 class="alm-titulo mb-4"><i class="ri-add-line text-[#0e6ba8]"></i> Nuevo conteo</h2>
+        <div class="alm-campos">
+            <div><label class="alm-label" for="alcance">Alcance</label>
+                <select id="alcance" name="alcance" class="alm-input">
+                    <option value="todo">Todo el almacén</option>
+                    <option value="tipo">Un tipo de material</option>
+                    <option value="ubicacion">Una ubicación</option>
+                    <option value="materiales">Materiales elegidos</option>
+                </select></div>
+            <div><label class="alm-label" for="tipo">Tipo (si aplica)</label>
+                <select id="tipo" name="tipo" class="alm-input">{% for clave, nombre in TIPOS_MATERIAL.items() %}<option value="{{ clave }}">{{ nombre }}</option>{% endfor %}</select></div>
+            <div><label class="alm-label" for="ubicacion">Ubicación (si aplica)</label>
+                <select id="ubicacion" name="ubicacion" class="alm-input">{% for u in ubicaciones %}<option value="{{ u.codigo }}">{{ u.codigo }} · {{ u.nombre }}</option>{% endfor %}</select></div>
+            <div style="grid-column:1/-1"><label class="alm-label" for="material_ids">Materiales (si aplica; Ctrl + clic para varios)</label>
+                <select id="material_ids" name="material_ids" multiple size="5" class="alm-input">{% for m in materiales %}<option value="{{ m.id }}">{{ m.codigo }} · {{ m.nombre }}</option>{% endfor %}</select></div>
+        </div>
+        <button class="alm-btn alm-btn-primario mt-4"><i class="ri-play-line"></i> Abrir conteo</button>
+    </form>
+    {% endif %}
+    <div class="alm-card">
+        <div class="alm-scroll">
+        <table class="alm-tabla">
+            <thead><tr><th>Folio</th><th>Fecha</th><th>Alcance</th><th class="alm-num">Lotes</th><th>Contó</th><th>Estatus</th></tr></thead>
+            <tbody>
+            {% for c in conteos %}
+            <tr>
+                <td><a href="{{ url_for('almacen.conteo_detalle', conteo_id=c.id) }}" class="font-bold text-[#0e6ba8] hover:underline alm-mono">{{ c.folio }}</a></td>
+                <td>{{ c.fecha }}</td>
+                <td>{{ c.alcance }}</td>
+                <td class="alm-num">{{ c.lotes }}</td>
+                <td>{{ c.conto or '—' }}</td>
+                <td><span class="alm-chip">{{ c.estatus }}</span></td>
+            </tr>
+            {% else %}<tr><td colspan="6" class="text-center text-slate-500" style="padding:3rem">Aún no hay conteos.</td></tr>{% endfor %}
+            </tbody>
+        </table>
+        </div>
+        {{ paginacion(pagina, paginas, 'almacen.conteos') }}
+    </div>
+</div>
+{% endblock %}

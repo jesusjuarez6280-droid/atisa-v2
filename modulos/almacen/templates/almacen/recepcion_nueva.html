@@ -1,0 +1,141 @@
+{% extends _layout|default("base.html") %}
+{% from 'almacen/_nav.html' import encabezado, campo_csrf with context %}
+{% from 'nucleo/_firma.html' import campo_firma %}
+{% block title %}Recibir material | ERP Atisa{% endblock %}
+
+{% macro partida(i, p) -%}
+{% set nueva = not p %}
+<div class="alm-partida" data-partida>
+    <div class="flex items-center justify-between mb-3">
+        <p class="alm-titulo"><i class="ri-box-3-line text-[#0e6ba8]"></i> Partida <span data-numero></span></p>
+        <button type="button" class="alm-btn alm-btn-sm alm-btn-peligro" data-quitar><i class="ri-delete-bin-line"></i> Quitar</button>
+    </div>
+    <div class="alm-campos">
+        <div style="grid-column:1/-1">
+            <label class="alm-label">Material</label>
+            <select name="p-{{ i }}-material_id" class="alm-input" data-material>
+                <option value="">Elige el material…</option>
+                {% for m in materiales %}<option value="{{ m.id }}" data-tipo="{{ m.tipo }}" data-unidad="{{ m.unidad }}" data-cond="{{ m.condiciones_almacen or '' }}" {{ 'selected' if p.get('material_id')|string == m.id|string }}>{{ m.codigo }} · {{ m.nombre }} ({{ m.unidad }})</option>{% endfor %}
+            </select>
+        </div>
+        <div><label class="alm-label">Lote del proveedor</label><input name="p-{{ i }}-lote_proveedor" value="{{ p.get('lote_proveedor') or '' }}" class="alm-input alm-mono"></div>
+        <div><label class="alm-label">Cantidad <span data-unidad></span></label><input name="p-{{ i }}-cantidad" value="{{ p.get('cantidad') or '' }}" inputmode="decimal" class="alm-input"></div>
+        <div><label class="alm-label">Contenedores</label><input name="p-{{ i }}-contenedores" type="number" min="1" value="{{ p.get('contenedores') or 1 }}" class="alm-input"></div>
+        <div><label class="alm-label">Caducidad</label><input name="p-{{ i }}-fecha_caducidad" type="date" min="{{ hoy }}" value="{{ p.get('fecha_caducidad') or '' }}" class="alm-input"></div>
+        <div><label class="alm-label">Reanálisis</label><input name="p-{{ i }}-fecha_reanalisis" type="date" value="{{ p.get('fecha_reanalisis') or '' }}" class="alm-input"></div>
+        <div><label class="alm-label">Ubicación</label>
+            <select name="p-{{ i }}-ubicacion" class="alm-input">
+                <option value="">Automática (cuarentena)</option>
+                {% for u in ubicaciones %}<option value="{{ u.codigo }}" {{ 'selected' if p.get('ubicacion') == u.codigo }}>{{ u.codigo }} · {{ u.nombre }}</option>{% endfor %}
+            </select>
+        </div>
+        <div data-temp><label class="alm-label">Temperatura (refrigerados)</label><input name="p-{{ i }}-temperatura" value="{{ p.get('temperatura') or '' }}" placeholder="°C" class="alm-input"></div>
+    </div>
+    <div class="flex flex-wrap gap-4 mt-4">
+        {% for campo, texto, defecto in [('empaque_integro', 'Empaque íntegro', true), ('identificacion_ok', 'Identificación correcta', true), ('trae_certificado', 'Trae certificado de análisis', false), ('limpio', 'Limpio y sin plagas', true)] %}
+        <label class="alm-check"><input type="checkbox" name="p-{{ i }}-{{ campo }}" value="1" {{ 'checked' if (nueva and defecto) or p.get(campo) }}> {{ texto }}</label>
+        {% endfor %}
+    </div>
+    <div class="alm-campos mt-4">
+        <div><label class="alm-label">Certificado del proveedor (PDF o foto)</label><input type="file" name="p-{{ i }}-certificado" accept=".pdf,.jpg,.jpeg,.png" class="alm-input"></div>
+        <div style="grid-column:span 2"><label class="alm-label">Observaciones</label><input name="p-{{ i }}-observaciones" value="{{ p.get('observaciones') or '' }}" class="alm-input"></div>
+    </div>
+    <label class="alm-check mt-4 text-rose-600"><input type="checkbox" name="p-{{ i }}-no_se_recibe" value="1" {{ 'checked' if p.get('no_se_recibe') }}> No se recibe (rechazo en la puerta: queda registrada pero no crea lote)</label>
+</div>
+{%- endmacro %}
+
+{% block content %}
+<div class="p-10">
+    {{ encabezado('Recibir material', 'Cada partida crea un lote; nace en cuarentena si el material requiere análisis', 'recepciones', 'ri-inbox-archive-line') }}
+    <form method="post" action="{{ url_for('almacen.recepcion_nueva') }}" enctype="multipart/form-data" id="form-recepcion">
+        {{ campo_csrf() }}
+        <div class="alm-card alm-seccion mb-6">
+            <div class="alm-campos">
+                <div style="grid-column:span 2">
+                    <label class="alm-label" for="proveedor_id">Proveedor</label>
+                    <select id="proveedor_id" name="proveedor_id" class="alm-input" required>
+                        <option value="">Elige el proveedor…</option>
+                        {% for pr in proveedores %}<option value="{{ pr.id }}" data-estatus="{{ pr.estatus }}" {{ 'selected' if previo.get('proveedor_id')|string == pr.id|string }}>{{ pr.nombre }}{{ ' · ' ~ pr.estatus if pr.estatus != 'Aprobado' }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div><label class="alm-label" for="documento">Factura o remisión</label><input id="documento" name="documento" value="{{ previo.get('documento') or '' }}" class="alm-input"></div>
+                <div><label class="alm-label" for="fecha">Fecha</label><input id="fecha" type="date" name="fecha" value="{{ previo.get('fecha') or hoy }}" max="{{ hoy }}" class="alm-input"></div>
+                <div><label class="alm-label" for="transporte">Transporte</label><input id="transporte" name="transporte" value="{{ previo.get('transporte') or '' }}" class="alm-input"></div>
+                <div style="grid-column:1/-1"><label class="alm-label" for="observaciones">Observaciones</label><input id="observaciones" name="observaciones" value="{{ previo.get('observaciones') or '' }}" class="alm-input"></div>
+            </div>
+            <div id="aviso-proveedor" class="alm-aviso alm-aviso-ambar mt-4" hidden></div>
+            {% if not proveedores %}<div class="alm-aviso alm-aviso-azul mt-4">No hay proveedores de materiales dados de alta. <a class="font-bold hover:underline" href="{{ url_for('almacen.catalogos', pestana='proveedores') }}">Ir a catálogos</a></div>{% endif %}
+        </div>
+
+        <div id="partidas">
+            {% for p in partidas %}{{ partida(loop.index0, p) }}{% endfor %}
+        </div>
+        <template id="plantilla-partida">{{ partida('__I__', {}) }}</template>
+        <button type="button" id="agregar" class="alm-btn mt-4"><i class="ri-add-line"></i> Agregar partida</button>
+        <p class="text-xs text-slate-500 mt-2">Caducidad obligatoria en materias primas. Si caduca en menos de {{ minimo }} días, el sistema avisa.</p>
+
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-6 items-start">
+            {{ campo_firma('Realizó', numero=session.numero_empleado, titulo='Firma de quien recibió') }}
+            <div class="flex flex-col gap-3">
+                <button type="submit" class="alm-btn alm-btn-primario" style="height:3.2rem"><i class="ri-check-line"></i> Registrar recepción</button>
+                <a href="{{ url_for('almacen.recepciones') }}" class="alm-btn">Cancelar</a>
+            </div>
+        </div>
+    </form>
+</div>
+<script>
+(function () {
+    var form = document.getElementById('form-recepcion');
+    if (!form || form.dataset.listo) return;
+    form.dataset.listo = '1';
+    var cont = document.getElementById('partidas');
+    var plantilla = document.getElementById('plantilla-partida');
+    var siguiente = cont.querySelectorAll('[data-partida]').length;
+    function numerar() {
+        var filas = cont.querySelectorAll('[data-partida]');
+        filas.forEach(function (f, i) {
+            f.querySelector('[data-numero]').textContent = i + 1;
+            f.querySelector('[data-quitar]').hidden = filas.length === 1;
+        });
+    }
+    function preparar(f) {
+        var sel = f.querySelector('[data-material]');
+        function actualizar() {
+            var op = sel.options[sel.selectedIndex];
+            f.querySelector('[data-unidad]').textContent = op && op.dataset.unidad ? '(' + op.dataset.unidad + ')' : '';
+            var cond = (op && op.dataset.cond || '').toLowerCase();
+            f.querySelector('[data-temp]').hidden = cond.indexOf('refrig') < 0 && cond.indexOf('°c') < 0;
+        }
+        sel.addEventListener('change', actualizar);
+        actualizar();
+        f.querySelector('[data-quitar]').addEventListener('click', function () { f.remove(); numerar(); });
+    }
+    cont.querySelectorAll('[data-partida]').forEach(preparar);
+    document.getElementById('agregar').addEventListener('click', function () {
+        var html = plantilla.innerHTML.replace(/__I__/g, String(siguiente++));
+        var tmp = document.createElement('div');
+        tmp.innerHTML = html;
+        var f = tmp.firstElementChild;
+        cont.appendChild(f);
+        preparar(f);
+        numerar();
+    });
+    var prov = document.getElementById('proveedor_id');
+    var aviso = document.getElementById('aviso-proveedor');
+    function avisar() {
+        var op = prov.options[prov.selectedIndex];
+        var e = op ? op.dataset.estatus : '';
+        if (e === 'En evaluación' || e === 'Condicionado') {
+            aviso.textContent = 'Este proveedor está ' + e.toLowerCase() + ': se puede recibir, pero queda anotado en cada partida.';
+            aviso.hidden = false;
+        } else if (e === 'No aprobado') {
+            aviso.textContent = 'Este proveedor está No aprobado: no se le puede recibir.';
+            aviso.hidden = false;
+        } else { aviso.hidden = true; }
+    }
+    prov.addEventListener('change', avisar);
+    avisar();
+    numerar();
+})();
+</script>
+{% endblock %}

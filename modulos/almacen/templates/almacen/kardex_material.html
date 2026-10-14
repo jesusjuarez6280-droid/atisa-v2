@@ -1,0 +1,59 @@
+{% extends _layout|default("base.html") %}
+{% from 'almacen/_nav.html' import encabezado with context %}
+{% from 'nucleo/_lote.html' import chip_estatus, caducidad with context %}
+{% block title %}Kárdex {{ material.codigo }} | ERP Atisa{% endblock %}
+{% block content %}
+<div class="p-10">
+    {{ encabezado('Kárdex de ' ~ material.codigo, material.nombre ~ ' · ' ~ TIPOS_MATERIAL.get(material.tipo, material.tipo) ~ ' · ' ~ material.unidad, 'existencias', 'ri-file-list-3-line') }}
+    <div class="alm-kpis mb-6">
+        <div class="alm-card alm-kpi"><p class="alm-label">Entradas</p><p class="text-2xl font-bold">{{ totales.entradas|cant }} {{ material.unidad }}</p></div>
+        <div class="alm-card alm-kpi"><p class="alm-label">Salidas</p><p class="text-2xl font-bold">{{ totales.salidas|cant }} {{ material.unidad }}</p></div>
+        <div class="alm-card alm-kpi"><p class="alm-label">Existencia</p><p class="text-2xl font-bold">{{ totales.existencia|cant }} {{ material.unidad }}</p></div>
+        <div class="alm-card alm-kpi"><p class="alm-label">Stock mínimo</p><p class="text-2xl font-bold">{{ material.stock_minimo|cant if material.stock_minimo else '—' }}</p></div>
+    </div>
+    <div class="alm-card mb-6">
+        <div class="alm-seccion flex items-center justify-between"><h2 class="alm-titulo">Lotes</h2>
+            <a href="{{ url_for('almacen.kardex_material', material_id=material.id, excel=1) }}" hx-boost="false" class="alm-btn alm-btn-sm"><i class="ri-file-excel-2-line"></i> Excel</a></div>
+        <div class="alm-scroll">
+        <table class="alm-tabla">
+            <thead><tr><th>Lote</th><th>Lote proveedor</th><th>Proveedor</th><th>Estatus</th><th class="alm-num">Existencia</th><th>Caducidad</th><th>Ubicación</th></tr></thead>
+            <tbody>
+            {% for l in lotes %}
+            <tr>
+                <td><a class="font-bold text-[#0e6ba8] hover:underline alm-mono" href="{{ url_for('almacen.ficha_lote', lote_id=l.id) }}">{{ l.numero_lote }}</a></td>
+                <td class="alm-mono">{{ l.lote_proveedor or '—' }}</td>
+                <td>{{ l.proveedor_nombre or '—' }}</td>
+                <td>{{ chip_estatus(l.estatus) }}</td>
+                <td class="alm-num">{{ l.existencia|cant }}</td>
+                <td>{{ caducidad(l.fecha_caducidad) }}</td>
+                <td>{{ l.ubicacion or '—' }}</td>
+            </tr>
+            {% else %}<tr><td colspan="7" class="text-center text-slate-500" style="padding:2rem">Sin lotes.</td></tr>{% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+    <div class="alm-card">
+        <div class="alm-seccion"><h2 class="alm-titulo">Movimientos</h2>{% if n_movimientos > movimientos|length %}<p class="text-xs text-slate-500">Se muestran los últimos {{ movimientos|length }} de {{ n_movimientos }}; el Excel trae todos.</p>{% endif %}</div>
+        <div class="alm-scroll">
+        <table class="alm-tabla">
+            <thead><tr><th>Fecha</th><th>Lote</th><th>Movimiento</th><th class="alm-num">Cantidad</th><th class="alm-num">Saldo del lote</th><th>Folio</th><th>Motivo</th><th>Usuario</th></tr></thead>
+            <tbody>
+            {% for m in movimientos|reverse %}
+            <tr>
+                <td class="text-slate-600">{{ m.ts }}</td>
+                <td class="alm-mono">{{ m.numero_lote }}</td>
+                <td><span class="alm-chip">{{ m.tipo|replace('_', ' ')|lower|capitalize }}</span></td>
+                <td class="alm-num font-semibold {{ 'text-emerald-600' if m.cantidad > 0 else 'text-rose-600' }}">{{ '+' if m.cantidad > 0 }}{{ m.cantidad|cant }}</td>
+                <td class="alm-num">{{ m.saldo|cant }}</td>
+                <td class="alm-mono">{{ m.folio or '' }}</td>
+                <td class="text-slate-600">{{ m.motivo or '' }}</td>
+                <td class="text-slate-600">{{ m.usuario }}</td>
+            </tr>
+            {% else %}<tr><td colspan="8" class="text-center text-slate-500" style="padding:2rem">Sin movimientos.</td></tr>{% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

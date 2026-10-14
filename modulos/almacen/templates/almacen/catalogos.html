@@ -1,0 +1,156 @@
+{% extends _layout|default("base.html") %}
+{% from 'almacen/_nav.html' import encabezado, campo_csrf with context %}
+{% from 'nucleo/_firma.html' import campo_firma %}
+{% block title %}Catálogos de almacén | ERP Atisa{% endblock %}
+{% block content %}
+<div class="p-10">
+    {{ encabezado('Catálogos', 'Materiales y productos, proveedores y ubicaciones', 'catalogos', 'ri-book-2-line') }}
+    <div class="alm-tabs mb-4">
+        {% for clave, texto in [('materiales', 'Materiales y productos'), ('proveedores', 'Proveedores'), ('ubicaciones', 'Ubicaciones')] %}
+        <a href="{{ url_for('almacen.catalogos', pestana=clave) }}" class="alm-tab {{ 'alm-tab-activa' if pestana == clave }}">{{ texto }}</a>
+        {% endfor %}
+    </div>
+
+    {% if pestana == 'materiales' %}
+    {% set e = editar %}
+    {% if puede_operar %}
+    <form method="post" action="{{ url_for('almacen.catalogo_material') }}" class="alm-card alm-seccion mb-6">
+        {{ campo_csrf() }}{% if e %}<input type="hidden" name="id" value="{{ e.id }}">{% endif %}
+        <h2 class="alm-titulo mb-4"><i class="{{ 'ri-edit-line' if e else 'ri-add-line' }} text-[#0e6ba8]"></i> {{ 'Editar ' ~ e.codigo if e else 'Nuevo material o producto' }}</h2>
+        <div class="alm-campos">
+            <div><label class="alm-label">Código</label><input name="codigo" value="{{ e.codigo if e else '' }}" required class="alm-input alm-mono"></div>
+            <div style="grid-column:span 2"><label class="alm-label">Nombre</label><input name="nombre" value="{{ e.nombre if e else '' }}" required class="alm-input"></div>
+            <div><label class="alm-label">Tipo</label><select name="tipo" class="alm-input">{% for clave, nombre in TIPOS_MATERIAL.items() %}<option value="{{ clave }}" {{ 'selected' if e and e.tipo == clave }}>{{ nombre }}</option>{% endfor %}</select></div>
+            <div><label class="alm-label">Unidad</label><input name="unidad" value="{{ e.unidad if e else '' }}" required placeholder="kg, L, pza" class="alm-input"></div>
+            <div><label class="alm-label">Stock mínimo</label><input name="stock_minimo" value="{{ e.stock_minimo|cant if e else '' }}" inputmode="decimal" class="alm-input"></div>
+            <div><label class="alm-label">Vida útil (meses)</label><input name="vida_util_meses" value="{{ e.vida_util_meses if e and e.vida_util_meses else '' }}" inputmode="numeric" class="alm-input"></div>
+            <div style="grid-column:span 2"><label class="alm-label">Condiciones de almacenamiento</label><input name="condiciones_almacen" value="{{ e.condiciones_almacen or '' if e else '' }}" placeholder="Ambiente, Refrigeración 2-8 °C…" class="alm-input"></div>
+            <div><label class="alm-label">Granel (solo presentaciones PT)</label><select name="material_padre_id" class="alm-input"><option value="">—</option>{% for g in graneles %}<option value="{{ g.id }}" {{ 'selected' if e and e.material_padre_id == g.id }}>{{ g.codigo }} · {{ g.nombre }}</option>{% endfor %}</select></div>
+            <div><label class="alm-label">Contenido por pieza</label><input name="contenido_por_pieza" value="{{ e.contenido_por_pieza|cant if e and e.contenido_por_pieza else '' }}" inputmode="decimal" class="alm-input"></div>
+        </div>
+        <div class="flex flex-wrap gap-4 mt-4">
+            <label class="alm-check"><input type="checkbox" name="requiere_analisis" value="1" {{ 'checked' if not e or e.requiere_analisis }}> Requiere análisis (nace en cuarentena)</label>
+            <label class="alm-check"><input type="checkbox" name="es_impreso" value="1" {{ 'checked' if e and e.es_impreso }}> Es impreso (etiquetas, cajas)</label>
+            {% if e %}<label class="alm-check"><input type="checkbox" name="activo" value="1" {{ 'checked' if e.activo }}> Activo</label>{% endif %}
+        </div>
+        {% if e and e.requiere_analisis %}
+        <details class="alm-plegable mt-4"><summary class="text-sm font-bold text-[#0e6ba8]">Si le quitas «requiere análisis», firma quien aprueba maestros</summary>
+            <div class="mt-3" style="max-width:420px">{{ campo_firma('Aprobó', titulo='Firma de quien aprueba maestros') }}</div>
+        </details>
+        {% endif %}
+        <div class="flex gap-2 mt-4">
+            <button class="alm-btn alm-btn-primario"><i class="ri-save-line"></i> Guardar</button>
+            {% if e %}<a class="alm-btn" href="{{ url_for('almacen.catalogos', pestana='materiales') }}">Cancelar</a>{% endif %}
+        </div>
+        <p class="text-xs text-slate-500 mt-2">Código, tipo y unidad no cambian si el material ya tiene lotes. Un material se desactiva, no se borra.</p>
+    </form>
+    {% endif %}
+    <div class="alm-card">
+        <form method="get" class="flex gap-2 px-6 py-4 border-b border-slate-100"><input type="hidden" name="pestana" value="materiales"><input name="q" value="{{ q }}" placeholder="Buscar código o nombre" class="alm-input"><button class="alm-btn">Buscar</button></form>
+        <div class="alm-scroll">
+        <table class="alm-tabla">
+            <thead><tr><th>Código</th><th>Nombre</th><th>Tipo</th><th>Unidad</th><th class="alm-num">Mínimo</th><th>Análisis</th><th>Lotes</th><th></th></tr></thead>
+            <tbody>
+            {% for m in materiales %}
+            <tr class="{{ 'text-slate-400' if not m.activo }}">
+                <td class="alm-mono font-semibold">{{ m.codigo }}</td>
+                <td>{{ m.nombre }}{% if m.padre_codigo %}<br><span class="text-xs text-slate-500">Granel {{ m.padre_codigo }}</span>{% endif %}{% if not m.activo %} <span class="alm-chip">Inactivo</span>{% endif %}</td>
+                <td><span class="alm-chip">{{ m.tipo }}</span></td>
+                <td>{{ m.unidad }}</td>
+                <td class="alm-num">{{ m.stock_minimo|cant if m.stock_minimo else '—' }}</td>
+                <td>{{ 'Sí' if m.requiere_analisis else 'No' }}</td>
+                <td><a class="text-[#0e6ba8] hover:underline" href="{{ url_for('almacen.kardex_material', material_id=m.id) }}">{{ m.n_lotes }}</a></td>
+                <td>{% if puede_operar %}<a class="alm-btn alm-btn-sm" href="{{ url_for('almacen.catalogos', pestana='materiales', editar=m.id) }}"><i class="ri-edit-line"></i></a>{% endif %}</td>
+            </tr>
+            {% else %}<tr><td colspan="8" class="text-center text-slate-500" style="padding:3rem">Sin materiales.</td></tr>{% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+
+    {% elif pestana == 'proveedores' %}
+    {% set e = editar %}
+    {% if puede_operar %}
+    <form method="post" action="{{ url_for('almacen.catalogo_proveedor') }}" class="alm-card alm-seccion mb-6">
+        {{ campo_csrf() }}{% if e %}<input type="hidden" name="id" value="{{ e.id }}">{% endif %}
+        <h2 class="alm-titulo mb-4"><i class="{{ 'ri-edit-line' if e else 'ri-add-line' }} text-[#0e6ba8]"></i> {{ 'Editar ' ~ e.nombre if e else 'Nuevo proveedor' }}</h2>
+        <div class="alm-campos">
+            <div style="grid-column:span 2"><label class="alm-label">Nombre</label><input name="nombre" value="{{ e.nombre if e else '' }}" required class="alm-input"></div>
+            <div><label class="alm-label">RFC</label><input name="rfc" value="{{ e.rfc or '' if e else '' }}" class="alm-input"></div>
+            <div><label class="alm-label">Tipo</label><select name="tipo" class="alm-input">{% for t in tipos_proveedor %}<option {{ 'selected' if e and e.tipo == t }}>{{ t }}</option>{% endfor %}</select></div>
+            <div><label class="alm-label">Contacto</label><input name="contacto" value="{{ e.contacto or '' if e else '' }}" class="alm-input"></div>
+            <div><label class="alm-label">Teléfono</label><input name="telefono" value="{{ e.telefono or '' if e else '' }}" class="alm-input"></div>
+            <div><label class="alm-label">Correo</label><input name="correo" type="email" value="{{ e.correo or '' if e else '' }}" class="alm-input"></div>
+        </div>
+        {% if e %}<label class="alm-check mt-4"><input type="checkbox" name="activo" value="1" {{ 'checked' if e.activo }}> Activo</label>{% endif %}
+        <div class="flex gap-2 mt-4">
+            <button class="alm-btn alm-btn-primario"><i class="ri-save-line"></i> Guardar</button>
+            {% if e %}<a class="alm-btn" href="{{ url_for('almacen.catalogos', pestana='proveedores') }}">Cancelar</a>{% endif %}
+        </div>
+        <p class="text-xs text-slate-500 mt-2">El estatus (Aprobado, Condicionado, En evaluación, No aprobado) solo lo cambia Calidad.</p>
+    </form>
+    {% endif %}
+    <div class="alm-card alm-scroll">
+        <table class="alm-tabla">
+            <thead><tr><th>Proveedor</th><th>Tipo</th><th>Contacto</th><th>Estatus</th><th></th></tr></thead>
+            <tbody>
+            {% for p in proveedores %}
+            <tr class="{{ 'text-slate-400' if not p.activo }}">
+                <td><strong>{{ p.nombre }}</strong>{% if p.rfc %}<br><span class="text-xs text-slate-500">{{ p.rfc }}</span>{% endif %}{% if not p.activo %} <span class="alm-chip">Inactivo</span>{% endif %}</td>
+                <td>{{ p.tipo }}</td>
+                <td class="text-sm">{{ p.contacto or '' }}{% if p.telefono %}<br>{{ p.telefono }}{% endif %}{% if p.correo %}<br>{{ p.correo }}{% endif %}</td>
+                <td>
+                    {% set color = {'Aprobado': 'bg-emerald-50 text-emerald-600', 'Condicionado': 'bg-amber-50 text-amber-600', 'En evaluación': 'bg-slate-100 text-slate-600', 'No aprobado': 'bg-rose-50 text-rose-600'}[p.estatus] %}
+                    <span class="px-2.5 py-1 rounded-md text-xs font-bold {{ color }}">{{ p.estatus }}</span>
+                    {% if puede_proveedores %}
+                    <details class="alm-plegable mt-2"><summary class="text-xs font-bold text-[#0e6ba8]">Cambiar estatus</summary>
+                        <form method="post" action="{{ url_for('almacen.proveedor_estatus', proveedor_id=p.id) }}" class="flex flex-col gap-2 mt-2" style="min-width:220px">
+                            {{ campo_csrf() }}
+                            <select name="estatus" class="alm-input">{% for s in estatus_proveedor %}<option {{ 'selected' if s == p.estatus }}>{{ s }}</option>{% endfor %}</select>
+                            <input name="motivo" required placeholder="Motivo (evaluación, auditoría…)" class="alm-input">
+                            <button class="alm-btn alm-btn-sm alm-btn-primario">Guardar estatus</button>
+                        </form>
+                    </details>
+                    {% endif %}
+                </td>
+                <td>{% if puede_operar %}<a class="alm-btn alm-btn-sm" href="{{ url_for('almacen.catalogos', pestana='proveedores', editar=p.id) }}"><i class="ri-edit-line"></i></a>{% endif %}</td>
+            </tr>
+            {% else %}<tr><td colspan="5" class="text-center text-slate-500" style="padding:3rem">Sin proveedores.</td></tr>{% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% else %}
+    {% set e = editar %}
+    {% if puede_operar %}
+    <form method="post" action="{{ url_for('almacen.catalogo_ubicacion') }}" class="alm-card alm-seccion mb-6">
+        {{ campo_csrf() }}{% if e %}<input type="hidden" name="id" value="{{ e.id }}">{% endif %}
+        <h2 class="alm-titulo mb-4"><i class="{{ 'ri-edit-line' if e else 'ri-add-line' }} text-[#0e6ba8]"></i> {{ 'Editar ' ~ e.codigo if e else 'Nueva ubicación' }}</h2>
+        <div class="alm-campos">
+            <div><label class="alm-label">Código</label><input name="codigo" value="{{ e.codigo if e else '' }}" required placeholder="MP-A1" class="alm-input alm-mono"></div>
+            <div style="grid-column:span 2"><label class="alm-label">Nombre</label><input name="nombre" value="{{ e.nombre if e else '' }}" required class="alm-input"></div>
+            <div><label class="alm-label">Tipo</label><select name="tipo" class="alm-input">{% for t in tipos_ubicacion %}<option {{ 'selected' if e and e.tipo == t }}>{{ t }}</option>{% endfor %}</select></div>
+        </div>
+        {% if e %}<label class="alm-check mt-4"><input type="checkbox" name="activo" value="1" {{ 'checked' if e.activo }}> Activa</label>{% endif %}
+        <div class="flex gap-2 mt-4">
+            <button class="alm-btn alm-btn-primario"><i class="ri-save-line"></i> Guardar</button>
+            {% if e %}<a class="alm-btn" href="{{ url_for('almacen.catalogos', pestana='ubicaciones') }}">Cancelar</a>{% endif %}
+        </div>
+    </form>
+    {% endif %}
+    <div class="alm-card alm-scroll">
+        <table class="alm-tabla">
+            <thead><tr><th>Código</th><th>Nombre</th><th>Tipo</th><th>Estado</th><th></th></tr></thead>
+            <tbody>
+            {% for u in ubicaciones %}
+            <tr class="{{ 'text-slate-400' if not u.activo }}">
+                <td class="alm-mono font-semibold">{{ u.codigo }}</td><td>{{ u.nombre }}</td><td>{{ u.tipo }}</td><td>{{ 'Activa' if u.activo else 'Inactiva' }}</td>
+                <td>{% if puede_operar %}<a class="alm-btn alm-btn-sm" href="{{ url_for('almacen.catalogos', pestana='ubicaciones', editar=u.id) }}"><i class="ri-edit-line"></i></a>{% endif %}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

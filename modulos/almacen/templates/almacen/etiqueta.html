@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Etiqueta {{ lote.numero_lote }} | ERP Atisa</title>
+    {% set colores = {'CUARENTENA': '#f59e0b', 'APROBADO': '#059669', 'RECHAZADO': '#e11d48', 'RETENIDO': '#7c3aed'} %}
+    {% set color = '#e11d48' if lote.caducado else colores.get(lote.estatus, '#475569') %}
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: Inter, Arial, sans-serif; margin: 0; background: #f5f5f7; color: #1d1d1f; }
+        .barra { max-width: 216mm; margin: 12px auto; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+                 background: #fff; padding: 12px 16px; border-radius: 12px; font-size: 14px; }
+        .barra select, .barra input, .barra button, .barra a { font: inherit; padding: 6px 10px; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; color: #1d1d1f; text-decoration: none; }
+        .barra button { background: #0e6ba8; color: #fff; border-color: #0e6ba8; font-weight: 700; cursor: pointer; }
+        .hoja { background: #fff; margin: 0 auto 12px; }
+        .carta { width: 216mm; min-height: 279mm; padding: 10mm; display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: 125mm; gap: 6mm; }
+        .individual { width: 100mm; }
+        .individual .etq { width: 100mm; height: 100mm; margin-bottom: 6mm; }
+        .etq { border: 3px solid {{ color }}; border-radius: 4mm; padding: 5mm; display: flex; flex-direction: column; gap: 2mm; font-size: 9.5pt; overflow: hidden; page-break-inside: avoid; }
+        .estatus { background: {{ color }}; color: #fff; text-align: center; font-weight: 900; font-size: 24pt; letter-spacing: 1px; padding: 2mm; border-radius: 2mm; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .estatus small { display: block; font-size: 9pt; letter-spacing: 0; font-weight: 700; }
+        .mat { font-size: 12pt; font-weight: 800; }
+        .lote { font-size: 18pt; font-weight: 900; font-family: Consolas, monospace; }
+        .fila { display: flex; justify-content: space-between; gap: 3mm; border-bottom: 1px solid #e2e8f0; padding-bottom: 1mm; }
+        .fila span:first-child { color: #64748b; font-size: 8pt; text-transform: uppercase; font-weight: 700; }
+        .pie { margin-top: auto; display: flex; justify-content: space-between; font-size: 7.5pt; color: #64748b; }
+        @page { size: {{ 'letter' if formato == 'carta' else '100mm 100mm' }}; margin: {{ '0' if formato == 'carta' else '0' }}; }
+        @media print {
+            body { background: #fff; }
+            .barra { display: none; }
+            .hoja { margin: 0; }
+            .individual .etq { margin: 0; page-break-after: always; border-radius: 0; }
+        }
+    </style>
+</head>
+<body>
+    <form class="barra" method="post" action="{{ url_for('almacen.etiqueta_imprimir', lote_id=lote.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <strong>Etiqueta del lote {{ lote.numero_lote }}</strong>
+        <label>Formato
+            <select name="formato" onchange="location.href='?formato=' + this.value">
+                <option value="carta" {{ 'selected' if formato == 'carta' }}>Hoja carta (4 por hoja)</option>
+                <option value="individual" {{ 'selected' if formato == 'individual' }}>Individual 10 × 10 cm</option>
+            </select>
+        </label>
+        <span>{{ contenedores }} contenedor{{ '' if contenedores == 1 else 'es' }}</span>
+        <input type="hidden" name="copias" value="{{ contenedores }}">
+        {% if puede_operar %}<button type="submit">Imprimir</button>{% else %}<button type="button" onclick="window.print()">Imprimir</button>{% endif %}
+        <a href="{{ url_for('almacen.ficha_lote', lote_id=lote.id) }}">Volver a la ficha</a>
+    </form>
+    <div class="hoja {{ formato }}">
+        {% for n in range(1, contenedores + 1) %}
+        <div class="etq">
+            <div class="estatus">{{ 'CADUCADO' if lote.caducado else lote.estatus }}{% if lote.caducado %}<small>Estatus: {{ lote.estatus }}</small>{% endif %}</div>
+            <div class="mat">{{ lote.material_codigo }} · {{ lote.material_nombre }}</div>
+            <div class="lote">{{ lote.numero_lote }}</div>
+            {% if padre %}<div class="fila"><span>Lote impreso en el producto</span><strong>{{ padre.numero_lote }}</strong></div>{% endif %}
+            <div class="fila"><span>Lote proveedor</span><strong>{{ lote.lote_proveedor or '—' }}</strong></div>
+            <div class="fila"><span>Proveedor</span><strong>{{ proveedor.nombre if proveedor else '—' }}</strong></div>
+            <div class="fila"><span>Entrada</span><strong>{{ lote.fecha_entrada }}</strong></div>
+            <div class="fila"><span>Caducidad</span><strong>{{ lote.fecha_caducidad or '—' }}</strong></div>
+            <div class="fila"><span>Reanálisis</span><strong>{{ lote.fecha_reanalisis or '—' }}</strong></div>
+            <div class="fila"><span>Contenedor</span><strong>{{ n }} de {{ contenedores }}</strong></div>
+            <div class="fila"><span>Cantidad del lote</span><strong>{{ lote.existencia|cant }} {{ lote.unidad }}</strong></div>
+            <div class="pie"><span>{{ codigo_formato|trim or EMPRESA_NOMBRE }}</span><span>Impresa {{ impreso }}</span></div>
+        </div>
+        {% endfor %}
+    </div>
+    <script>
+        if (new URLSearchParams(location.search).get('imprimir') === '1') { window.addEventListener('load', function () { window.print(); }); }
+    </script>
+</body>
+</html>
