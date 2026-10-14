@@ -1,5 +1,8 @@
 """Base común: registro de módulos, roles/áreas/facultades, PIN, folios, archivos y parámetros
-(00-base-comun.md, sección 11 puntos 2, 3, 4 y 7)."""
+(00-base-comun.md, sección 11 puntos 2, 3, 4 y 7).
+
+Estas pruebas corren junto con los módulos reales de modulos/: nunca suponen que el
+módulo de prueba es el único que aporta alertas, kpis, pendientes, enlaces o bloqueos."""
 import io
 import os
 import sqlite3
@@ -108,14 +111,14 @@ def test_ganchos_llegan_a_tablero_pendientes_planta_y_liberacion(client, db):
     html = client.get('/tablero').get_data(as_text=True)
     assert 'Cosa bloqueada' in html and 'Cosas de prueba' in html
     assert 'Revisar cosa' in client.get('/pendientes').get_data(as_text=True)
-    assert 'Revisar cosa' in client.get('/dashboard').get_data(as_text=True)
+    assert 'Mis pendientes' in client.get('/dashboard').get_data(as_text=True)
     assert 'Cosas de prueba' in client.get('/planta').get_data(as_text=True)
-    assert registro.verificaciones_liberacion(db, 1) == ['Hay una cosa de prueba que bloquea']
+    assert 'Hay una cosa de prueba que bloquea' in registro.verificaciones_liberacion(db, 1)
     assert registro.consulta('prueba_contar', db) >= 1
     assert registro.consulta('no_existe', db, default=[]) == []
     with erp.app.test_request_context():
         assert registro.enlace('prueba_cosa', cosa_id=5) == '/prueba/5'
-        assert registro.enlace('reportar_desviacion', origen='x') is None
+        assert registro.enlace('no_existe', origen='x') is None
     db.execute("DELETE FROM prb_cosas WHERE nombre = 'Bloqueadora'")
     db.commit()
 
@@ -126,9 +129,10 @@ def test_gancho_que_truena_no_tumba_la_pantalla(monkeypatch, db):
     monkeypatch.setattr(modulo_prueba.MODULO, 'kpis', roto)
     monkeypatch.setattr(modulo_prueba.MODULO, 'verificaciones_liberacion', lambda c, l: 1 / 0)
     with erp.app.app_context():
-        assert registro.recolectar('kpis', db) == []
+        assert not any(k['titulo'] == 'Cosas de prueba' for k in registro.recolectar('kpis', db))
         # En liberación, un módulo que truena IMPIDE liberar.
-        assert len(registro.verificaciones_liberacion(db, 1)) == 1
+        assert ('No se pudo revisar Módulo de prueba; avisa a sistemas.'
+                in registro.verificaciones_liberacion(db, 1))
 
 
 # --- 3. Roles, áreas adicionales y facultades ----------------------------------
@@ -164,6 +168,8 @@ def test_operador_arranca_en_planta(client, db):
 
 def test_rol_nuevo_sin_modulo_arranca_en_pendientes(client, db, monkeypatch):
     crear_usuario(db, 'mtto1', rol='mantenimiento', numero='7204')
+    # Sin la pantalla de arranque que pondría un módulo real (Equipos) para este rol
+    monkeypatch.delitem(menu.INICIOS, 'mantenimiento', raising=False)
     r = login(client, 'mtto1', PASSWORD)
     assert r.headers['Location'].endswith('/pendientes')
     # Un módulo que registra pantalla de arranque para el rol la gana
