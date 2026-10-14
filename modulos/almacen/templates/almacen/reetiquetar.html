@@ -1,0 +1,28 @@
+{% extends _layout|default("base.html") %}
+{% from 'almacen/_nav.html' import encabezado with context %}
+{% from 'nucleo/_lote.html' import chip_estatus with context %}
+{% block title %}Etiquetas por cambiar | ERP Atisa{% endblock %}
+{% block content %}
+<div class="p-10">
+    {{ encabezado('Etiquetas por cambiar', 'Lotes cuyo estatus cambió y todavía llevan la etiqueta anterior', 'existencias', 'ri-price-tag-3-line') }}
+    <div class="alm-card alm-scroll">
+        <table class="alm-tabla">
+            <thead><tr><th>Material</th><th>Lote</th><th>Etiqueta actual</th><th>Estatus vigente</th><th>Ubicación</th><th></th></tr></thead>
+            <tbody>
+            {% for l in lotes %}
+            <tr>
+                <td><strong>{{ l.material_codigo }}</strong><br><span class="text-xs text-slate-500">{{ l.material_nombre }}</span></td>
+                <td><a class="font-bold text-[#0e6ba8] hover:underline alm-mono" href="{{ url_for('almacen.ficha_lote', lote_id=l.id) }}">{{ l.numero_lote }}</a></td>
+                <td>{{ chip_estatus(l.etiquetado) }}</td>
+                <td>{{ chip_estatus(l.estatus) }}</td>
+                <td>{{ l.ubicacion or '—' }}</td>
+                <td><a class="alm-btn alm-btn-sm alm-btn-primario" hx-boost="false" target="_blank" href="{{ url_for('almacen.etiqueta', lote_id=l.id) }}"><i class="ri-printer-line"></i> Imprimir nueva</a></td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="text-center text-slate-500" style="padding:3rem">Todas las etiquetas están al día.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

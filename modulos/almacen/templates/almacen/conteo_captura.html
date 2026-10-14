@@ -1,0 +1,93 @@
+{% extends _layout|default("base.html") %}
+{% from 'almacen/_nav.html' import encabezado, campo_csrf with context %}
+{% from 'nucleo/_firma.html' import campo_firma, firmado %}
+{% block title %}Conteo {{ c.folio }} | ERP Atisa{% endblock %}
+{% block content %}
+<div class="p-10">
+    {{ encabezado('Conteo ' ~ c.folio, c.alcance ~ ' · ' ~ c.fecha ~ ' · ' ~ c.estatus, 'conteos', 'ri-list-check-2') }}
+    <div class="flex flex-wrap gap-2 mb-4">
+        <a href="{{ url_for('almacen.conteo_hoja', conteo_id=c.id) }}" hx-boost="false" target="_blank" class="alm-btn"><i class="ri-printer-line"></i> Hoja de conteo</a>
+        {% if puede_operar and c.estatus in ('Abierto', 'Capturado') %}
+        <form method="post" action="{{ url_for('almacen.conteo_cancelar', conteo_id=c.id) }}" onsubmit="return confirm('¿Cancelar el conteo {{ c.folio }}?')">{{ campo_csrf() }}<button class="alm-btn alm-btn-peligro"><i class="ri-close-line"></i> Cancelar conteo</button></form>
+        {% endif %}
+    </div>
+
+    {% if c.estatus == 'Abierto' %}
+    {# Conteo ciego: aquí no se muestra la existencia del sistema. #}
+    {% if puede_operar %}
+    <form method="post" action="{{ url_for('almacen.conteo_capturar', conteo_id=c.id) }}">
+        {{ campo_csrf() }}
+        <div class="alm-card alm-scroll mb-4">
+            <table class="alm-tabla">
+                <thead><tr><th>Ubicación</th><th>Material</th><th>Lote</th><th>Lote proveedor</th><th>Contado</th></tr></thead>
+                <tbody>
+                {% for p in partidas %}
+                <tr>
+                    <td>{{ p.ubicacion or '—' }}</td>
+                    <td><strong>{{ p.material_codigo }}</strong><br><span class="text-xs text-slate-500">{{ p.material_nombre }}</span></td>
+                    <td class="alm-mono">{{ p.numero_lote }}</td>
+                    <td class="alm-mono">{{ p.lote_proveedor or '—' }}</td>
+                    <td style="width:180px"><div class="flex items-center gap-2"><input name="contado-{{ p.lote_id }}" value="{{ p.cantidad_contada|cant if p.cantidad_contada is not none else '' }}" inputmode="decimal" class="alm-input"> <span class="text-xs text-slate-500">{{ p.unidad }}</span></div></td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="alm-card alm-seccion mb-4">
+            <label class="alm-label" for="observaciones">Observaciones (p. ej. lotes encontrados que no están en el sistema)</label>
+            <textarea id="observaciones" name="observaciones" rows="2" class="alm-input">{{ c.observaciones or '' }}</textarea>
+        </div>
+        <button class="alm-btn alm-btn-primario"><i class="ri-save-line"></i> Guardar captura</button>
+    </form>
+    {% else %}
+    <div class="alm-aviso alm-aviso-azul">El conteo está en captura por el almacén.</div>
+    {% endif %}
+
+    {% else %}
+    {% if recontar %}<div class="alm-aviso alm-aviso-ambar mb-4"><i class="ri-refresh-line"></i> {{ recontar }} lote{{ '' if recontar == 1 else 's' }} se movieron después de contarse: hay que recontarlos antes de autorizar.</div>{% endif %}
+    {% if c.observaciones %}<div class="alm-aviso alm-aviso-azul mb-4">Observaciones: {{ c.observaciones }}</div>{% endif %}
+    <form method="post" action="{{ url_for('almacen.conteo_ajustar', conteo_id=c.id) }}">
+        {{ campo_csrf() }}
+        <div class="alm-card alm-scroll mb-4">
+            <table class="alm-tabla">
+                <thead><tr><th>Material</th><th>Lote</th><th class="alm-num">Sistema al capturar</th><th class="alm-num">Contado</th><th class="alm-num">Diferencia</th><th>Motivo</th></tr></thead>
+                <tbody>
+                {% for p in partidas %}
+                <tr>
+                    <td><strong>{{ p.material_codigo }}</strong><br><span class="text-xs text-slate-500">{{ p.material_nombre }}</span></td>
+                    <td><a class="text-[#0e6ba8] hover:underline alm-mono" href="{{ url_for('almacen.ficha_lote', lote_id=p.lote_id) }}">{{ p.numero_lote }}</a>{% if p.recontar %} <span class="px-2 py-0.5 rounded-md text-xs font-bold bg-amber-50 text-amber-600">Recontar</span>{% endif %}</td>
+                    <td class="alm-num">{{ p.existencia_al_capturar|cant if p.existencia_al_capturar is not none else '—' }}</td>
+                    <td class="alm-num">{{ p.cantidad_contada|cant if p.cantidad_contada is not none else '—' }}</td>
+                    <td class="alm-num font-bold {{ 'text-emerald-600' if p.diferencia and p.diferencia > 0 else ('text-rose-600' if p.diferencia and p.diferencia < 0 else 'text-slate-400') }}">{{ ('+' if p.diferencia and p.diferencia > 0 else '') ~ (p.diferencia|cant) if p.diferencia is not none else '—' }}</td>
+                    <td>{% if c.estatus == 'Capturado' and p.diferencia %}<input name="motivo-{{ p.id }}" class="alm-input" placeholder="Motivo de la diferencia">{% else %}{{ p.motivo_diferencia or '' }}{% endif %}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% if c.estatus == 'Capturado' %}
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+            {{ campo_firma('Autorizó', titulo='Firma de quien autoriza ajustes') }}
+            <div class="flex flex-col gap-3">
+                <p class="text-sm text-slate-600">{{ diferencias }} diferencia{{ '' if diferencias == 1 else 's' }}. Al autorizar se generan los ajustes con el folio {{ c.folio }}.</p>
+                <button class="alm-btn alm-btn-primario" style="height:3.2rem"><i class="ri-check-double-line"></i> Autorizar ajustes y cerrar</button>
+            </div>
+        </div>
+        {% elif firma %}
+        <p>{{ firmado(firma) }}</p>
+        {% endif %}
+    </form>
+    {% if c.estatus == 'Capturado' and puede_operar %}
+    <details class="alm-plegable mt-6"><summary class="text-sm font-bold text-[#0e6ba8]">Recapturar lo contado</summary>
+        <form method="post" action="{{ url_for('almacen.conteo_capturar', conteo_id=c.id) }}" class="alm-card alm-seccion mt-3">
+            {{ campo_csrf() }}
+            <div class="alm-campos">
+                {% for p in partidas %}<div><label class="alm-label">{{ p.material_codigo }} · {{ p.numero_lote }}</label><input name="contado-{{ p.lote_id }}" value="{{ p.cantidad_contada|cant if p.cantidad_contada is not none else '' }}" inputmode="decimal" class="alm-input"></div>{% endfor %}
+            </div>
+            <button class="alm-btn mt-4"><i class="ri-save-line"></i> Guardar recaptura</button>
+        </form>
+    </details>
+    {% endif %}
+    {% endif %}
+</div>
+{% endblock %}

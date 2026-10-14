@@ -1,0 +1,32 @@
+{% extends _layout|default("base.html") %}
+{% from 'almacen/_nav.html' import encabezado, paginacion with context %}
+{% block title %}Recepciones | ERP Atisa{% endblock %}
+{% block content %}
+<div class="p-10">
+    {{ encabezado('Recepciones', 'Material que llega: inspección, lote y cuarentena', 'recepciones', 'ri-inbox-archive-line') }}
+    <div class="alm-card">
+        <div class="flex justify-end px-6 py-4 border-b border-slate-100">
+            {% if puede_operar %}<a href="{{ url_for('almacen.recepcion_nueva') }}" class="alm-btn alm-btn-primario"><i class="ri-add-line"></i> Recibir material</a>{% endif %}
+        </div>
+        <div class="alm-scroll">
+        <table class="alm-tabla">
+            <thead><tr><th>Folio</th><th>Fecha</th><th>Proveedor</th><th>Documento</th><th class="alm-num">Partidas</th><th>Recibió</th><th>Estatus</th></tr></thead>
+            <tbody>
+            {% for r in recepciones %}
+            <tr>
+                <td><a href="{{ url_for('almacen.recepcion_detalle', recepcion_id=r.id) }}" class="font-bold text-[#0e6ba8] hover:underline alm-mono">{{ r.folio }}</a></td>
+                <td>{{ r.fecha }}</td>
+                <td>{{ r.proveedor_nombre }}</td>
+                <td>{{ r.documento or '—' }}</td>
+                <td class="alm-num">{{ r.partidas }}{% if r.rechazadas %} <span class="text-xs text-rose-600">({{ r.rechazadas }} no recibida{{ '' if r.rechazadas == 1 else 's' }})</span>{% endif %}</td>
+                <td>{{ r.recibio }}</td>
+                <td>{% if r.estatus == 'Anulada' %}<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-rose-50 text-rose-600">Anulada</span>{% else %}<span class="alm-chip">Registrada</span>{% endif %}</td>
+            </tr>
+            {% else %}<tr><td colspan="7" class="text-center text-slate-500" style="padding:3rem">Aún no hay recepciones.</td></tr>{% endfor %}
+            </tbody>
+        </table>
+        </div>
+        {{ paginacion(pagina, paginas, 'almacen.recepciones') }}
+    </div>
+</div>
+{% endblock %}

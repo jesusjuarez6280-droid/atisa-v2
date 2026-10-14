@@ -1,0 +1,131 @@
+{% extends _layout|default("base.html") %}
+{% from 'almacen/_nav.html' import encabezado, paginacion with context %}
+{% from 'nucleo/_lote.html' import chip_estatus, caducidad with context %}
+{% block title %}Existencias | ERP Atisa{% endblock %}
+{% block content %}
+<div class="p-10">
+    {{ encabezado('Existencias', 'Qué hay en almacén, de qué lote, cuándo caduca y si está aprobado', 'existencias') }}
+
+    <div class="alm-kpis mb-6">
+        {% for clave, titulo, valor, nivel, vista_kpi in [
+            ('cuarentena', 'Lotes en cuarentena', ind.cuarentena, 'amarillo', 'lote'),
+            ('por_caducar', 'Por caducar (' ~ ind.dias ~ ' días)', ind.por_caducar, 'amarillo', 'lote'),
+            ('caducados', 'Caducados con existencia', ind.caducados, 'rojo', 'lote'),
+            ('bajo_minimo', 'Materiales bajo mínimo', ind.bajo_minimo, 'amarillo', 'material')] %}
+        <a href="{{ url_for('almacen.existencias', f=clave, vista=vista_kpi) }}" class="alm-card alm-kpi {{ 'alm-kpi-activo' if filtros.f == clave }}">
+            <div class="flex items-center justify-between">
+                <p class="text-xs font-bold text-slate-500 uppercase">{{ titulo }}</p>
+                <span class="w-2.5 h-2.5 rounded-full {{ ('bg-rose-500' if nivel == 'rojo' else 'bg-amber-500') if valor else 'bg-emerald-500' }}"></span>
+            </div>
+            <p class="text-3xl font-bold text-[#1d1d1f] mt-2">{{ valor }}</p>
+        </a>
+        {% endfor %}
+    </div>
+
+    <div class="alm-card">
+        <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-b border-slate-100">
+            <div class="alm-tabs">
+                <a href="{{ url_for('almacen.existencias', vista='lote') }}" class="alm-tab {{ 'alm-tab-activa' if vista == 'lote' }}">Por lote</a>
+                <a href="{{ url_for('almacen.existencias', vista='material') }}" class="alm-tab {{ 'alm-tab-activa' if vista == 'material' }}">Por material</a>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                {% if puede_operar %}
+                <a href="{{ url_for('almacen.recepcion_nueva') }}" class="alm-btn alm-btn-primario"><i class="ri-inbox-archive-line"></i> Recibir material</a>
+                <a href="{{ url_for('almacen.salida_nueva', tipo='VENTA') }}" class="alm-btn"><i class="ri-truck-line"></i> Registrar salida</a>
+                <a href="{{ url_for('almacen.conteos') }}" class="alm-btn"><i class="ri-list-check-2"></i> Nuevo conteo</a>
+                {% endif %}
+                <a href="{{ url_for('almacen.exportar') }}" hx-boost="false" class="alm-btn"><i class="ri-file-excel-2-line"></i> Excel</a>
+            </div>
+        </div>
+
+        <form method="get" action="{{ url_for('almacen.existencias') }}" class="flex flex-wrap items-end gap-3 px-6 py-4 border-b border-slate-100">
+            <input type="hidden" name="vista" value="{{ vista }}">
+            {% if filtros.f %}<input type="hidden" name="f" value="{{ filtros.f }}">{% endif %}
+            <div class="flex-1" style="min-width:200px">
+                <label class="alm-label" for="q">Buscar</label>
+                <input id="q" name="q" value="{{ filtros.q }}" placeholder="Código, nombre{{ ' o lote' if vista == 'lote' }}" class="alm-input">
+            </div>
+            <div>
+                <label class="alm-label" for="tipo">Tipo</label>
+                <select id="tipo" name="tipo" class="alm-input">
+                    <option value="">Todos</option>
+                    {% for clave, nombre in TIPOS_MATERIAL.items() %}<option value="{{ clave }}" {{ 'selected' if filtros.tipo == clave }}>{{ nombre }}</option>{% endfor %}
+                </select>
+            </div>
+            {% if vista == 'lote' %}
+            <div>
+                <label class="alm-label" for="estatus">Estatus</label>
+                <select id="estatus" name="estatus" class="alm-input">
+                    <option value="">Todos</option>
+                    {% for e in estatuses %}<option value="{{ e }}" {{ 'selected' if filtros.estatus == e }}>{{ e|capitalize }}</option>{% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="alm-label" for="ubicacion">Ubicación</label>
+                <select id="ubicacion" name="ubicacion" class="alm-input">
+                    <option value="">Todas</option>
+                    {% for u in ubicaciones %}<option value="{{ u.codigo }}" {{ 'selected' if filtros.ubicacion == u.codigo }}>{{ u.codigo }} · {{ u.nombre }}</option>{% endfor %}
+                </select>
+            </div>
+            {% endif %}
+            <button class="alm-btn alm-btn-primario" type="submit"><i class="ri-search-line"></i> Filtrar</button>
+            {% if filtros.values()|select|list %}<a href="{{ url_for('almacen.existencias', vista=vista) }}" class="alm-btn">Quitar filtros</a>{% endif %}
+        </form>
+
+        <div class="alm-scroll">
+        {% if vista == 'lote' %}
+            <table class="alm-tabla">
+                <thead><tr><th>Material</th><th>Lote</th><th>Lote proveedor</th><th class="alm-num">Existencia</th><th>Estatus</th><th>Caducidad</th><th>Ubicación</th></tr></thead>
+                <tbody>
+                {% for l in lotes %}
+                <tr>
+                    <td><a href="{{ url_for('almacen.kardex_material', material_id=l.material_id) }}" class="font-semibold text-[#1d1d1f] hover:underline">{{ l.material_codigo }}</a><br><span class="text-xs text-slate-500">{{ l.material_nombre }}</span></td>
+                    <td><a href="{{ url_for('almacen.ficha_lote', lote_id=l.id) }}" class="font-bold text-[#0e6ba8] hover:underline alm-mono">{{ l.numero_lote }}</a></td>
+                    <td class="alm-mono text-slate-600">{{ l.lote_proveedor or '—' }}</td>
+                    <td class="alm-num font-semibold">{{ l.existencia|cant }} <span class="text-xs text-slate-500">{{ l.unidad }}</span></td>
+                    <td>{{ chip_estatus(l) }}</td>
+                    <td>{{ caducidad(l.fecha_caducidad, ind.dias) }}</td>
+                    <td class="text-slate-600">{{ l.ubicacion or '—' }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="7" class="text-center text-slate-500" style="padding:3rem">No hay lotes con existencia{{ ' con esos filtros' if filtros.values()|select|list }}.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            <div class="px-6 py-2 text-xs text-slate-500">{{ total }} lote{{ '' if total == 1 else 's' }}</div>
+            {{ paginacion(pagina, paginas, 'almacen.existencias') }}
+        {% else %}
+            <table class="alm-tabla">
+                <thead><tr><th>Material</th><th>Tipo</th><th class="alm-num">Disponible</th><th class="alm-num">Cuarentena</th><th class="alm-num">Retenido</th><th class="alm-num">Rechazado o caducado</th><th class="alm-num">Total</th><th class="alm-num">Mínimo</th><th></th></tr></thead>
+                <tbody>
+                {% for m in materiales %}
+                <tr>
+                    <td><a href="{{ url_for('almacen.kardex_material', material_id=m.id) }}" class="font-semibold text-[#0e6ba8] hover:underline">{{ m.codigo }}</a><br><span class="text-xs text-slate-500">{{ m.nombre }}</span></td>
+                    <td><span class="alm-chip">{{ m.tipo }}</span></td>
+                    <td class="alm-num font-semibold">{{ m.disponible|cant }} <span class="text-xs text-slate-500">{{ m.unidad }}</span></td>
+                    <td class="alm-num">{{ m.cuarentena|cant }}</td>
+                    <td class="alm-num">{{ m.retenido|cant }}</td>
+                    <td class="alm-num">{{ m.rechazado|cant }}</td>
+                    <td class="alm-num">{{ m.total|cant }}</td>
+                    <td class="alm-num">{{ m.stock_minimo|cant if m.stock_minimo else '—' }}</td>
+                    <td>{% if m.bajo_minimo %}<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-amber-50 text-amber-600">Bajo mínimo</span>{% endif %}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="9" class="text-center text-slate-500" style="padding:3rem">No hay materiales{{ ' con esos filtros' if filtros.values()|select|list }}.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+        </div>
+    </div>
+
+    <div class="flex flex-wrap gap-2 mt-4 text-sm">
+        <span class="text-slate-500">Reportes en Excel:</span>
+        <a href="{{ url_for('almacen.exportar', r='existencias') }}" hx-boost="false" class="text-[#0e6ba8] font-semibold hover:underline">Existencias</a> ·
+        <a href="{{ url_for('almacen.exportar', r='por_caducar') }}" hx-boost="false" class="text-[#0e6ba8] font-semibold hover:underline">Por caducar</a> ·
+        <a href="{{ url_for('almacen.exportar', r='cuarentena') }}" hx-boost="false" class="text-[#0e6ba8] font-semibold hover:underline">En cuarentena</a> ·
+        <a href="{{ url_for('almacen.reetiquetar') }}" class="text-[#0e6ba8] font-semibold hover:underline">Etiquetas por cambiar</a>
+        {% if puede_operar %} · <a href="{{ url_for('almacen.carga_inicial') }}" class="text-[#0e6ba8] font-semibold hover:underline">Carga inicial</a>{% endif %}
+    </div>
+</div>
+{% endblock %}

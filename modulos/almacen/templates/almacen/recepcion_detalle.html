@@ -1,0 +1,70 @@
+{% extends _layout|default("base.html") %}
+{% from 'almacen/_nav.html' import encabezado, campo_csrf with context %}
+{% from 'nucleo/_lote.html' import chip_estatus with context %}
+{% from 'nucleo/_firma.html' import campo_firma, firmado %}
+{% block title %}Recepción {{ rec.folio }} | ERP Atisa{% endblock %}
+{% block content %}
+<div class="p-10">
+    {{ encabezado('Recepción ' ~ rec.folio, rec.proveedor_nombre ~ ' · ' ~ rec.fecha, 'recepciones', 'ri-inbox-archive-line') }}
+    {% if rec.estatus == 'Anulada' %}
+    <div class="alm-aviso alm-aviso-rojo mb-4"><strong>Anulada:</strong> {{ rec.motivo_anulacion }} {{ firmado(firma_anulo) }}</div>
+    {% endif %}
+    <div class="alm-card mb-6">
+        <div class="alm-seccion flex flex-wrap justify-between gap-4">
+            <dl class="alm-dl flex-1">
+                <div><dt>Proveedor</dt><dd>{{ rec.proveedor_nombre }}{% if rec.proveedor_estatus != 'Aprobado' %} <span class="text-xs text-amber-600">({{ rec.proveedor_estatus }})</span>{% endif %}</dd></div>
+                <div><dt>Factura o remisión</dt><dd>{{ rec.documento or '—' }}</dd></div>
+                <div><dt>Transporte</dt><dd>{{ rec.transporte or '—' }}</dd></div>
+                <div><dt>Recibió</dt><dd>{{ rec.recibio }}</dd></div>
+                {% if rec.observaciones %}<div><dt>Observaciones</dt><dd>{{ rec.observaciones }}</dd></div>{% endif %}
+            </dl>
+            <div class="flex flex-col gap-2">
+                <a href="{{ url_for('almacen.recepcion_imprimir', recepcion_id=rec.id) }}" hx-boost="false" target="_blank" class="alm-btn"><i class="ri-printer-line"></i> Comprobante</a>
+            </div>
+        </div>
+        {% if firma %}<div class="alm-seccion">{{ firmado(firma) }}</div>{% endif %}
+    </div>
+    <div class="alm-card mb-6 alm-scroll">
+        <table class="alm-tabla">
+            <thead><tr><th>Material</th><th>Lote proveedor</th><th class="alm-num">Cantidad</th><th>Caducidad</th><th>Inspección</th><th>Lote creado</th><th>Certificado</th><th></th></tr></thead>
+            <tbody>
+            {% for p in partidas %}
+            <tr>
+                <td><strong>{{ p.material_codigo }}</strong><br><span class="text-xs text-slate-500">{{ p.material_nombre }}</span></td>
+                <td class="alm-mono">{{ p.lote_proveedor }}</td>
+                <td class="alm-num">{{ p.cantidad|cant }} {{ p.unidad }}<br><span class="text-xs text-slate-500">{{ p.contenedores }} cont.</span></td>
+                <td>{{ p.fecha_caducidad or '—' }}{% if p.fecha_reanalisis %}<br><span class="text-xs text-slate-500">Reanálisis {{ p.fecha_reanalisis }}</span>{% endif %}</td>
+                <td class="text-xs">
+                    {% for campo, texto in [('empaque_integro', 'Empaque'), ('identificacion_ok', 'Identificación'), ('trae_certificado', 'Certificado'), ('limpio', 'Limpieza')] %}
+                    <span class="{{ 'text-emerald-600' if p[campo] else 'text-rose-600' }}"><i class="{{ 'ri-check-line' if p[campo] else 'ri-close-line' }}"></i> {{ texto }}</span><br>
+                    {% endfor %}
+                    {% if p.temperatura %}{{ p.temperatura }}{% endif %}
+                </td>
+                <td>{% if p.lote_id %}<a class="font-bold text-[#0e6ba8] hover:underline alm-mono" href="{{ url_for('almacen.ficha_lote', lote_id=p.lote_id) }}">{{ p.numero_lote }}</a><br>{{ chip_estatus(p.lote_estatus) }}
+                    {% else %}<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-rose-50 text-rose-600">No se recibió</span>{% endif %}
+                    {% if p.aviso_proveedor %}<br><span class="text-xs text-amber-600">{{ p.aviso_proveedor }}</span>{% endif %}
+                    {% if p.observaciones %}<br><span class="text-xs text-slate-500">{{ p.observaciones }}</span>{% endif %}</td>
+                <td>{% for a in p.certificados %}<a href="/archivo/{{ a.id }}" hx-boost="false" target="_blank" class="text-[#0e6ba8] hover:underline text-sm"><i class="ri-file-text-line"></i> Ver</a><br>{% else %}<span class="text-slate-400 text-sm">—</span>{% endfor %}</td>
+                <td>{% if p.lote_id %}<a href="{{ url_for('almacen.etiqueta', lote_id=p.lote_id) }}" hx-boost="false" target="_blank" class="alm-btn alm-btn-sm"><i class="ri-price-tag-3-line"></i> Etiqueta</a>{% endif %}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if puede_operar and rec.estatus == 'Registrada' %}
+    <details class="alm-plegable alm-card alm-seccion">
+        <summary class="text-sm font-bold text-rose-600"><i class="ri-close-circle-line"></i> Anular recepción capturada por error</summary>
+        <form method="post" action="{{ url_for('almacen.recepcion_anular', recepcion_id=rec.id) }}" class="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-4 items-start">
+            {{ campo_csrf() }}
+            <div class="flex flex-col gap-3">
+                <p class="text-sm text-slate-600">Solo se puede si sus lotes no se han movido. Los lotes quedan en cero con un ajuste; no se borra nada.</p>
+                <label class="alm-label" for="motivo">Motivo</label>
+                <input id="motivo" name="motivo" required class="alm-input">
+                <button class="alm-btn alm-btn-peligro">Anular {{ rec.folio }}</button>
+            </div>
+            {{ campo_firma('Anuló', titulo='Firma de quien autoriza ajustes') }}
+        </form>
+    </details>
+    {% endif %}
+</div>
+{% endblock %}

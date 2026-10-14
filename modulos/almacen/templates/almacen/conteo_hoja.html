@@ -1,0 +1,18 @@
+{% extends 'nucleo/_impresion.html' %}
+{% block hoja_titulo %}Hoja de conteo físico{% endblock %}
+{% block hoja_codigo %}Conteo ciego{% endblock %}
+{% block hoja_folio %}{{ c.folio }}{% endblock %}
+{% block hoja_cuerpo %}
+<p>Alcance: {{ c.alcance }} · Fecha: {{ c.fecha }}</p>
+<table>
+    <thead><tr><th>Ubicación</th><th>Código</th><th>Material</th><th>Lote</th><th>Lote proveedor</th><th>Unidad</th><th style="width:28mm">Contado</th></tr></thead>
+    <tbody>
+    {% for p in partidas %}
+    <tr><td>{{ p.ubicacion or '' }}</td><td>{{ p.material_codigo }}</td><td>{{ p.material_nombre }}</td><td>{{ p.numero_lote }}</td><td>{{ p.lote_proveedor or '' }}</td><td>{{ p.unidad }}</td><td></td></tr>
+    {% endfor %}
+    {% for _ in range(5) %}<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>{% endfor %}
+    </tbody>
+</table>
+<p style="font-size:9pt">Los renglones en blanco son para lotes que aparezcan y no estén en la lista: se anotan como observación.</p>
+{% endblock %}
+{% block hoja_firmas %}<div>Contó</div><div>Verificó</div>{% endblock %}

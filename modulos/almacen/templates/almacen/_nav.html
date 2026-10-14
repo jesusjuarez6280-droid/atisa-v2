@@ -1,0 +1,38 @@
+{#- Encabezado y pestañas de las pantallas del almacén. activa: existencias|recepciones|salidas|conteos|catalogos -#}
+{% macro encabezado(titulo, subtitulo, activa, icono='ri-archive-2-line') -%}
+{% include 'almacen/_estilos.html' %}
+<header class="flex flex-wrap justify-between items-center gap-4 mb-6">
+    <div class="flex items-center gap-4">
+        <div class="w-12 h-12 bg-blue-50 text-[#0e6ba8] rounded-xl flex items-center justify-center text-2xl"><i class="{{ icono }}"></i></div>
+        <div>
+            <h1 class="text-2xl font-bold text-[#1d1d1f]">{{ titulo }}</h1>
+            {% if subtitulo %}<p class="text-slate-500 text-sm mt-0.5">{{ subtitulo }}</p>{% endif %}
+        </div>
+    </div>
+    <nav class="alm-tabs">
+        {% for clave, texto, url in [('existencias', 'Existencias', url_for('almacen.existencias')),
+                                     ('recepciones', 'Recepciones', url_for('almacen.recepciones')),
+                                     ('salidas', 'Salidas', url_for('almacen.salidas')),
+                                     ('devoluciones', 'Devoluciones', url_for('almacen.devoluciones')),
+                                     ('conteos', 'Conteos', url_for('almacen.conteos')),
+                                     ('catalogos', 'Catálogos', url_for('almacen.catalogos'))] %}
+        <a href="{{ url }}" class="alm-tab {{ 'alm-tab-activa' if clave == activa }}">{{ texto }}</a>
+        {% endfor %}
+    </nav>
+</header>
+{%- endmacro %}
+
+{% macro paginacion(pagina, paginas, endpoint) -%}
+{% if paginas > 1 %}
+<div class="flex items-center justify-between px-6 py-3 border-t border-slate-100 text-sm text-slate-500">
+    <span>Página {{ pagina }} de {{ paginas }}</span>
+    <div class="flex gap-2">
+        {% set args = request.args.to_dict() %}
+        {% if pagina > 1 %}{% set _ = args.update({'pagina': pagina - 1}) %}<a class="alm-btn alm-btn-sm" href="{{ url_for(endpoint, **args) }}"><i class="ri-arrow-left-s-line"></i> Anterior</a>{% endif %}
+        {% if pagina < paginas %}{% set _ = args.update({'pagina': pagina + 1}) %}<a class="alm-btn alm-btn-sm" href="{{ url_for(endpoint, **args) }}">Siguiente <i class="ri-arrow-right-s-line"></i></a>{% endif %}
+    </div>
+</div>
+{% endif %}
+{%- endmacro %}
+
+{% macro campo_csrf() -%}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{%- endmacro %}

@@ -1,0 +1,66 @@
+{% extends _layout|default("base.html") %}
+{% from 'almacen/_nav.html' import encabezado, campo_csrf with context %}
+{% from 'nucleo/_firma.html' import campo_firma %}
+{% block title %}{{ TIPOS_SALIDA[tipo] }} | ERP Atisa{% endblock %}
+{% block content %}
+<div class="p-10">
+    {{ encabezado('Registrar ' ~ TIPOS_SALIDA[tipo]|lower, 'Solo aparecen producto terminado liberado y vigente, en orden de caducidad' if tipo == 'VENTA' else 'Solo aparecen lotes rechazados o caducados; firma quien autoriza ajustes', 'salidas', 'ri-truck-line') }}
+    <div class="alm-tabs mb-4">
+        {% for clave, nombre in TIPOS_SALIDA.items() %}<a href="{{ url_for('almacen.salida_nueva', tipo=clave) }}" class="alm-tab {{ 'alm-tab-activa' if tipo == clave }}">{{ nombre }}</a>{% endfor %}
+    </div>
+    <form method="post" action="{{ url_for('almacen.salida_nueva') }}">
+        {{ campo_csrf() }}<input type="hidden" name="tipo" value="{{ tipo }}">
+        <div class="alm-card alm-seccion mb-6">
+            <div class="alm-campos">
+                <div style="grid-column:span 2"><label class="alm-label" for="destino">{{ 'Cliente' if tipo == 'VENTA' else ('Proveedor' if tipo == 'DEVOLUCION_PROVEEDOR' else 'Empresa que destruye') }}</label><input id="destino" name="destino" value="{{ previo.get('destino') or '' }}" required class="alm-input"></div>
+                <div><label class="alm-label" for="documento">{{ 'Factura o remisión' if tipo == 'VENTA' else 'Documento o acta' }}</label><input id="documento" name="documento" value="{{ previo.get('documento') or '' }}" class="alm-input"></div>
+                <div><label class="alm-label" for="fecha">Fecha</label><input id="fecha" type="date" name="fecha" value="{{ previo.get('fecha') or hoy }}" max="{{ hoy }}" class="alm-input"></div>
+                <div style="grid-column:1/-1"><label class="alm-label" for="observaciones">Observaciones</label><input id="observaciones" name="observaciones" value="{{ previo.get('observaciones') or '' }}" class="alm-input"></div>
+            </div>
+        </div>
+
+        <div class="alm-card mb-6">
+            <div class="alm-seccion"><h2 class="alm-titulo">Lotes</h2>
+                {% if tipo == 'VENTA' %}<p class="text-xs text-slate-500 mt-1">El primero de cada producto es el que caduca antes (sugerido). Si eliges otro, escribe el motivo.</p>{% endif %}</div>
+            {% if lotes %}
+            <div class="alm-scroll">
+            <table class="alm-tabla">
+                <thead><tr><th style="width:55%">Lote</th><th>Cantidad</th><th>Motivo si no es el sugerido</th></tr></thead>
+                <tbody>
+                {% for p in partidas %}
+                <tr>
+                    <td>
+                        <select name="s-{{ loop.index0 }}-lote_id" class="alm-input">
+                            <option value="">—</option>
+                            {% set ns = namespace(mat=None) %}
+                            {% for l in lotes %}
+                            {% set sugerido = l.material_id != ns.mat %}{% set ns.mat = l.material_id %}
+                            <option value="{{ l.id }}" {{ 'selected' if p.get('lote_id')|string == l.id|string }}>{{ l.material_codigo }} · {{ l.numero_lote }} · {{ l.existencia|cant }} {{ l.unidad }} · cad. {{ l.fecha_caducidad or '—' }}{{ ' · ' ~ l.estatus if tipo != 'VENTA' }}{{ ' ★ sugerido' if sugerido and tipo == 'VENTA' }}</option>
+                            {% endfor %}
+                        </select>
+                    </td>
+                    <td><input name="s-{{ loop.index0 }}-cantidad" value="{{ p.get('cantidad') or '' }}" inputmode="decimal" class="alm-input"></td>
+                    <td><input name="s-{{ loop.index0 }}-motivo_lote" value="{{ p.get('motivo_lote') or '' }}" class="alm-input" {{ 'disabled' if tipo != 'VENTA' }}></td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            </div>
+            {% else %}
+            <div class="alm-seccion text-slate-500 text-sm">{{ 'No hay producto terminado liberado y vigente con existencia.' if tipo == 'VENTA' else 'No hay lotes rechazados ni caducados con existencia.' }}</div>
+            {% endif %}
+        </div>
+
+        {% if lotes %}
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+            {% if tipo == 'VENTA' %}{{ campo_firma('Realizó', numero=session.numero_empleado, titulo='Firma de quien surte') }}
+            {% else %}{{ campo_firma('Autorizó', titulo='Firma de quien autoriza (autorizar ajustes)') }}{% endif %}
+            <div class="flex flex-col gap-3">
+                <button type="submit" class="alm-btn alm-btn-primario" style="height:3.2rem"><i class="ri-check-line"></i> Registrar {{ TIPOS_SALIDA[tipo]|lower }}</button>
+                <a href="{{ url_for('almacen.salidas') }}" class="alm-btn">Cancelar</a>
+            </div>
+        </div>
+        {% endif %}
+    </form>
+</div>
+{% endblock %}

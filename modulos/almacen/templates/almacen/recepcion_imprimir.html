@@ -1,0 +1,34 @@
+{% extends 'nucleo/_impresion.html' %}
+{% from 'nucleo/_firma.html' import firmado %}
+{% block hoja_titulo %}Comprobante de recepción{% endblock %}
+{% block hoja_codigo %}{{ codigo_formato|trim }}{% endblock %}
+{% block hoja_folio %}{{ rec.folio }}{% endblock %}
+{% block hoja_cuerpo %}
+<table>
+    <tr><th>Proveedor</th><td>{{ rec.proveedor_nombre }}</td><th>Fecha</th><td>{{ rec.fecha }}</td></tr>
+    <tr><th>Factura o remisión</th><td>{{ rec.documento or '—' }}</td><th>Transporte</th><td>{{ rec.transporte or '—' }}</td></tr>
+    {% if rec.estatus == 'Anulada' %}<tr><th>ANULADA</th><td colspan="3">{{ rec.motivo_anulacion }}</td></tr>{% endif %}
+</table>
+<table>
+    <thead><tr><th>#</th><th>Material</th><th>Lote proveedor</th><th>Lote interno</th><th>Cantidad</th><th>Cont.</th><th>Caducidad</th><th>Inspección</th></tr></thead>
+    <tbody>
+    {% for p in partidas %}
+    <tr>
+        <td>{{ loop.index }}</td>
+        <td>{{ p.material_codigo }} {{ p.material_nombre }}</td>
+        <td>{{ p.lote_proveedor }}</td>
+        <td>{{ p.numero_lote or 'NO SE RECIBIÓ' }}</td>
+        <td>{{ p.cantidad|cant }} {{ p.unidad }}</td>
+        <td>{{ p.contenedores }}</td>
+        <td>{{ p.fecha_caducidad or '—' }}</td>
+        <td>{{ 'Empaque ✓' if p.empaque_integro else 'Empaque ✗' }} · {{ 'Ident. ✓' if p.identificacion_ok else 'Ident. ✗' }} · {{ 'CoA ✓' if p.trae_certificado else 'CoA ✗' }} · {{ 'Limpio ✓' if p.limpio else 'Limpio ✗' }}{% if p.temperatura %} · {{ p.temperatura }}{% endif %}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% if rec.observaciones %}<p>Observaciones: {{ rec.observaciones }}</p>{% endif %}
+{% endblock %}
+{% block hoja_firmas %}
+<div>Recibió: {{ rec.recibio }}<br>{{ firmado(firma) }}</div>
+<div>Revisó (Calidad)</div>
+{% endblock %}

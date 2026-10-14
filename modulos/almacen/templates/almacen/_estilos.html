@@ -1,0 +1,48 @@
+{#- Estilos propios del almacén (el Tailwind precompilado no trae todo). -#}
+<style>
+    .alm-card{background:#fff;border:1px solid #e2e8f0;border-radius:1rem;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+    .alm-input{width:100%;padding:.6rem .85rem;background:#f8fafc;border:1px solid #e2e8f0;border-radius:.75rem;outline:none;font-size:.9rem;color:#1d1d1f}
+    .alm-input:focus{border-color:#0e6ba8;background:#fff}
+    .alm-label{display:block;font-size:.68rem;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:.3rem;letter-spacing:.02em}
+    .alm-btn{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;height:2.6rem;padding:0 1rem;border-radius:.75rem;font-size:.85rem;font-weight:700;border:1px solid #e2e8f0;color:#475569;background:#fff;cursor:pointer;white-space:nowrap;text-decoration:none}
+    .alm-btn:hover{background:#f1f5f9}
+    .alm-btn-sm{height:2rem;padding:0 .7rem;font-size:.78rem;border-radius:.6rem}
+    .alm-btn-primario{background:#0e6ba8;border-color:#0e6ba8;color:#fff}
+    .alm-btn-primario:hover{background:#1d1d1f;border-color:#1d1d1f}
+    .alm-btn-peligro{color:#e11d48;border-color:#fecdd3}
+    .alm-btn-peligro:hover{background:#fff1f2}
+    .alm-tabla{width:100%;font-size:.85rem;border-collapse:collapse}
+    .alm-tabla th{background:#f8fafc;color:#64748b;font-size:.68rem;text-transform:uppercase;font-weight:700;text-align:left;padding:.6rem .9rem;white-space:nowrap}
+    .alm-tabla td{padding:.6rem .9rem;border-top:1px solid #f1f5f9;vertical-align:top}
+    .alm-tabla tbody tr:hover td{background:#fafbfc}
+    .alm-num{text-align:right !important;font-variant-numeric:tabular-nums;white-space:nowrap}
+    .alm-mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+    .alm-tabs{display:flex;flex-wrap:wrap;gap:.35rem}
+    .alm-tab{padding:.45rem .9rem;border-radius:.6rem;font-weight:700;font-size:.82rem;color:#64748b;border:1px solid transparent;text-decoration:none}
+    .alm-tab:hover{background:#f1f5f9}
+    .alm-tab-activa{background:#0e6ba8;color:#fff}
+    .alm-tab-activa:hover{background:#0e6ba8}
+    .alm-campos{display:grid;gap:.9rem;grid-template-columns:repeat(auto-fill,minmax(190px,1fr))}
+    .alm-kpis{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+    .alm-kpi{display:block;padding:1.1rem 1.25rem;text-decoration:none}
+    .alm-kpi:hover{border-color:#0e6ba8}
+    .alm-kpi-activo{border-color:#0e6ba8;box-shadow:0 0 0 2px rgba(14,107,168,.15)}
+    .alm-aviso{padding:.75rem 1rem;border-radius:.75rem;font-size:.85rem}
+    .alm-aviso-ambar{background:#fffbeb;color:#92400e;border:1px solid #fde68a}
+    .alm-aviso-rojo{background:#fff1f2;color:#9f1239;border:1px solid #fecdd3}
+    .alm-aviso-azul{background:#f0f9ff;color:#075985;border:1px solid #bae6fd}
+    .alm-chip{display:inline-block;padding:.15rem .5rem;border-radius:.4rem;font-size:.72rem;font-weight:700;background:#f1f5f9;color:#475569}
+    .alm-seccion{padding:1.25rem 1.5rem}
+    .alm-seccion + .alm-seccion{border-top:1px solid #f1f5f9}
+    .alm-titulo{font-size:1rem;font-weight:700;color:#1d1d1f;display:flex;align-items:center;gap:.5rem}
+    .alm-dl{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:.9rem 1.25rem}
+    .alm-dl dt{font-size:.68rem;font-weight:700;color:#94a3b8;text-transform:uppercase}
+    .alm-dl dd{margin:0;font-size:.9rem;color:#1d1d1f;font-weight:600}
+    .alm-scroll{overflow-x:auto}
+    .alm-check{display:flex;align-items:center;gap:.45rem;font-size:.85rem;color:#334155}
+    .alm-check input{width:1.05rem;height:1.05rem;accent-color:#0e6ba8}
+    .alm-partida{border:1px solid #e2e8f0;border-radius:1rem;padding:1.1rem;background:#fff}
+    .alm-partida + .alm-partida{margin-top:1rem}
+    details.alm-plegable > summary{cursor:pointer;list-style:none}
+    details.alm-plegable > summary::-webkit-details-marker{display:none}
+</style>

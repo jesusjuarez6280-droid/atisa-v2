@@ -1,0 +1,52 @@
+{% extends _layout|default("base.html") %}
+{% from 'almacen/_nav.html' import encabezado, campo_csrf with context %}
+{% from 'nucleo/_lote.html' import chip_estatus with context %}
+{% block title %}Devoluciones de cliente | ERP Atisa{% endblock %}
+{% block content %}
+<div class="p-10">
+    {{ encabezado('Devoluciones de cliente', 'Cada devolución crea un lote aparte en cuarentena para que Calidad dictamine', 'devoluciones', 'ri-arrow-go-forward-line') }}
+    {% if puede_operar %}
+    <form method="post" action="{{ url_for('almacen.devolucion_nueva') }}" class="alm-card alm-seccion mb-6">
+        {{ campo_csrf() }}
+        <h2 class="alm-titulo mb-4"><i class="ri-add-line text-[#0e6ba8]"></i> Registrar devolución</h2>
+        {% if vendidos %}
+        <div class="alm-campos">
+            <div style="grid-column:span 2"><label class="alm-label" for="lote_vendido_id">Lote que se vendió</label>
+                <select id="lote_vendido_id" name="lote_vendido_id" class="alm-input" required>
+                    <option value="">Elige el lote…</option>
+                    {% for v in vendidos %}<option value="{{ v.id }}">{{ v.material_codigo }} · {{ v.numero_lote }} · vendido {{ v.vendido|cant }} {{ v.unidad }}{{ ' · devuelto ' ~ (v.devuelto|cant) if v.devuelto }} · {{ v.clientes }}</option>{% endfor %}
+                </select>
+            </div>
+            <div><label class="alm-label" for="cliente">Cliente</label><input id="cliente" name="cliente" required class="alm-input"></div>
+            <div><label class="alm-label" for="cantidad">Cantidad</label><input id="cantidad" name="cantidad" required inputmode="decimal" class="alm-input"></div>
+            <div><label class="alm-label" for="motivo">Motivo</label>
+                <select id="motivo" name="motivo" class="alm-input" required>{% for m in motivos %}<option>{{ m }}</option>{% endfor %}</select></div>
+            <div><label class="alm-label" for="fecha">Fecha</label><input id="fecha" type="date" name="fecha" value="{{ hoy }}" max="{{ hoy }}" class="alm-input"></div>
+        </div>
+        <button class="alm-btn alm-btn-primario mt-4"><i class="ri-check-line"></i> Registrar devolución</button>
+        {% else %}
+        <p class="text-sm text-slate-500">Aún no hay ventas registradas: solo se puede devolver un lote que se vendió.</p>
+        {% endif %}
+    </form>
+    {% endif %}
+    <div class="alm-card alm-scroll">
+        <table class="alm-tabla">
+            <thead><tr><th>Folio</th><th>Fecha</th><th>Cliente</th><th>Producto</th><th>Lote vendido</th><th class="alm-num">Cantidad</th><th>Motivo</th><th>Lote de devolución</th></tr></thead>
+            <tbody>
+            {% for d in devoluciones %}
+            <tr>
+                <td class="alm-mono">{{ d.folio }}</td>
+                <td>{{ d.fecha }}</td>
+                <td>{{ d.cliente }}</td>
+                <td>{{ d.material_codigo }}<br><span class="text-xs text-slate-500">{{ d.material_nombre }}</span></td>
+                <td><a class="text-[#0e6ba8] hover:underline alm-mono" href="{{ url_for('almacen.ficha_lote', lote_id=d.lote_vendido_id) }}">{{ d.lote_vendido }}</a></td>
+                <td class="alm-num">{{ d.cantidad|cant }} {{ d.unidad }}</td>
+                <td>{{ d.motivo }}</td>
+                <td>{% if d.lote_id %}<a class="font-bold text-[#0e6ba8] hover:underline alm-mono" href="{{ url_for('almacen.ficha_lote', lote_id=d.lote_id) }}">{{ d.numero_lote }}</a> {{ chip_estatus(d.estatus) }}{% endif %}</td>
+            </tr>
+            {% else %}<tr><td colspan="8" class="text-center text-slate-500" style="padding:3rem">Sin devoluciones.</td></tr>{% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

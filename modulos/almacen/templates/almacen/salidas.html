@@ -1,0 +1,43 @@
+{% extends _layout|default("base.html") %}
+{% from 'almacen/_nav.html' import encabezado, paginacion with context %}
+{% block title %}Salidas | ERP Atisa{% endblock %}
+{% block content %}
+<div class="p-10">
+    {{ encabezado('Salidas', 'Ventas de producto terminado, destrucciones y devoluciones al proveedor', 'salidas', 'ri-truck-line') }}
+    <div class="alm-card">
+        <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-b border-slate-100">
+            <div class="alm-tabs">
+                <a href="{{ url_for('almacen.salidas') }}" class="alm-tab {{ 'alm-tab-activa' if not tipo }}">Todas</a>
+                {% for clave, nombre in TIPOS_SALIDA.items() %}<a href="{{ url_for('almacen.salidas', tipo=clave) }}" class="alm-tab {{ 'alm-tab-activa' if tipo == clave }}">{{ nombre }}</a>{% endfor %}
+            </div>
+            {% if puede_operar %}
+            <div class="flex flex-wrap gap-2">
+                <a href="{{ url_for('almacen.salida_nueva', tipo='VENTA') }}" class="alm-btn alm-btn-primario"><i class="ri-truck-line"></i> Venta</a>
+                <a href="{{ url_for('almacen.salida_nueva', tipo='DESTRUCCION') }}" class="alm-btn"><i class="ri-delete-bin-6-line"></i> Destrucción</a>
+                <a href="{{ url_for('almacen.salida_nueva', tipo='DEVOLUCION_PROVEEDOR') }}" class="alm-btn"><i class="ri-arrow-go-back-line"></i> Devolución al proveedor</a>
+                <a href="{{ url_for('almacen.devoluciones') }}" class="alm-btn"><i class="ri-arrow-go-forward-line"></i> Devolución de cliente</a>
+            </div>
+            {% endif %}
+        </div>
+        <div class="alm-scroll">
+        <table class="alm-tabla">
+            <thead><tr><th>Folio</th><th>Tipo</th><th>Fecha</th><th>Destino</th><th>Documento</th><th class="alm-num">Lotes</th><th>Registró</th></tr></thead>
+            <tbody>
+            {% for s in salidas %}
+            <tr>
+                <td><a href="{{ url_for('almacen.salida_detalle', salida_id=s.id) }}" hx-boost="false" target="_blank" class="font-bold text-[#0e6ba8] hover:underline alm-mono">{{ s.folio }}</a></td>
+                <td><span class="alm-chip">{{ TIPOS_SALIDA.get(s.tipo, s.tipo) }}</span></td>
+                <td>{{ s.fecha }}</td>
+                <td>{{ s.destino }}</td>
+                <td>{{ s.documento or '—' }}</td>
+                <td class="alm-num">{{ s.partidas }}</td>
+                <td>{{ s.usuario }}</td>
+            </tr>
+            {% else %}<tr><td colspan="7" class="text-center text-slate-500" style="padding:3rem">Aún no hay salidas.</td></tr>{% endfor %}
+            </tbody>
+        </table>
+        </div>
+        {{ paginacion(pagina, paginas, 'almacen.salidas') }}
+    </div>
+</div>
+{% endblock %}

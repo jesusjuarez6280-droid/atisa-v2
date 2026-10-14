@@ -1,0 +1,32 @@
+{% extends 'nucleo/_impresion.html' %}
+{% from 'nucleo/_firma.html' import firmado %}
+{% block hoja_titulo %}{{ 'Remisión de salida' if s.tipo == 'VENTA' else ('Acta de destrucción' if s.tipo == 'DESTRUCCION' else 'Acta de devolución al proveedor') }}{% endblock %}
+{% block hoja_codigo %}{{ codigo_formato|trim }}{% endblock %}
+{% block hoja_folio %}{{ s.folio }}{% endblock %}
+{% block hoja_cuerpo %}
+<div class="no-imprimir"><a href="{{ url_for('almacen.salidas') }}">Volver a salidas</a></div>
+<table>
+    <tr><th>{{ 'Cliente' if s.tipo == 'VENTA' else 'Destino' }}</th><td>{{ s.destino }}</td><th>Fecha</th><td>{{ s.fecha }}</td></tr>
+    <tr><th>Documento</th><td>{{ s.documento or '—' }}</td><th>Registró</th><td>{{ s.usuario }}</td></tr>
+</table>
+<table>
+    <thead><tr><th>#</th><th>Producto o material</th><th>Lote</th><th>Caducidad</th><th>Cantidad</th>{% if s.tipo == 'VENTA' %}<th>Nota</th>{% endif %}</tr></thead>
+    <tbody>
+    {% for p in partidas %}
+    <tr>
+        <td>{{ loop.index }}</td>
+        <td>{{ p.material_codigo }} {{ p.material_nombre }}</td>
+        <td>{{ p.numero_lote }}</td>
+        <td>{{ p.fecha_caducidad or '—' }}</td>
+        <td>{{ p.cantidad|cant }} {{ p.unidad }}</td>
+        {% if s.tipo == 'VENTA' %}<td>{{ p.motivo_lote or '' }}</td>{% endif %}
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% if s.observaciones %}<p>Observaciones: {{ s.observaciones }}</p>{% endif %}
+{% endblock %}
+{% block hoja_firmas %}
+<div>{{ 'Surtió' if s.tipo == 'VENTA' else 'Autorizó' }}<br>{{ firmado(firma) }}</div>
+<div>{{ 'Recibió (cliente)' if s.tipo == 'VENTA' else 'Testigo' }}</div>
+{% endblock %}
