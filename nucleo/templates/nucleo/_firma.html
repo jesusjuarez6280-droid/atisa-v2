@@ -7,26 +7,30 @@
     Envía: firma_significado, firma_numero y firma_pin. En la ruta:
         firmas.firmar(conn, numero_empleado=request.form['firma_numero'],
                       pin=request.form['firma_pin'], significado=request.form['firma_significado'], ...)
+    Dos firmas en el mismo formulario (realizó + verificó): dale a cada una un prefijo y un id.
+        {{ campo_firma('Realizó', id='f-realizo', prefijo='realizo_') }}
+        {{ campo_firma('Verificó', id='f-verifico', prefijo='verifico_') }}
+    y envían realizo_firma_numero / realizo_firma_pin / realizo_firma_significado, etc.
     El PIN nunca se escribe en la bitácora (se omite todo campo con "pin" en el nombre).
 
     firmado(f) pinta "Firmó: NOMBRE · hora" con una fila de la tabla firmas.
 -#}
-{% macro campo_firma(significado, numero=None, id='firma', titulo=None) -%}
+{% macro campo_firma(significado, numero=None, id='firma', titulo=None, prefijo='') -%}
 <div class="atisa-firma bg-slate-50 border border-slate-200 rounded-2xl p-5" data-firma="{{ id }}">
-    <input type="hidden" name="firma_significado" value="{{ significado }}">
+    <input type="hidden" name="{{ prefijo }}firma_significado" value="{{ significado }}">
     <p class="text-xs font-bold text-slate-500 uppercase mb-3 flex items-center gap-2">
         <i class="ri-quill-pen-line text-[#0e6ba8] text-base"></i> {{ titulo or ('Firma: ' ~ significado) }}
     </p>
     <div class="grid grid-cols-2 gap-3 mb-4">
         <div>
             <label for="{{ id }}-numero" class="text-xs font-bold text-slate-500 uppercase mb-1 block">No. empleado</label>
-            <input id="{{ id }}-numero" name="firma_numero" value="{{ numero or '' }}" required
+            <input id="{{ id }}-numero" name="{{ prefijo }}firma_numero" value="{{ numero or '' }}" required
                    inputmode="numeric" autocomplete="off" data-firma-campo
                    class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none text-lg font-bold tabular-nums">
         </div>
         <div>
             <label for="{{ id }}-pin" class="text-xs font-bold text-slate-500 uppercase mb-1 block">PIN</label>
-            <input id="{{ id }}-pin" name="firma_pin" type="password" required minlength="4" maxlength="6"
+            <input id="{{ id }}-pin" name="{{ prefijo }}firma_pin" type="password" required minlength="4" maxlength="6"
                    inputmode="numeric" autocomplete="off" pattern="[0-9]*" data-firma-campo
                    class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none text-lg font-bold tracking-widest">
         </div>
