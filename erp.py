@@ -549,7 +549,9 @@ def inicializar_bd():
                       ('infonavit', 'TEXT'), ('fonacot', 'TEXT'), ('banco_clabe', 'TEXT'),
                       ('fecha_baja', 'TEXT'), ('motivo_baja', 'TEXT'),
                       # Seguridad · obliga a cambiar la contraseña inicial en el siguiente acceso
-                      ('debe_cambiar_password', 'INTEGER DEFAULT 0')]:
+                      ('debe_cambiar_password', 'INTEGER DEFAULT 0'),
+                      # Asistencias · ID del empleado en el reloj ZKTeco (liga las checadas)
+                      ('id_checador', 'TEXT')]:
         if col not in cols_usuarios:
             try:
                 conn.execute(f'ALTER TABLE usuarios ADD COLUMN {col} {tipo}')
@@ -1171,6 +1173,12 @@ def inicializar_bd():
         conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_zk_unico ON registros_zkteco(user_id, fecha, hora)")
     except sqlite3.Error:
         pass
+    # Un ID del reloj pertenece a un solo empleado (los vacíos no cuentan).
+    try:
+        conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_usuarios_id_checador ON usuarios(id_checador) "
+                     "WHERE id_checador IS NOT NULL AND id_checador != ''")
+    except sqlite3.Error:
+        pass
 
     conn.commit()
     conn.close()
@@ -1733,13 +1741,16 @@ def reportes():
         filtro_sql = "AND fecha >= date('now', 'localtime', '-6 days')"
     conn = get_db_connection()
     usuarios = conn.execute("SELECT numero_empleado, nombre_completo FROM usuarios WHERE rol != 'admin'").fetchall()
+    # Una sola consulta para todo el periodo (antes era una por empleado)
+    por_empleado = {}
+    for r in conn.execute(
+            f"SELECT numero_empleado, hora_entrada_real, hora_salida_real, horas_extras "
+            f"FROM resumen_asistencias WHERE 1=1 {filtro_sql}").fetchall():
+        por_empleado.setdefault(r['numero_empleado'], []).append(r)
     reportes_asistencia = []
     for u in usuarios:
         num_emp = u['numero_empleado']
-        registros = conn.execute(
-            f"SELECT hora_entrada_real, hora_salida_real, horas_extras FROM resumen_asistencias WHERE numero_empleado = ? {filtro_sql}",
-            (num_emp,)
-        ).fetchall()
+        registros = por_empleado.get(num_emp, [])
         dias = len(registros)
         if dias == 0:
             continue
@@ -2287,7 +2298,7 @@ EXPEDIENTE_CAMPOS = [
     'num_dependientes', 'emergencia_nombre', 'emergencia_parentesco', 'emergencia_telefono',
     'escolaridad', 'cedula_profesional', 'puesto', 'area', 'fecha_ingreso', 'jefe_inmediato',
     'tipo_contrato', 'fecha_fin_contrato', 'salario_diario', 'tipo_jornada', 'turno',
-    'infonavit', 'fonacot', 'banco_clabe',
+    'infonavit', 'fonacot', 'banco_clabe', 'id_checador',
 ]
 # Campos que cuentan para el % de completitud del expediente.
 EXPEDIENTE_CLAVE = [
@@ -2366,15 +2377,26 @@ def expediente_guardar():
     sets = ', '.join(f'{c} = ?' for c in EXPEDIENTE_CAMPOS)
     valores = [(request.form.get(c) or '').strip() or None for c in EXPEDIENTE_CAMPOS]
     conn = get_db_connection()
+    guardado = False
     try:
         conn.execute(f'UPDATE usuarios SET {sets} WHERE numero_empleado = ?', (*valores, num))
         conn.commit()
         cache.delete('empleados_activos')
+        guardado = True
         flash('Expediente guardado correctamente.', 'success')
+    except sqlite3.IntegrityError:
+        flash('Ese ID del checador ya está asignado a otro empleado.', 'error')
     except Exception:
         flash('No se pudo guardar el expediente.', 'error')
     finally:
         conn.close()
+    id_checador = (request.form.get('id_checador') or '').strip()
+    if guardado and id_checador:
+        # Re-liga al instante las checadas que ya se habían importado con ese ID.
+        try:
+            procesar_asistencias(user_ids=[id_checador])
+        except Exception:
+            app.logger.exception('No se pudo reprocesar asistencias del ID %s', id_checador)
     return hx_redirect(url_for('expediente', numero_empleado=num))
 
 
@@ -2785,7 +2807,7 @@ def tablero():
         FROM documentos_empleados GROUP BY numero_empleado
     ''').fetchall())
     activos = conn.execute(
-        "SELECT numero_empleado FROM usuarios WHERE estatus = 1 AND rol != 'admin'"
+        "SELECT numero_empleado, nombre_completo, area FROM usuarios WHERE estatus = 1 AND rol != 'admin'"
     ).fetchall()
     completos = sum(1 for a in activos if docs_por_emp.get(a['numero_empleado'], 0) >= total_docs_req)
     cumpl_doc = round(completos / len(activos) * 100) if activos else 0
@@ -2827,10 +2849,9 @@ def tablero():
         num = a['numero_empleado']
         tiene = docs_por_emp.get(num, 0)
         if tiene < total_docs_req:
-            u = conn.execute("SELECT nombre_completo, area FROM usuarios WHERE numero_empleado = ?", (num,)).fetchone()
             faltan = total_docs_req - tiene
             alertas.append({'tipo': 'Expediente incompleto', 'icono': 'ri-folder-warning-line', 'nivel': 'amarillo',
-                            'nombre': u['nombre_completo'] if u else num, 'area': u['area'] if u else '',
+                            'nombre': a['nombre_completo'] or num, 'area': a['area'] or '',
                             'detalle': f"Faltan {faltan} de {total_docs_req} documentos", 'ref': num})
 
     # Ordena: rojos primero, luego amarillos
@@ -3194,69 +3215,129 @@ def _parse_hora(s):
             continue
     return None
 
-def procesar_asistencias():
+def _normalizar_nombre(nombre):
+    """'  José  Pérez ' -> 'JOSE PEREZ': sin acentos, mayúsculas y espacios simples,
+    para que el nombre del reloj coincida aunque se haya capturado distinto."""
+    import unicodedata
+    t = unicodedata.normalize('NFKD', str(nombre or ''))
+    t = ''.join(ch for ch in t if not unicodedata.combining(ch))
+    return ' '.join(t.upper().split())
+
+def _hora_normalizada(valor):
+    """Cualquier hora del Excel -> 'HH:MM:SS' (para que ordenar por texto sea correcto)."""
+    if valor is None:
+        return None
+    if hasattr(valor, 'strftime'):
+        return valor.strftime('%H:%M:%S')
+    h = _parse_hora(valor)
+    return h.strftime('%H:%M:%S') if h else str(valor).strip()
+
+def procesar_asistencias(fechas=None, user_ids=None):
+    """Calcula resumen_asistencias (entrada, salida, retardo, horas extra) a partir de
+    las checadas crudas del ZKTeco.
+
+    - Solo recalcula lo necesario: las 'fechas' recién importadas o los 'user_ids'
+      del reloj indicados (sin argumentos recalcula todo).
+    - Liga cada checada al empleado en este orden: ID del checador del expediente →
+      número de empleado igual al ID del reloj → nombre (sin acentos/mayúsculas).
+      Si liga por nombre y el empleado no tenía ID del checador, se lo aprende.
+    - Todo en pocas consultas (antes eran 3 consultas por cada empleado-día).
+    Devuelve cuántos empleado-día se recalcularon."""
     conn = get_db_connection()
-    combos = conn.execute('''
-        SELECT DISTINCT user_id, nombre, fecha
-        FROM registros_zkteco
-        ORDER BY fecha ASC, nombre ASC
-    ''').fetchall()
+    try:
+        filtro, params = '', []
+        if fechas:
+            fechas = sorted(set(fechas))
+            filtro = f"WHERE fecha IN ({','.join('?' * len(fechas))})"
+            params = fechas
+        elif user_ids:
+            user_ids = sorted(set(str(u) for u in user_ids))
+            filtro = f"WHERE user_id IN ({','.join('?' * len(user_ids))})"
+            params = user_ids
+        checadas = conn.execute(
+            f'SELECT user_id, nombre, fecha, hora FROM registros_zkteco {filtro}', params).fetchall()
+        if not checadas:
+            return 0
 
-    for combo in combos:
-        nombre = combo['nombre']
-        fecha = combo['fecha']
-        checks = conn.execute(
-            'SELECT hora FROM registros_zkteco WHERE nombre = ? AND fecha = ? ORDER BY hora ASC',
-            (nombre, fecha)
-        ).fetchall()
-        if not checks:
-            continue
+        usuarios = conn.execute(
+            'SELECT numero_empleado, nombre_completo, id_checador FROM usuarios').fetchall()
+        por_checador = {str(u['id_checador']).strip(): u for u in usuarios
+                        if u['id_checador'] and str(u['id_checador']).strip()}
+        por_numero = {str(u['numero_empleado']).strip(): u for u in usuarios if u['numero_empleado']}
+        por_nombre = {}
+        for u in usuarios:
+            por_nombre.setdefault(_normalizar_nombre(u['nombre_completo']), []).append(u)
+        horarios = {h['numero_empleado']: (h['hora_entrada'], h['hora_salida'])
+                    for h in conn.execute('SELECT numero_empleado, hora_entrada, hora_salida FROM horarios_empleados')}
 
-        hora_entrada_real = checks[0]['hora']
-        hora_salida_real = checks[-1]['hora'] if len(checks) > 1 else None
+        def resolver(user_id, nombre):
+            if user_id in por_checador:
+                return por_checador[user_id]
+            if user_id in por_numero:
+                return por_numero[user_id]
+            candidatos = por_nombre.get(_normalizar_nombre(nombre), [])
+            if len(candidatos) == 1:
+                u = candidatos[0]
+                if not u['id_checador'] and user_id not in por_checador:
+                    conn.execute('UPDATE usuarios SET id_checador = ? WHERE numero_empleado = ?',
+                                 (user_id, u['numero_empleado']))
+                    por_checador[user_id] = u
+                return u
+            return None
 
-        usuario = conn.execute(
-            'SELECT numero_empleado FROM usuarios WHERE nombre_completo = ?',
-            (nombre,)
-        ).fetchone()
-        if usuario:
-            numero_empleado = usuario['numero_empleado']
-            horario = conn.execute(
-                'SELECT hora_entrada, hora_salida FROM horarios_empleados WHERE numero_empleado = ?',
-                (numero_empleado,)
-            ).fetchone()
-            hora_entrada_cfg = horario['hora_entrada'] if horario else '08:30'
-            hora_salida_cfg = horario['hora_salida'] if horario else '18:00'
-        else:
-            numero_empleado = combo['user_id']
-            hora_entrada_cfg = '08:30'
-            hora_salida_cfg = '18:00'
+        # Agrupa las checadas por (ID del reloj, fecha) en memoria
+        grupos = {}
+        for c in checadas:
+            clave = (str(c['user_id']).strip(), c['fecha'])
+            g_ = grupos.setdefault(clave, {'nombre': c['nombre'], 'horas': []})
+            h = _parse_hora(c['hora'])
+            if h:
+                g_['horas'].append(h)
 
-        minutos_retardo = 0
-        ent_real = _parse_hora(hora_entrada_real)
-        ent_cfg = _parse_hora(hora_entrada_cfg)
-        if ent_real and ent_cfg and ent_real > ent_cfg:
-            minutos_retardo = max(0, int((ent_real - ent_cfg).total_seconds() / 60))
+        filas, obsoletas = [], []
+        for (user_id, fecha), g_ in grupos.items():
+            if not g_['horas']:
+                continue
+            horas = sorted(g_['horas'])
+            ent_real = horas[0]
+            sal_real = horas[-1] if len(horas) > 1 else None
+            u = resolver(user_id, g_['nombre'])
+            if u:
+                numero_empleado, nombre = u['numero_empleado'], u['nombre_completo']
+                if numero_empleado != user_id and user_id not in por_numero:
+                    # Si antes quedó guardado con el ID del reloj (sin ligar), se limpia.
+                    obsoletas.append((user_id, fecha))
+            else:
+                numero_empleado, nombre = user_id, g_['nombre']
+            hora_entrada_cfg, hora_salida_cfg = horarios.get(numero_empleado, ('08:30', '18:00'))
 
-        horas_extras = 0.0
-        if hora_salida_real:
-            sal_real = _parse_hora(hora_salida_real)
+            minutos_retardo = 0
+            ent_cfg = _parse_hora(hora_entrada_cfg)
+            if ent_cfg and ent_real > ent_cfg:
+                minutos_retardo = max(0, int((ent_real - ent_cfg).total_seconds() / 60))
+            horas_extras = 0.0
             sal_cfg = _parse_hora(hora_salida_cfg)
             if sal_real and sal_cfg and sal_real > sal_cfg:
                 horas_extras = max(0.0, round((sal_real - sal_cfg).total_seconds() / 3600.0, 2))
+            filas.append((numero_empleado, nombre, fecha, ent_real.strftime('%H:%M:%S'),
+                          sal_real.strftime('%H:%M:%S') if sal_real else None,
+                          minutos_retardo, horas_extras,
+                          'Retardo' if minutos_retardo > 0 else 'Presente'))
 
-        estatus = 'Retardo' if minutos_retardo > 0 else 'Presente'
-
-        conn.execute('''
+        if obsoletas:
+            conn.executemany('DELETE FROM resumen_asistencias WHERE numero_empleado = ? AND fecha = ?', obsoletas)
+        conn.executemany('''
             INSERT OR REPLACE INTO resumen_asistencias
             (numero_empleado, nombre, fecha, hora_entrada_real, hora_salida_real,
              minutos_retardo, horas_extras, estatus)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (numero_empleado, nombre, fecha, hora_entrada_real, hora_salida_real,
-              minutos_retardo, horas_extras, estatus))
+        ''', filas)
+        conn.commit()
+        return len(filas)
+    finally:
+        conn.close()
 
-    conn.commit()
-    conn.close()
+ASISTENCIAS_POR_PAGINA = 100
 
 @app.route('/asistencias')
 @login_required
@@ -3271,11 +3352,21 @@ def asistencias():
         WHERE u.rol != 'admin'
         ORDER BY u.nombre_completo
     ''').fetchall()
+    total = conn.execute('SELECT COUNT(*) n FROM resumen_asistencias').fetchone()['n']
+    paginas = max(1, math.ceil(total / ASISTENCIAS_POR_PAGINA))
+    pagina = min(max(1, _int_seguro(request.args.get('pagina'), 1)), paginas)
     resumen = conn.execute(
-        'SELECT * FROM resumen_asistencias ORDER BY fecha DESC, nombre ASC'
+        'SELECT * FROM resumen_asistencias ORDER BY fecha DESC, nombre ASC LIMIT ? OFFSET ?',
+        (ASISTENCIAS_POR_PAGINA, (pagina - 1) * ASISTENCIAS_POR_PAGINA)
     ).fetchall()
+    sin_ligar = conn.execute('''
+        SELECT COUNT(DISTINCT r.numero_empleado) n FROM resumen_asistencias r
+        LEFT JOIN usuarios u ON u.numero_empleado = r.numero_empleado
+        WHERE u.id IS NULL
+    ''').fetchone()['n']
     conn.close()
-    return render_page('asistencias.html', empleados=empleados, resumen=resumen)
+    return render_page('asistencias.html', empleados=empleados, resumen=resumen,
+                       total_resumen=total, pagina=pagina, paginas=paginas, sin_ligar=sin_ligar)
 
 @app.route('/importar_zkteco', methods=['POST'])
 @login_required
@@ -3300,6 +3391,7 @@ def importar_zkteco():
     conn = get_db_connection()
     insertados = 0
     repetidos = 0
+    fechas_importadas = set()
     try:
         for _, fila in df.iterrows():
             user_id = str(fila.get('user_id', '')).strip()
@@ -3315,10 +3407,8 @@ def importar_zkteco():
             else:
                 fecha = str(fecha_raw).strip()[:10]
 
-            if hasattr(hora_raw, 'strftime'):
-                hora = hora_raw.strftime('%H:%M:%S')
-            else:
-                hora = str(hora_raw).strip()
+            hora = _hora_normalizada(hora_raw)
+            fechas_importadas.add(fecha)
 
             zk_id = fila.get('id')
             try:
@@ -3346,13 +3436,28 @@ def importar_zkteco():
         conn.close()
 
     try:
-        procesar_asistencias()
+        if fechas_importadas:
+            procesar_asistencias(fechas=fechas_importadas)
     except Exception:
+        app.logger.exception('Falló el cálculo del resumen de asistencias')
         flash('Los registros se importaron, pero falló el cálculo del resumen de asistencias.', 'error')
         return hx_redirect(url_for('asistencias'))
 
     extra = f' ({repetidos} ya existían y se omitieron)' if repetidos else ''
     flash(f'Se importaron {insertados} registros nuevos{extra} y se procesó el resumen de asistencias.', 'success')
+    return hx_redirect(url_for('asistencias'))
+
+@app.route('/asistencias/reprocesar', methods=['POST'])
+@login_required
+@requiere_modulo('asistencias')
+def asistencias_reprocesar():
+    """Recalcula todo el resumen (útil tras cambiar horarios o IDs del checador)."""
+    try:
+        n = procesar_asistencias()
+        flash(f'Se recalcularon {n} registros de asistencia.', 'success')
+    except Exception:
+        app.logger.exception('Falló el reprocesamiento de asistencias')
+        flash('No se pudo recalcular el resumen de asistencias.', 'error')
     return hx_redirect(url_for('asistencias'))
 
 @app.route('/exportar_asistencias')
@@ -4566,10 +4671,16 @@ def produccion():
         total = (r['turno_manana'] or 0) + (r['turno_tarde'] or 0)
         filas.append({**dict(r), 'total': total})
     # KPIs del mes en curso
+    # (se calculan en SQL sobre TODO el mes, no sobre los 200 registros que se muestran)
     mes_actual = datetime.now().strftime('%Y-%m')
-    delmes = [f for f in filas if (f['fecha'] or '').startswith(mes_actual)]
-    total_mes = sum(f['total'] for f in delmes)
-    dias_reg = len(set(f['fecha'] for f in delmes))
+    conn = get_db_connection()
+    k = conn.execute('''
+        SELECT COALESCE(SUM(COALESCE(turno_manana, 0) + COALESCE(turno_tarde, 0)), 0) AS total,
+               COUNT(DISTINCT fecha) AS dias
+        FROM produccion_llenado WHERE fecha LIKE ?
+    ''', (f'{mes_actual}%',)).fetchone()
+    conn.close()
+    total_mes, dias_reg = k['total'], k['dias']
     kpis = {
         'total_mes': total_mes,
         'dias': dias_reg,
