@@ -10,15 +10,21 @@ ROLES_PLANTA = ('operador', 'produccion')
 ROLES_SUPERVISOR = ('produccion',)
 
 
+def campo(prefijo, nombre):
+    """Nombre del campo que envía campo_firma (nucleo/_firma.html): 'firma' es la firma única de oficina
+    (firma_numero); cualquier otro prefijo es una de varias en el formulario (realizo_firma_numero)."""
+    return f'firma_{nombre}' if prefijo == 'firma' else f'{prefijo}_firma_{nombre}'
+
+
 def firmar(conn, prefijo, significado, entidad, entidad_id, detalle='', **kwargs):
-    """Firma con los campos <prefijo>_numero y <prefijo>_pin del formulario (ver _firmas.html)."""
-    return firmas.firmar(conn, numero_empleado=request.form.get(f'{prefijo}_numero'),
-                         pin=request.form.get(f'{prefijo}_pin'), significado=significado, modulo='ordenes',
+    """Firma con los campos de campo_firma del formulario (ver _firmas.html)."""
+    return firmas.firmar(conn, numero_empleado=request.form.get(campo(prefijo, 'numero')),
+                         pin=request.form.get(campo(prefijo, 'pin')), significado=significado, modulo='ordenes',
                          entidad=entidad, entidad_id=entidad_id, detalle=detalle, **kwargs)
 
 
 def numero_firmante(prefijo):
-    return (request.form.get(f'{prefijo}_numero') or '').strip()
+    return (request.form.get(campo(prefijo, 'numero')) or '').strip()
 
 
 def avisar_error(e):

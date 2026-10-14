@@ -6,7 +6,7 @@ from nucleo.auth import login_required, requiere_modulo
 from nucleo.db import get_db_connection
 from nucleo.vistas import full_page
 
-from .blueprint import ROLES_PLANTA, ROLES_SUPERVISOR, accion, bp, firmar, numero_firmante, usuario
+from .blueprint import ROLES_PLANTA, ROLES_SUPERVISOR, accion, bp, campo, firmar, numero_firmante, usuario
 from .servicios import ErrorOrdenes
 from .servicios import ordenes as srv_ordenes
 from .servicios import planta as srv_planta
@@ -35,7 +35,7 @@ def _desviacion(origen, origen_id, o, texto, equipo_id=None, lotes=None):
 
 def _verifica(prefijo, realizo_prefijo='realizo'):
     """Si el formulario trae la firma de quien verifica."""
-    return bool(numero_firmante(prefijo)) or bool(request.form.get(f'{prefijo}_pin'))
+    return bool(numero_firmante(prefijo)) or bool(request.form.get(campo(prefijo, 'pin')))
 
 
 @bp.route('/planta')

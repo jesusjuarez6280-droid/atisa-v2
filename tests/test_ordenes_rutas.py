@@ -3,6 +3,7 @@ import pytest
 
 from fabricas import PASSWORD, conexion, crear_usuario, login
 from modulos.ordenes.servicios import ordenes as srv_ordenes
+from modulos.ordenes.servicios import planta as srv_planta
 from test_ordenes_flujo import Planta
 
 
@@ -48,3 +49,20 @@ def test_operador_no_entra_a_oficina(client, orden_en_proceso):
     assert client.get(f'/ordenes/planta/{oid}').status_code == 200
     assert client.get('/ordenes/formulas').status_code != 200
     assert client.get(f'/ordenes/{oid}').status_code != 200
+
+
+def test_despeje_desde_la_tablet_con_dos_firmas(client):
+    conn = conexion()
+    planta = Planta(conn)
+    oid = planta.orden()
+    conn.close()
+    _entrar(client, 'operador')
+    html = client.get(f'/ordenes/planta/{oid}/despeje?momento=Fabricación').get_data(as_text=True)
+    assert 'name="realizo_firma_numero"' in html and 'name="verifico_firma_pin"' in html
+    datos = {k: '1' for k, _ in srv_planta.CHECKS_DESPEJE}
+    datos.update({'momento': 'Fabricación', 'realizo_firma_numero': planta.operador, 'realizo_firma_pin': '2580',
+                  'verifico_firma_numero': planta.jefe, 'verifico_firma_pin': '2580'})
+    client.post(f'/ordenes/planta/{oid}/despeje?momento=Fabricación', data=datos)
+    conn = conexion()
+    assert 'Fabricación' in srv_ordenes.despejes(conn, oid)
+    conn.close()
