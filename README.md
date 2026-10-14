@@ -17,7 +17,7 @@ Sistema interno (ERP/Intranet) para **ATISA**, laboratorio fabricante de medicam
   - Calcula **antigüedad y días de vacaciones** según la LFT (reforma 2023).
   - Genera el calendario de **días festivos oficiales de México** (LFT Art. 74).
 - **Seguridad:** control de acceso por roles (RBAC), protección **CSRF** (Flask-WTF), re-validación de sesión contra BD en cada request, blindaje anti-escalada de privilegios, headers anti-XSS y guard anti doble-clic.
-- **Generación de documentos** con ReportLab (responsivas, cartas, acuses imprimibles).
+- **Documentos imprimibles** en HTML listo para imprimir o guardar como PDF desde el navegador (responsivas, constancias, acuses).
 
 ## 🧩 Módulos
 
@@ -31,7 +31,7 @@ Recursos Humanos · Empleados · Asistencias (ZKTeco) · Incidencias · Capacita
 | Base de datos | **SQLite** (modo WAL, PRAGMAs de rendimiento, FK) |
 | Frontend | **HTMX** · **Tailwind CSS** (precompilado) · Remix Icons |
 | Seguridad | Flask-WTF (CSRF) · Werkzeug (hash de contraseñas) |
-| Datos / archivos | pandas · openpyxl · ReportLab |
+| Datos / archivos | pandas · openpyxl |
 | Despliegue | Gunicorn (ver `requirements.txt`) |
 
 ## 🎨 Diseño

@@ -26,3 +26,4 @@ static/img_recetas/
 
 # --- Respaldos automáticos diarios de la base ---
 respaldos/
+logs/

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Algo salió mal | ERP Atisa</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/remixicon.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/estilos.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+</head>
+<body>
+    <div class="min-h-screen flex items-center justify-center bg-[#f8fafc] px-6 py-12" style="font-family: Inter, sans-serif;">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-12 max-w-md text-center">
+            <div class="w-16 h-16 mx-auto rounded-2xl bg-blue-50 text-[#0e6ba8] flex items-center justify-center mb-5">
+                <i class="ri-error-warning-line text-3xl"></i>
+            </div>
+            <h1 class="text-xl font-bold text-[#1d1d1f] mb-2">Algo salió mal</h1>
+            <p class="text-slate-500 text-sm leading-relaxed">
+                La operación no se completó. El error quedó registrado para revisarlo.
+                Vuelve a intentarlo y, si se repite, avisa al administrador del sistema.
+            </p>
+            <a href="/" class="mt-6 inline-flex items-center gap-2 h-11 px-5 rounded-xl bg-[#1d1d1f] text-white text-sm font-semibold hover:bg-[#0e6ba8] transition-colors">
+                <i class="ri-home-5-line"></i> Ir al inicio
+            </a>
+        </div>
+    </div>
+</body>
+</html>
