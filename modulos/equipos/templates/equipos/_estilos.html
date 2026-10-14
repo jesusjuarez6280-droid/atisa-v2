@@ -1,0 +1,16 @@
+{#- Clases que el Tailwind precompilado no trae y que usan las pantallas de Equipos. -#}
+<style>
+    .bg-emerald-600{background-color:#059669}
+    .bg-slate-600{background-color:#475569}
+    .gap-x-6{column-gap:1.5rem}
+    .gap-y-4{row-gap:1rem}
+    .ml-5{margin-left:1.25rem}
+    .opacity-50{opacity:.5}
+    .opacity-70{opacity:.7}
+    .whitespace-pre-line{white-space:pre-line}
+    @media (min-width:640px){ .sm\:grid-cols-4{grid-template-columns:repeat(4,minmax(0,1fr))} }
+    @media (min-width:1024px){
+        .lg\:col-span-2{grid-column:span 2 / span 2}
+        .lg\:grid-cols-5{grid-template-columns:repeat(5,minmax(0,1fr))}
+    }
+</style>

@@ -1,0 +1,45 @@
+{% extends _layout|default("base.html") %}
+{% from 'equipos/_comun.html' import chip_cal, vence, encabezado, boton, csrf with context %}
+{% block title %}Mantenimiento | Equipos | ERP Atisa{% endblock %}
+{% block content %}
+{% include 'equipos/_estilos.html' %}
+<div class="p-10">
+    {% call encabezado('Mantenimiento', 'Preventivo por programa y correctivo por fallas', 'ri-hammer-line') %}
+        {{ boton(url_for('equipos.lista'), 'Equipos', 'ri-arrow-left-line') }}
+        {{ boton(url_for('equipos.falla'), 'Reportar falla', 'ri-alarm-warning-line') }}
+    {% endcall %}
+    <nav class="flex flex-wrap gap-2 mb-4">
+        {% for clave, texto, n in [('por_hacer', 'Por hacer', por_hacer|length), ('abiertas', 'Abiertas', cuentas.ABIERTA), ('terminadas', 'Terminadas', cuentas.TERMINADA), ('canceladas', 'Canceladas', cuentas.CANCELADA)] %}
+        <a href="{{ url_for('equipos.mantenimiento_lista', tab=clave) }}" class="px-4 py-2 rounded-xl text-sm font-bold {% if tab == clave %}bg-[#0e6ba8] text-white{% else %}bg-white border border-slate-200 text-slate-600 hover:bg-slate-50{% endif %}">{{ texto }} <span class="opacity-70">{{ n }}</span></a>
+        {% endfor %}
+    </nav>
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+    {% if tab == 'por_hacer' %}
+        {% if por_hacer %}
+        <table class="w-full text-sm">
+            <thead class="bg-slate-50 text-xs text-slate-500 uppercase"><tr><th class="text-left px-6 py-3">Equipo</th><th class="text-left px-6 py-3">Área</th><th class="text-left px-6 py-3">Vence</th><th class="text-left px-6 py-3">Cada</th><th class="text-left px-6 py-3"></th></tr></thead>
+            <tbody class="divide-y divide-slate-100">{% for p in por_hacer %}
+            <tr><td class="px-6 py-3"><a href="{{ url_for('equipos.ficha', equipo_id=p.equipo_id, tab='mantenimiento') }}" class="font-bold text-[#0e6ba8] hover:underline">{{ p.codigo }}</a> {{ p.nombre }}</td>
+                <td class="px-6 py-3">{{ p.area or '—' }}</td><td class="px-6 py-3">{{ vence(p.vence_mantenimiento, p.dias_aviso) }}</td><td class="px-6 py-3">{{ p.frecuencia_meses }} meses</td>
+                <td class="px-6 py-3 text-right">{% if puede('equipos_operar') %}
+                    <form action="{{ url_for('equipos.abrir_ot') }}" method="POST">{{ csrf() }}<input type="hidden" name="equipo_id" value="{{ p.equipo_id }}">
+                    <button type="submit" class="px-4 py-2 rounded-xl bg-[#0e6ba8] text-white text-sm font-bold hover:bg-[#1d1d1f]">Abrir orden</button></form>{% endif %}</td></tr>
+            {% endfor %}</tbody>
+        </table>
+        {% else %}<p class="p-6 text-sm text-slate-400">No hay preventivos por hacer.</p>{% endif %}
+    {% else %}
+        {% if ordenes %}
+        <table class="w-full text-sm">
+            <thead class="bg-slate-50 text-xs text-slate-500 uppercase"><tr><th class="text-left px-6 py-3">Folio</th><th class="text-left px-6 py-3">Equipo</th><th class="text-left px-6 py-3">Tipo</th><th class="text-left px-6 py-3">Descripción</th><th class="text-left px-6 py-3">Programada</th><th class="text-left px-6 py-3">Estatus</th></tr></thead>
+            <tbody class="divide-y divide-slate-100">{% for o in ordenes %}
+            <tr><td class="px-6 py-3"><a href="{{ url_for('equipos.ot', ot_id=o.id) }}" class="font-bold text-[#0e6ba8] hover:underline">{{ o.folio }}</a></td>
+                <td class="px-6 py-3">{{ o.codigo }} · {{ o.equipo_nombre }}</td><td class="px-6 py-3">{{ o.tipo|capitalize }}{% if o.tipo == 'CORRECTIVO' and o.se_puede_usar == 0 %} <span class="text-rose-600 text-xs font-bold">sin usar</span>{% endif %}</td>
+                <td class="px-6 py-3 text-slate-600">{{ o.descripcion|truncate(60) }}</td>
+                <td class="px-6 py-3 {{ 'text-rose-600 font-bold' if o.estatus == 'ABIERTA' and o.fecha_programada and o.fecha_programada < hoy }}">{{ o.fecha_programada or '—' }}</td><td class="px-6 py-3">{{ chip_cal(o.estatus) }}</td></tr>
+            {% endfor %}</tbody>
+        </table>
+        {% else %}<p class="p-6 text-sm text-slate-400">No hay órdenes.</p>{% endif %}
+    {% endif %}
+    </section>
+</div>
+{% endblock %}

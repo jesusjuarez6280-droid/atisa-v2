@@ -1,0 +1,25 @@
+{% extends 'equipos/_planta_base.html' %}
+{% block titulo %}Reportar falla de equipo{% endblock %}
+{% block cuerpo %}
+<form action="{{ url_for('equipos.planta_falla') }}" method="POST" enctype="multipart/form-data" class="flex flex-col gap-6" autocomplete="off">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% set sel = form.get('equipo_id')|int if form.get('equipo_id') else elegido %}
+    <div class="bg-white rounded-2xl border border-slate-200 p-6">
+        <p class="text-xs font-bold text-slate-500 uppercase mb-3">Equipo *</p>
+        {% for area, lista in areas.items() %}
+        <p class="text-sm font-bold text-[#0e6ba8] mt-3 mb-2">{{ area }}</p>
+        <div class="grid grid-cols-2 lg:grid-cols-3 gap-3">
+            {% for e in lista %}
+            <label class="flex items-center gap-3 px-4 py-3 rounded-xl border-2 border-slate-200 cursor-pointer hover:border-[#0e6ba8]">
+                <input type="radio" name="equipo_id" value="{{ e.id }}" required {{ 'checked' if sel == e.id }}>
+                <span><b class="text-[#1d1d1f]">{{ e.codigo }}</b><br><span class="text-xs text-slate-500">{{ e.nombre }}{{ ' · fuera de servicio' if e.estatus == 'FUERA_DE_SERVICIO' }}</span></span>
+            </label>
+            {% endfor %}
+        </div>
+        {% else %}<p class="text-slate-400">No hay equipos dados de alta.</p>{% endfor %}
+    </div>
+    <div class="bg-white rounded-2xl border border-slate-200 p-6 flex flex-col gap-5">
+        {% with oficina=False %}{% include 'equipos/_falla_campos.html' %}{% endwith %}
+    </div>
+</form>
+{% endblock %}

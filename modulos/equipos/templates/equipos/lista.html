@@ -1,0 +1,88 @@
+{% extends _layout|default("base.html") %}
+{% from 'equipos/_comun.html' import chip_estatus, vence, chip_verif, encabezado, boton with context %}
+{% block title %}Equipos | ERP Atisa{% endblock %}
+{% block content %}
+{% include 'equipos/_estilos.html' %}
+<div class="p-10">
+    {% call encabezado('Equipos', 'Calibración, verificación del día y mantenimiento', 'ri-tools-line') %}
+        {{ boton(url_for('equipos.calibraciones_lista'), 'Calibraciones', 'ri-scales-3-line') }}
+        {{ boton(url_for('equipos.mantenimiento_lista'), 'Mantenimiento', 'ri-hammer-line') }}
+        {{ boton(url_for('equipos.programa_anual'), 'Programa anual', 'ri-calendar-2-line') }}
+        <a href="{{ url_for('equipos.exportar') }}" hx-boost="false" class="flex items-center gap-2 h-11 px-4 rounded-xl text-sm font-bold border border-slate-200 text-slate-600 bg-white hover:bg-slate-50"><i class="ri-file-excel-2-line"></i> Excel</a>
+        {{ boton(url_for('equipos.falla'), 'Reportar falla', 'ri-alarm-warning-line') }}
+        {% if puede('equipos_operar') %}{{ boton(url_for('equipos.nuevo'), 'Nuevo equipo', 'ri-add-line', True) }}{% endif %}
+    {% endcall %}
+
+    <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+        {% for clave, titulo, valor, color in [
+            ('cal_vencida', 'Calibraciones vencidas', ind.cal_vencida, 'text-rose-600'),
+            ('cal_por_vencer', 'Vencen en 30 días', ind.cal_por_vencer, 'text-amber-600'),
+            ('man_vencido', 'Mantenimientos vencidos', ind.man_vencido, 'text-amber-600'),
+            ('fuera', 'Fuera de servicio', ind.fuera, 'text-rose-600'),
+            ('verif_pendiente', 'Verificaciones de hoy', ind.verif_hechas ~ '/' ~ ind.verif_tocan, 'text-[#0e6ba8]')] %}
+        <a href="{{ url_for('equipos.lista', filtro=clave) }}" class="bg-white rounded-2xl shadow-sm border {% if f.filtro == clave %}border-[#0e6ba8]{% else %}border-slate-200{% endif %} p-5 hover:border-[#0e6ba8]">
+            <p class="text-xs font-bold text-slate-500 uppercase">{{ titulo }}</p>
+            <p class="text-3xl font-bold mt-2 {{ color if (valor != 0) else 'text-slate-400' }}">{{ valor }}</p>
+        </a>
+        {% endfor %}
+    </div>
+
+    <form method="GET" action="{{ url_for('equipos.lista') }}" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 mb-6 flex flex-wrap items-end gap-3">
+        <div class="flex-1"><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Buscar</label>
+            <input name="q" value="{{ f.q }}" placeholder="Código, nombre o serie" class="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none text-sm"></div>
+        <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Tipo</label>
+            <select name="tipo" class="select-pro"><option value="">Todos</option>{% for t in tipos %}<option {{ 'selected' if f.tipo == t }}>{{ t }}</option>{% endfor %}</select></div>
+        <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Área</label>
+            <select name="area" class="select-pro"><option value="">Todas</option>{% for a in areas %}<option {{ 'selected' if f.area == a }}>{{ a }}</option>{% endfor %}</select></div>
+        <div><label class="text-xs font-bold text-slate-500 uppercase mb-1 block">Estatus</label>
+            <select name="estatus" class="select-pro"><option value="">Activos</option>
+                {% for v, t in [('EN_SERVICIO', 'En servicio'), ('FUERA_DE_SERVICIO', 'Fuera de servicio'), ('BAJA', 'Baja')] %}<option value="{{ v }}" {{ 'selected' if f.estatus == v }}>{{ t }}</option>{% endfor %}</select></div>
+        <label class="flex items-center gap-2 text-sm text-slate-600 h-11"><input type="checkbox" name="instrumentos" value="1" {{ 'checked' if f.instrumentos }}> Solo instrumentos</label>
+        {% if f.filtro %}<input type="hidden" name="filtro" value="{{ f.filtro }}">{% endif %}
+        <button type="submit" class="h-11 px-5 rounded-xl bg-[#0e6ba8] text-white text-sm font-bold hover:bg-[#1d1d1f]">Filtrar</button>
+        {% if f.values()|select|list %}<a href="{{ url_for('equipos.lista') }}" class="h-11 px-4 flex items-center text-sm font-bold text-slate-500 hover:text-[#0e6ba8]">Quitar filtros</a>{% endif %}
+    </form>
+    {% if f.filtro %}<p class="text-sm text-slate-500 mb-3">Mostrando: <span class="font-bold text-[#1d1d1f]">{{ filtros.get(f.filtro, f.filtro) }}</span></p>{% endif %}
+
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        {% if equipos %}
+        <table class="w-full text-sm">
+            <thead class="bg-slate-50 text-xs text-slate-500 uppercase">
+                <tr><th class="text-left px-6 py-3">Código</th><th class="text-left px-6 py-3">Equipo</th><th class="text-left px-6 py-3">Área</th>
+                    <th class="text-left px-6 py-3">Estatus</th><th class="text-left px-6 py-3">Calibración</th>
+                    <th class="text-left px-6 py-3">Mantenimiento</th><th class="text-left px-6 py-3">Verificación de hoy</th></tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                {% for e in equipos %}
+                <tr class="hover:bg-slate-50">
+                    <td class="px-6 py-3 font-bold whitespace-nowrap"><a href="{{ url_for('equipos.ficha', equipo_id=e.id) }}" class="text-[#0e6ba8] hover:underline">{{ e.codigo }}</a></td>
+                    <td class="px-6 py-3"><p class="font-semibold text-[#1d1d1f]">{{ e.nombre }}</p><p class="text-xs text-slate-400">{{ e.tipo }}</p></td>
+                    <td class="px-6 py-3 text-slate-600">{{ e.area or '—' }}</td>
+                    <td class="px-6 py-3 whitespace-nowrap">{{ chip_estatus(e.estatus) }}</td>
+                    <td class="px-6 py-3 whitespace-nowrap">{{ vence(e.vence_calibracion, 30, 'Sin programa' if e.es_instrumento else '—') }}</td>
+                    <td class="px-6 py-3 whitespace-nowrap">{{ vence(e.vence_mantenimiento, 15, '—') }}</td>
+                    <td class="px-6 py-3">{{ chip_verif(e.verif) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% if paginas > 1 %}
+        <div class="flex items-center justify-between px-6 py-3 border-t border-slate-100 text-sm text-slate-500">
+            <span>{{ total }} equipos · página {{ pagina }} de {{ paginas }}</span>
+            <div class="flex gap-2">
+                {% set args = request.args.to_dict() %}
+                {% if pagina > 1 %}{% set _ = args.update({'pagina': pagina - 1}) %}<a href="{{ url_for('equipos.lista', **args) }}" class="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50">Anterior</a>{% endif %}
+                {% if pagina < paginas %}{% set _ = args.update({'pagina': pagina + 1}) %}<a href="{{ url_for('equipos.lista', **args) }}" class="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50">Siguiente</a>{% endif %}
+            </div>
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="p-16 text-center">
+            <i class="ri-tools-line text-5xl text-slate-300 block mb-3"></i>
+            <h3 class="text-lg font-bold text-[#1d1d1f]">No hay equipos con esos filtros</h3>
+            {% if puede('equipos_operar') %}<p class="text-slate-500 mt-1">Da de alta básculas, balanzas, mezcladoras, tanques, la caldera y las pesas patrón.</p>{% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

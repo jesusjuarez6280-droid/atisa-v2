@@ -1,0 +1,29 @@
+{% extends 'nucleo/_impresion.html' %}
+{% block hoja_titulo %}Etiqueta de estado{% endblock %}
+{% block hoja_codigo %}{{ codigo_formato }}{% endblock %}
+{% block hoja_folio %}{{ e.codigo }}{% endblock %}
+{% block hoja_estilos %}
+<style>
+    .etiqueta { border: 3px solid #059669; border-radius: 10px; padding: 14px 18px; width: 100mm; margin: 0 auto; }
+    .etiqueta.fuera { border-color: #e11d48; }
+    .etiqueta h2 { margin: 0 0 6px; font-size: 20pt; color: #059669; letter-spacing: .5px; }
+    .etiqueta.fuera h2 { color: #e11d48; }
+    .etiqueta p { margin: 4px 0; font-size: 11pt; }
+    .etiqueta .codigo { font-size: 16pt; font-weight: 700; }
+</style>
+{% endblock %}
+{% block hoja_cuerpo %}
+<div class="etiqueta {{ '' if e.estatus == 'EN_SERVICIO' else 'fuera' }}">
+    {% if e.estatus == 'EN_SERVICIO' %}
+    <h2>EN SERVICIO</h2>
+    <p class="codigo">{{ e.codigo }}</p><p>{{ e.nombre }}</p>
+    {% if ultima %}<p>Calibrado: <b>{{ ultima.fecha }}</b> ({{ ultima.folio }})</p>{% endif %}
+    {% if e.vence_calibracion %}<p>Próxima calibración: <b>{{ e.vence_calibracion }}</b></p>{% endif %}
+    {% if e.vence_mantenimiento %}<p>Próximo mantenimiento: {{ e.vence_mantenimiento }}</p>{% endif %}
+    {% else %}
+    <h2>{{ 'FUERA DE SERVICIO' if e.estatus == 'FUERA_DE_SERVICIO' else 'DADO DE BAJA' }}</h2>
+    <p class="codigo">{{ e.codigo }}</p><p>{{ e.nombre }}</p>
+    <p><b>NO USAR.</b> {% if motivo %}{{ motivo.motivo }} ({{ motivo.ts[:10] }}){% endif %}</p>
+    {% endif %}
+</div>
+{% endblock %}

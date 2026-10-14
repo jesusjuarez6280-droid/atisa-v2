@@ -1,0 +1,79 @@
+{% extends _layout|default("base.html") %}
+{% from 'equipos/_comun.html' import encabezado, boton, csrf with context %}
+{% from 'nucleo/_firma.html' import campo_firma %}
+{% block title %}Registrar calibración {{ e.codigo }} | ERP Atisa{% endblock %}
+{% set ic = 'w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none text-sm' %}
+{% set lc = 'text-xs font-bold text-slate-500 uppercase mb-1 block' %}
+{% block content %}
+{% include 'equipos/_estilos.html' %}
+<div class="p-10">
+    {% call encabezado('Registrar calibración', e.codigo ~ ' · ' ~ e.nombre, 'ri-scales-3-line') %}
+        {{ boton(url_for('equipos.ficha', equipo_id=e.id), 'Cancelar', 'ri-arrow-left-line') }}
+    {% endcall %}
+    {% set modalidad = form.get('modalidad') or (prog.modalidad if prog else 'Externa') %}
+    <form action="{{ url_for('equipos.calibracion_nueva', equipo_id=e.id) }}" method="POST" enctype="multipart/form-data" class="flex flex-col gap-6">
+        {{ csrf() }}
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div><label class="{{ lc }}">Fecha *</label><input type="date" name="fecha" required max="{{ hoy }}" value="{{ form.get('fecha') or hoy }}" class="{{ ic }}"></div>
+                <div><label class="{{ lc }}">Modalidad *</label><select name="modalidad" class="select-pro w-full">{% for m in ['Externa', 'Interna'] %}<option {{ 'selected' if modalidad == m }}>{{ m }}</option>{% endfor %}</select></div>
+                <div class="flex items-end"><label class="flex items-center gap-2 text-sm text-slate-600"><input type="checkbox" name="ajustado" value="1" {{ 'checked' if form.get('ajustado') }}> Se ajustó</label></div>
+            </div>
+            <h3 class="text-xs font-bold text-slate-500 uppercase mt-6 mb-3">Externa: laboratorio</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div><label class="{{ lc }}">Laboratorio</label><select name="proveedor_id" class="select-pro w-full"><option value="">—</option>{% for p in proveedores %}<option value="{{ p.id }}" {{ 'selected' if (form.get('proveedor_id') or (prog.proveedor_id if prog) or '')|string == p.id|string }}>{{ p.nombre }}{% if p.estatus != 'Aprobado' %} ({{ p.estatus }}){% endif %}</option>{% endfor %}</select></div>
+                <div><label class="{{ lc }}">Acreditación</label><input name="acreditacion" value="{{ form.get('acreditacion', '') }}" placeholder="EMA M-123" class="{{ ic }}"></div>
+                <div><label class="{{ lc }}">No. de certificado</label><input name="certificado" value="{{ form.get('certificado', '') }}" class="{{ ic }}"></div>
+                <div><label class="{{ lc }}">Certificado (PDF)</label><input type="file" name="certificado_pdf" accept=".pdf" class="text-sm"></div>
+            </div>
+            <h3 class="text-xs font-bold text-slate-500 uppercase mt-6 mb-3">Interna: patrones usados (solo aptos)</h3>
+            {% if patrones %}
+            <div class="flex flex-wrap gap-2">{% for p in patrones if p.id != e.id %}<label class="flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 text-sm"><input type="checkbox" name="patrones" value="{{ p.id }}" {{ 'checked' if p.id|string in form.getlist('patrones') }}> {{ p.codigo }}{% if p.valor_nominal %} · {{ p.valor_nominal }} {{ p.unidad_nominal or '' }}{% endif %}{% if p.clase %} · {{ p.clase }}{% endif %}</label>{% endfor %}</div>
+            {% else %}<p class="text-sm text-slate-400">No hay patrones aptos (pesas o instrumentos con calibración vigente).</p>{% endif %}
+        </section>
+
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+            <h2 class="font-bold text-[#1d1d1f] mb-1">Resultados por punto</h2>
+            <p class="text-sm text-slate-500 mb-4">"Como se dejó" vacío = igual a como se encontró. El sistema marca si cada punto cumple.</p>
+            <table class="w-full text-sm"><thead class="text-xs text-slate-500"><tr><th class="text-left py-1">Nominal</th><th class="text-left py-1">± Tolerancia</th><th class="text-left py-1">Unidad</th><th class="text-left py-1">Como se encontró</th><th class="text-left py-1">Como se dejó</th><th class="text-left py-1">Incertidumbre</th><th class="text-left py-1">Cumple</th></tr></thead><tbody id="puntos-cal">
+            {% set filas = puntos|list %}
+            {% for n in range([filas|length + 1, 3]|max) %}{% set p = filas[n] if n < filas|length else none %}
+            <tr><td class="pr-2 py-1"><input name="p_nominal" value="{{ form.getlist('p_nominal')[n] if form.getlist('p_nominal')|length > n else (p.nominal if p else '') }}" inputmode="decimal" class="{{ ic }}"></td>
+                <td class="pr-2 py-1"><input name="p_tolerancia" value="{{ form.getlist('p_tolerancia')[n] if form.getlist('p_tolerancia')|length > n else (p.tolerancia if p else '') }}" inputmode="decimal" class="{{ ic }}"></td>
+                <td class="pr-2 py-1"><input name="p_unidad" value="{{ form.getlist('p_unidad')[n] if form.getlist('p_unidad')|length > n else (p.unidad if p else '') }}" class="{{ ic }}"></td>
+                <td class="pr-2 py-1"><input name="p_encontrado" value="{{ form.getlist('p_encontrado')[n] if form.getlist('p_encontrado')|length > n }}" inputmode="decimal" class="{{ ic }}"></td>
+                <td class="pr-2 py-1"><input name="p_dejado" value="{{ form.getlist('p_dejado')[n] if form.getlist('p_dejado')|length > n }}" inputmode="decimal" class="{{ ic }}"></td>
+                <td class="pr-2 py-1"><input name="p_incertidumbre" value="{{ form.getlist('p_incertidumbre')[n] if form.getlist('p_incertidumbre')|length > n }}" inputmode="decimal" class="{{ ic }}"></td>
+                <td class="py-1 text-center" data-cumple></td></tr>
+            {% endfor %}</tbody></table>
+            <div class="mt-4"><label class="{{ lc }}">Observaciones</label><textarea name="observaciones" rows="2" class="{{ ic }}">{{ form.get('observaciones', '') }}</textarea></div>
+        </section>
+
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 max-w-lg">
+            {{ campo_firma('Realizó', numero=session.numero_empleado, id='firma-cal') }}
+            <button type="submit" class="w-full mt-4 bg-[#0e6ba8] text-white py-3 font-bold rounded-xl hover:bg-[#1d1d1f]">Registrar calibración</button>
+        </section>
+    </form>
+</div>
+<script>
+(function () {
+    var tabla = document.getElementById('puntos-cal');
+    if (!tabla) return;
+    function num(v) { v = (v || '').replace(',', '.').trim(); return v === '' ? null : parseFloat(v); }
+    function revisar() {
+        tabla.querySelectorAll('tr').forEach(function (tr) {
+            var c = function (n) { return num(tr.querySelector('[name="p_' + n + '"]').value); };
+            var nom = c('nominal'), tol = c('tolerancia'), enc = c('encontrado'), dej = c('dejado');
+            var celda = tr.querySelector('[data-cumple]');
+            if (nom === null || tol === null || enc === null) { celda.innerHTML = ''; return; }
+            if (dej === null) dej = enc;
+            var ok = function (x) { return Math.abs(x - nom) <= tol + 1e-9; };
+            celda.innerHTML = (ok(enc) ? '<i class="ri-checkbox-circle-fill text-emerald-500"></i>' : '<i class="ri-close-circle-fill text-rose-500" title="Llegó fuera"></i>') +
+                ' / ' + (ok(dej) ? '<i class="ri-checkbox-circle-fill text-emerald-500"></i>' : '<i class="ri-close-circle-fill text-rose-500"></i>');
+        });
+    }
+    tabla.addEventListener('input', revisar);
+    revisar();
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,57 @@
+{% extends _layout|default("base.html") %}
+{% from 'equipos/_comun.html' import chip_cal, encabezado, boton, csrf with context %}
+{% from 'nucleo/_firma.html' import campo_firma, firmado %}
+{% block title %}Impacto {{ i.codigo }} | Equipos | ERP Atisa{% endblock %}
+{% block content %}
+{% include 'equipos/_estilos.html' %}
+<div class="p-10">
+    {% call encabezado('Evaluación de impacto', i.codigo ~ ' · ' ~ i.equipo_nombre, 'ri-error-warning-line') %}
+        {{ boton(url_for('equipos.ficha', equipo_id=i.equipo_id), i.codigo, 'ri-arrow-left-line') }}
+    {% endcall %}
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
+        <div class="flex flex-wrap items-center gap-3 mb-3">{{ chip_cal(i.estatus) }}
+            <span class="text-sm text-slate-600">Se encontró fuera de tolerancia en {{ 'la calibración ' ~ (origen_folio or '') if i.origen == 'CALIBRACION' else 'la verificación del día' }} del <b>{{ i.hasta }}</b>.</span></div>
+        <p class="text-sm text-slate-600">Ventana a revisar: desde <b>{{ i.desde }}</b> (la última vez que se supo que estaba bien) hasta <b>{{ i.hasta }}</b>.
+            {% if i.estatus == 'PENDIENTE' %}Mientras no se firme, Calidad no puede liberar los lotes de esta ventana.{% endif %}</p>
+    </section>
+
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
+        {% for clave, titulo in [('lotes_por_equipo', 'Órdenes y lotes'), ('analisis_por_equipo', 'Análisis')] %}
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <h2 class="px-6 py-4 border-b border-slate-100 font-bold text-[#1d1d1f]">{{ titulo }} <span class="text-slate-400">{{ usos[clave]|length }}</span></h2>
+            {% if titulo in usos.faltan %}<p class="p-6 text-sm text-slate-400">El módulo {{ 'Órdenes de producción' if clave == 'lotes_por_equipo' else 'Calidad' }} no está instalado: revisa los registros en papel de esta ventana.</p>
+            {% elif titulo in usos.errores %}<p class="p-6 text-sm text-rose-600">No se pudo consultar; el error quedó registrado.</p>
+            {% elif usos[clave] %}
+            <ul class="divide-y divide-slate-100 text-sm">{% for u in usos[clave] %}<li class="px-6 py-3 flex gap-3">
+                {% if u.url %}<a href="{{ u.url }}" class="text-[#0e6ba8] font-semibold hover:underline">{{ u.folio or u.numero_lote or ('#' ~ u.lote_id) }}</a>{% else %}<span class="font-semibold">{{ u.folio or u.numero_lote or ('#' ~ u.lote_id) }}</span>{% endif %}
+                <span class="text-slate-600">{{ u.numero_lote if u.folio and u.numero_lote }} {{ u.material or u.descripcion or '' }}</span><span class="ml-auto text-slate-400">{{ u.fecha or '' }}</span></li>{% endfor %}</ul>
+            {% else %}<p class="p-6 text-sm text-slate-400">No se usó en esta ventana.</p>{% endif %}
+        </section>
+        {% endfor %}
+    </div>
+
+    {% if i.estatus == 'PENDIENTE' %}
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+            <h2 class="font-bold text-[#1d1d1f] mb-2">Desviación</h2>
+            <p class="text-sm text-slate-500 mb-4">Reportar la desviación con estos lotes es el camino normal; la conclusión puede remitir a ella ("Evaluado en DES-2026-0012").</p>
+            {% if desviacion %}<a href="{{ desviacion }}" class="inline-flex items-center gap-2 bg-rose-500 text-white px-5 py-3 font-bold rounded-xl hover:bg-[#1d1d1f]"><i class="ri-alarm-warning-line"></i> Reportar desviación con estos lotes</a>
+            {% else %}<p class="text-sm text-slate-400">El módulo de Desviaciones no está instalado.</p>{% endif %}
+        </section>
+        {% if puede('equipos_operar') and tiene_facultad('dictaminar_equipos') %}
+        <form action="{{ url_for('equipos.evaluar_impacto', impacto_id=i.id) }}" method="POST" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col gap-4">{{ csrf() }}
+            <h2 class="font-bold text-[#1d1d1f]">Conclusión</h2>
+            <textarea name="conclusion" required rows="4" placeholder="Qué se revisó y qué se decidió sobre esos lotes y análisis" class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none text-sm"></textarea>
+            {{ campo_firma('Aprobó', numero=session.numero_empleado, id='firma-impacto', titulo='Firma de quien dictamina') }}
+            <button type="submit" class="bg-[#0e6ba8] text-white py-3 font-bold rounded-xl hover:bg-[#1d1d1f]">Firmar evaluación</button>
+        </form>
+        {% else %}<p class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 text-sm text-slate-500">La firma quien tiene la facultad de dictaminar equipos.</p>{% endif %}
+    </div>
+    {% else %}
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+        <h2 class="font-bold text-[#1d1d1f] mb-2">Conclusión</h2>
+        <p class="text-sm text-slate-600 whitespace-pre-line mb-3">{{ i.conclusion }}</p>{{ firmado(firma) }}
+    </section>
+    {% endif %}
+</div>
+{% endblock %}

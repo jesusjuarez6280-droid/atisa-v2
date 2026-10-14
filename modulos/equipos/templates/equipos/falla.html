@@ -1,0 +1,18 @@
+{% extends _layout|default("base.html") %}
+{% from 'equipos/_comun.html' import encabezado, boton, csrf with context %}
+{% block title %}Reportar falla | Equipos | ERP Atisa{% endblock %}
+{% block content %}
+{% include 'equipos/_estilos.html' %}
+<div class="p-10">
+    {% call encabezado('Reportar falla de equipo', 'Crea la orden de trabajo correctiva; si no se puede usar, queda fuera de servicio al instante', 'ri-alarm-warning-line') %}
+        {{ boton(url_for('equipos.lista'), 'Equipos', 'ri-arrow-left-line') }}
+    {% endcall %}
+    <form action="{{ url_for('equipos.falla') }}" method="POST" enctype="multipart/form-data" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col gap-5 max-w-2xl">{{ csrf() }}
+        <div><label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Equipo *</label>
+            {% set sel = form.get('equipo_id')|int if form.get('equipo_id') else elegido %}
+            <select name="equipo_id" required class="select-pro w-full"><option value="">Elige el equipo…</option>
+                {% for e in equipos %}<option value="{{ e.id }}" {{ 'selected' if sel == e.id }}>{{ e.area or 'Sin área' }} · {{ e.codigo }} · {{ e.nombre }}{{ ' (fuera de servicio)' if e.estatus == 'FUERA_DE_SERVICIO' }}</option>{% endfor %}</select></div>
+        {% with oficina=True %}{% include 'equipos/_falla_campos.html' %}{% endwith %}
+    </form>
+</div>
+{% endblock %}

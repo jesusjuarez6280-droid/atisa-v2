@@ -1,0 +1,119 @@
+{% extends _layout|default("base.html") %}
+{% from 'equipos/_comun.html' import encabezado, boton, csrf with context %}
+{% block title %}{{ e.codigo if e else 'Nuevo equipo' }} | Equipos | ERP Atisa{% endblock %}
+{% set ic = 'w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none text-sm' %}
+{% set lc = 'text-xs font-bold text-slate-500 uppercase mb-1 block' %}
+{% macro valor(campo, actual) -%}{{ form.get(campo) if form.get(campo) is not none else (actual if actual is not none else '') }}{%- endmacro %}
+{% block content %}
+{% include 'equipos/_estilos.html' %}
+<div class="p-10">
+    {% call encabezado(('Editar ' ~ e.codigo) if e else 'Nuevo equipo', 'Datos, programa de calibración y mantenimiento, y puntos', 'ri-tools-line') %}
+        {{ boton(url_for('equipos.ficha', equipo_id=e.id) if e else url_for('equipos.lista'), 'Cancelar', 'ri-arrow-left-line') }}
+    {% endcall %}
+    <form action="{{ url_for('equipos.editar', equipo_id=e.id) if e else url_for('equipos.nuevo') }}" method="POST" enctype="multipart/form-data" class="flex flex-col gap-6">
+        {{ csrf() }}
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+            <h2 class="font-bold text-[#1d1d1f] mb-4">Datos del equipo</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div><label class="{{ lc }}">Código *</label><input name="codigo" required value="{{ valor('codigo', e.codigo if e) }}" placeholder="BAS-01" class="{{ ic }}"></div>
+                <div class="lg:col-span-2"><label class="{{ lc }}">Nombre *</label><input name="nombre" required value="{{ valor('nombre', e.nombre if e) }}" placeholder="Báscula de piso 150 kg" class="{{ ic }}"></div>
+                <div><label class="{{ lc }}">Tipo *</label>
+                    {% set tipo_actual = form.get('tipo') or (e.tipo if e else '') %}
+                    <select name="tipo" class="select-pro w-full">{% for t in tipos %}<option {{ 'selected' if tipo_actual == t }}>{{ t }}</option>{% endfor %}
+                        {% if tipo_actual and tipo_actual not in tipos %}<option selected>{{ tipo_actual }}</option>{% endif %}</select>
+                    <input name="tipo_otro" placeholder="Otro tipo (opcional)" class="{{ ic }} mt-2"></div>
+                <div><label class="{{ lc }}">Área</label><input name="area" value="{{ valor('area', e.area if e) }}" placeholder="Producción, Laboratorio…" class="{{ ic }}"></div>
+                <div><label class="{{ lc }}">Ubicación</label><input name="ubicacion" value="{{ valor('ubicacion', e.ubicacion if e) }}" class="{{ ic }}"></div>
+                <div><label class="{{ lc }}">Marca</label><input name="marca" value="{{ valor('marca', e.marca if e) }}" class="{{ ic }}"></div>
+                <div><label class="{{ lc }}">Modelo</label><input name="modelo" value="{{ valor('modelo', e.modelo if e) }}" class="{{ ic }}"></div>
+                <div><label class="{{ lc }}">Serie</label><input name="serie" value="{{ valor('serie', e.serie if e) }}" class="{{ ic }}"></div>
+                <div><label class="{{ lc }}">Capacidad</label><input name="capacidad" value="{{ valor('capacidad', e.capacidad if e) }}" placeholder="150 kg" class="{{ ic }}"></div>
+                <div><label class="{{ lc }}">Resolución</label><input name="resolucion" value="{{ valor('resolucion', e.resolucion if e) }}" placeholder="0.01 kg" class="{{ ic }}"></div>
+                <div><label class="{{ lc }}">Criticidad</label><select name="criticidad" class="select-pro w-full"><option value="">—</option>{% for c in criticidades %}<option {{ 'selected' if valor('criticidad', ficha.criticidad if ficha) == c }}>{{ c }}</option>{% endfor %}</select></div>
+                <div><label class="{{ lc }}">Rango en que se usa</label><input name="rango_uso" value="{{ valor('rango_uso', ficha.rango_uso if ficha) }}" placeholder="0.5 a 25 kg" class="{{ ic }}"></div>
+                <div><label class="{{ lc }}">Tolerancia del proceso</label><input name="tolerancia_proceso" value="{{ valor('tolerancia_proceso', ficha.tolerancia_proceso if ficha) }}" placeholder="± 0.05 kg" class="{{ ic }}"></div>
+                <div><label class="{{ lc }}">Proveedor del equipo</label><select name="proveedor_id" class="select-pro w-full"><option value="">—</option>{% for p in proveedores %}<option value="{{ p.id }}" {{ 'selected' if valor('proveedor_id', ficha.proveedor_id if ficha)|string == p.id|string }}>{{ p.nombre }}</option>{% endfor %}</select></div>
+                <div><label class="{{ lc }}">Tarea en la Matriz de Expertise</label><select name="competencia_tarea_id" class="select-pro w-full"><option value="">—</option>{% for t in tareas %}<option value="{{ t.id }}" {{ 'selected' if valor('competencia_tarea_id', e.competencia_tarea_id if e)|string == t.id|string }}>{{ t.nombre }}</option>{% endfor %}</select></div>
+                <div><label class="{{ lc }}">Activo ligado (Activos y EPP)</label><select name="activo_id" class="select-pro w-full"><option value="">—</option>{% for a in activos %}<option value="{{ a.id }}" {{ 'selected' if valor('activo_id', e.activo_id if e)|string == a.id|string }}>#{{ a.id }} {{ a.categoria }} · {{ a.descripcion }}</option>{% endfor %}</select></div>
+                <div class="flex flex-col justify-end gap-2 text-sm text-slate-600">
+                    <label class="flex items-center gap-2"><input type="checkbox" name="es_instrumento" value="1" {{ 'checked' if (form.get('es_instrumento') if form else (e and e.es_instrumento)) }}> Es instrumento (mide algo)</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" name="verificacion_diaria" value="1" {{ 'checked' if (form.get('verificacion_diaria') if form else (e and e.verificacion_diaria)) }}> Pide verificación diaria</label>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
+                <div><label class="{{ lc }}">Pesa patrón: valor nominal</label><input name="valor_nominal" value="{{ valor('valor_nominal', ficha.valor_nominal if ficha) }}" inputmode="decimal" placeholder="20" class="{{ ic }}"></div>
+                <div><label class="{{ lc }}">Unidad</label><input name="unidad_nominal" value="{{ valor('unidad_nominal', ficha.unidad_nominal if ficha) }}" placeholder="kg" class="{{ ic }}"></div>
+                <div><label class="{{ lc }}">Clase</label><input name="clase" value="{{ valor('clase', ficha.clase if ficha) }}" placeholder="E2, F1, M1" class="{{ ic }}"></div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
+                <div><label class="{{ lc }}">Foto (JPG o PNG)</label><input type="file" name="foto" accept=".jpg,.jpeg,.png" class="text-sm"></div>
+                <div><label class="{{ lc }}">Manual (PDF)</label><input type="file" name="manual" accept=".pdf" class="text-sm"></div>
+                <div><label class="{{ lc }}">Notas</label><textarea name="notas" rows="2" class="{{ ic }}">{{ valor('notas', ficha.notas if ficha) }}</textarea></div>
+            </div>
+        </section>
+
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                <h2 class="font-bold text-[#1d1d1f] mb-1">Programa de calibración</h2>
+                <p class="text-sm text-slate-500 mb-4">Déjalo vacío si no se calibra. Un instrumento nuevo con programa queda fuera de servicio hasta que se dictamine apta su primera calibración.</p>
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label class="{{ lc }}">Cada cuántos meses</label><input name="cal_frecuencia" value="{{ valor('cal_frecuencia', prog_cal.frecuencia_meses if prog_cal) }}" inputmode="numeric" placeholder="12" class="{{ ic }}"></div>
+                    <div><label class="{{ lc }}">Modalidad</label><select name="cal_modalidad" class="select-pro w-full">{% for m in modalidades %}<option {{ 'selected' if valor('cal_modalidad', prog_cal.modalidad if prog_cal) == m }}>{{ m }}</option>{% endfor %}</select></div>
+                    <div><label class="{{ lc }}">Laboratorio habitual</label><select name="cal_proveedor_id" class="select-pro w-full"><option value="">—</option>{% for p in proveedores %}<option value="{{ p.id }}" {{ 'selected' if valor('cal_proveedor_id', prog_cal.proveedor_id if prog_cal)|string == p.id|string }}>{{ p.nombre }}</option>{% endfor %}</select></div>
+                    <div><label class="{{ lc }}">Días de aviso</label><input name="cal_dias_aviso" value="{{ valor('cal_dias_aviso', prog_cal.dias_aviso if prog_cal else dias_cal) }}" inputmode="numeric" class="{{ ic }}"></div>
+                </div>
+                <h3 class="text-xs font-bold text-slate-500 uppercase mt-6 mb-2">Puntos de calibración (nominal ± tolerancia)</h3>
+                <table class="w-full text-sm"><thead class="text-xs text-slate-500"><tr><th class="text-left py-1">Nombre</th><th class="text-left py-1">Nominal</th><th class="text-left py-1">± Tolerancia</th><th class="text-left py-1">Unidad</th></tr></thead><tbody>
+                {% set filas = puntos_cal|list %}
+                {% for n in range([filas|length + 2, 4]|max) %}{% set p = filas[n] if n < filas|length else none %}
+                <tr><td class="pr-2 py-1"><input name="pc_nombre" value="{{ p.nombre or '' if p }}" class="{{ ic }}"></td>
+                    <td class="pr-2 py-1"><input name="pc_nominal" value="{{ p.nominal if p }}" inputmode="decimal" class="{{ ic }}"></td>
+                    <td class="pr-2 py-1"><input name="pc_tolerancia" value="{{ p.tolerancia if p }}" inputmode="decimal" class="{{ ic }}"></td>
+                    <td class="py-1"><input name="pc_unidad" value="{{ p.unidad if p }}" class="{{ ic }}"></td></tr>
+                {% endfor %}</tbody></table>
+            </section>
+
+            <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                <h2 class="font-bold text-[#1d1d1f] mb-1">Mantenimiento preventivo</h2>
+                <p class="text-sm text-slate-500 mb-4">Déjalo vacío si no lleva plan. Vencido solo avisa, no bloquea.</p>
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label class="{{ lc }}">Cada cuántos meses</label><input name="man_frecuencia" value="{{ valor('man_frecuencia', prog_man.frecuencia_meses if prog_man) }}" inputmode="numeric" placeholder="6" class="{{ ic }}"></div>
+                    <div><label class="{{ lc }}">Modalidad</label><select name="man_modalidad" class="select-pro w-full">{% for m in modalidades %}<option {{ 'selected' if valor('man_modalidad', prog_man.modalidad if prog_man else 'Interna') == m }}>{{ m }}</option>{% endfor %}</select></div>
+                    <div><label class="{{ lc }}">Taller habitual</label><select name="man_proveedor_id" class="select-pro w-full"><option value="">—</option>{% for p in proveedores %}<option value="{{ p.id }}" {{ 'selected' if valor('man_proveedor_id', prog_man.proveedor_id if prog_man)|string == p.id|string }}>{{ p.nombre }}</option>{% endfor %}</select></div>
+                    <div><label class="{{ lc }}">Días de aviso</label><input name="man_dias_aviso" value="{{ valor('man_dias_aviso', prog_man.dias_aviso if prog_man else dias_man) }}" inputmode="numeric" class="{{ ic }}"></div>
+                    <div><label class="{{ lc }}">Próximo mantenimiento</label><input type="date" name="man_proximo" value="{{ form.get('man_proximo', '') }}" class="{{ ic }}"><p class="text-xs text-slate-400 mt-1">{{ 'Vence: ' ~ e.vence_mantenimiento if e and e.vence_mantenimiento else 'Si lo dejas vacío: hoy + frecuencia.' }}</p></div>
+                    <div class="col-span-2"><label class="{{ lc }}">Tareas (una por renglón)</label><textarea name="man_tareas" rows="4" class="{{ ic }}" placeholder="Limpiar plataforma&#10;Revisar cable y celda de carga">{{ valor('man_tareas', prog_man.tareas if prog_man) }}</textarea></div>
+                </div>
+            </section>
+        </div>
+
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+            <h2 class="font-bold text-[#1d1d1f] mb-1">Puntos de la verificación del día</h2>
+            <p class="text-sm text-slate-500 mb-4">Báscula: nominal ± tolerancia y "con pesa". Caldera u otros: rango mínimo–máximo (presión, temperatura, nivel de agua).</p>
+            <table class="w-full text-sm"><thead class="text-xs text-slate-500"><tr><th class="text-left py-1">Nombre</th><th class="text-left py-1">Nominal</th><th class="text-left py-1">± Tolerancia</th><th class="text-left py-1">Mínimo</th><th class="text-left py-1">Máximo</th><th class="text-left py-1">Unidad</th><th class="text-left py-1">Pesa patrón</th></tr></thead><tbody>
+            {% set filas = puntos_ver|list %}
+            {% for n in range([filas|length + 2, 4]|max) %}{% set p = filas[n] if n < filas|length else none %}
+            <tr><td class="pr-2 py-1"><input name="pv_nombre" value="{{ p.nombre or '' if p }}" placeholder="{{ 'Carga alta' if n == 0 }}" class="{{ ic }}"></td>
+                <td class="pr-2 py-1"><input name="pv_nominal" value="{{ p.nominal if p and p.nominal is not none }}" inputmode="decimal" class="{{ ic }}"></td>
+                <td class="pr-2 py-1"><input name="pv_tolerancia" value="{{ p.tolerancia if p and p.tolerancia is not none }}" inputmode="decimal" class="{{ ic }}"></td>
+                <td class="pr-2 py-1"><input name="pv_minimo" value="{{ p.minimo if p and p.minimo is not none }}" inputmode="decimal" class="{{ ic }}"></td>
+                <td class="pr-2 py-1"><input name="pv_maximo" value="{{ p.maximo if p and p.maximo is not none }}" inputmode="decimal" class="{{ ic }}"></td>
+                <td class="pr-2 py-1"><input name="pv_unidad" value="{{ p.unidad if p }}" class="{{ ic }}"></td>
+                <td class="py-1"><select name="pv_requiere_pesa" class="select-pro"><option value="0">No</option><option value="1" {{ 'selected' if p and p.requiere_pesa }}>Sí</option></select></td></tr>
+            {% endfor %}</tbody></table>
+        </section>
+
+        <div class="flex justify-end"><button type="submit" class="bg-[#0e6ba8] text-white px-8 py-3 font-bold rounded-xl hover:bg-[#1d1d1f]">Guardar</button></div>
+    </form>
+
+    <details class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mt-6">
+        <summary class="cursor-pointer font-bold text-[#1d1d1f]">¿Falta el laboratorio o taller? Agrégalo</summary>
+        <form action="{{ url_for('equipos.laboratorio') }}" method="POST" class="grid grid-cols-1 sm:grid-cols-4 gap-4 mt-4">{{ csrf() }}
+            <input type="hidden" name="volver" value="{{ request.path }}">
+            <input name="nombre" required placeholder="Nombre" class="{{ ic }}"><input name="contacto" placeholder="Contacto" class="{{ ic }}">
+            <input name="telefono" placeholder="Teléfono" class="{{ ic }}"><button type="submit" class="bg-[#0e6ba8] text-white px-5 py-3 font-bold rounded-xl hover:bg-[#1d1d1f]">Agregar</button>
+        </form>
+        <p class="text-xs text-slate-400 mt-2">Queda "En evaluación"; Almacén o Calidad lo aprueban como proveedor.</p>
+    </details>
+</div>
+{% endblock %}
