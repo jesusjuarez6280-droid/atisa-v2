@@ -1,0 +1,71 @@
+{#- Utilidades CSS que el Tailwind precompilado (static/css/tailwind.css) NO trae y que
+    las pantallas de los módulos nuevos usan seguido. base.html lo incluye; las pantallas
+    de planta (pantalla completa, sin base.html) lo incluyen en su <head>:
+        {% include 'nucleo/_utilidades.html' %}
+    Si a una pantalla de un módulo le falta otra clase, va en un <style> de SU plantilla. -#}
+<style>
+    .grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .grid-cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+    .bg-rose-100{background-color:#ffe4e6}
+    .bg-violet-100{background-color:#ede9fe}
+    .bg-amber-100{background-color:#fef3c7}
+    .bg-emerald-100{background-color:#d1fae5}
+    .bg-sky-50{background-color:#f0f9ff}
+    .border-violet-200{border-color:#ddd6fe}
+    .border-amber-300{border-color:#fcd34d}
+    .text-amber-800{color:#92400e}
+    .text-emerald-500{color:#10b981}
+    .hover\:bg-slate-100:hover{background-color:#f1f5f9}
+    .hover\:bg-emerald-50:hover{background-color:#ecfdf5}
+    .hover\:text-emerald-600:hover{color:#059669}
+    .hover\:border-emerald-200:hover{border-color:#a7f3d0}
+    .hover\:border-\[\#0e6ba8\]:hover{border-color:#0e6ba8}
+    .p-16{padding:4rem}
+    .w-2\.5{width:.625rem}
+    .w-max{width:max-content}
+    .w-32{width:8rem}
+    .w-44{width:11rem}
+    .h-48{height:12rem}
+    .gap-2\.5{gap:.625rem}
+    .px-1\.5{padding-left:.375rem;padding-right:.375rem}
+    .space-y-3\.5 > :not([hidden]) ~ :not([hidden]){margin-top:.875rem}
+    .items-baseline{align-items:baseline}
+    .self-start{align-self:flex-start}
+    .resize-none{resize:none}
+    .max-w-lg{max-width:32rem}
+    .max-w-2xl{max-width:42rem}
+    .max-w-\[960px\]{max-width:960px}
+    .max-h-\[90vh\]{max-height:90vh}
+    .max-h-\[520px\]{max-height:520px}
+    .contents{display:contents}
+    .h-\[80px\]{height:80px}
+    .min-h-\[200px\]{min-height:200px}
+    .min-w-\[2rem\]{min-width:2rem}
+    .z-20{z-index:20}
+    .bg-\[\#f5f5f7\]{background-color:#f5f5f7}
+    .text-\[\#1d1d1f\]{color:#1d1d1f}
+    .bg-\[\#0e6ba8\]{background-color:#0e6ba8}
+    .text-\[\#0e6ba8\]{color:#0e6ba8}
+    .bg-\[\#0e6ba8\]\/10{background-color:rgba(14,107,168,.10)}
+    .focus\:border-\[\#0e6ba8\]:focus{border-color:#0e6ba8}
+    .hover\:bg-\[\#1d1d1f\]:hover{background-color:#1d1d1f}
+    .placeholder\:text-slate-400::placeholder{color:#94a3b8}
+    @media (min-width:640px){
+        .sm\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+        .sm\:grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+    }
+    @media (min-width:768px){
+        .md\:col-span-3{grid-column:span 3 / span 3}
+        .md\:grid-cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+    }
+    @media (min-width:1024px){
+        .lg\:grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+        .lg\:grid-cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+    }
+    @media (min-width:1280px){
+        .xl\:grid-cols-5{grid-template-columns:repeat(5,minmax(0,1fr))}
+        .xl\:col-span-1{grid-column:span 1 / span 1}
+        .xl\:col-span-2{grid-column:span 2 / span 2}
+        .xl\:col-span-3{grid-column:span 3 / span 3}
+    }
+</style>

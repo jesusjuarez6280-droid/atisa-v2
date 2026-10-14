@@ -97,9 +97,9 @@
                                 <div>
                                     <label class="text-xs font-bold text-slate-500 uppercase mb-1.5 block">Rol</label>
                                     <select name="rol" class="select-pro" required>
-                                        <option value="admin" {% if emp.rol == 'admin' %}selected{% endif %}>Admin</option>
-                                        <option value="rh" {% if emp.rol == 'rh' %}selected{% endif %}>RH</option>
-                                        <option value="operador" {% if emp.rol == 'operador' %}selected{% endif %}>Operador</option>
+                                        {% for clave, info in ROLES_INFO.items() %}
+                                        <option value="{{ clave }}" {% if emp.rol == clave %}selected{% endif %}>{{ info.nombre }}</option>
+                                        {% endfor %}
                                     </select>
                                 </div>
                                 <div>
@@ -189,9 +189,9 @@
                     <label class="text-xs font-bold text-slate-500 uppercase mb-1.5 block">Rol</label>
                     <select name="rol" class="select-pro" required>
                         <option value="">Selecciona rol...</option>
-                        <option value="admin">Admin</option>
-                        <option value="rh">RH</option>
-                        <option value="operador">Operador</option>
+                        {% for clave, info in ROLES_INFO.items() %}
+                        <option value="{{ clave }}">{{ info.nombre }}</option>
+                        {% endfor %}
                     </select>
                 </div>
             </div>

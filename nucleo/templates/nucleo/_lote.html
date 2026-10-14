@@ -1,0 +1,32 @@
+{#- Chips del lote (base común).
+    {% from 'nucleo/_lote.html' import chip_estatus, caducidad %}
+    {{ chip_estatus(lote) }}   lote = dict de inventario.lote() (estatus y, si viene, caducado)
+    {{ caducidad(fecha) }}     fecha 'AAAA-MM-DD' -#}
+{% macro chip_estatus(lote) -%}
+{% set e = lote.estatus if lote is mapping else lote %}
+{% if lote is mapping and lote.get('caducado') %}
+<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-rose-50 text-rose-600 border border-rose-100">Caducado</span>
+{% elif e == 'APROBADO' %}
+<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">Aprobado</span>
+{% elif e == 'CUARENTENA' %}
+<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-amber-50 text-amber-600 border border-amber-100">Cuarentena</span>
+{% elif e == 'RECHAZADO' %}
+<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-rose-50 text-rose-600 border border-rose-100">Rechazado</span>
+{% elif e == 'RETENIDO' %}
+<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-violet-50 text-violet-700 border border-violet-200">Retenido</span>
+{% else %}
+<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 text-slate-600">{{ e }}</span>
+{% endif %}
+{%- endmacro %}
+
+{% macro caducidad(fecha, dias_aviso=90) -%}
+{% if not fecha %}
+<span class="text-slate-400 text-sm">Sin caducidad</span>
+{% else %}
+{% set dias = dias_hasta(fecha) %}
+{% if dias is none %}<span class="text-slate-500 text-sm">{{ fecha }}</span>
+{% elif dias < 0 %}<span class="text-rose-600 text-sm font-bold">{{ fecha }} · vencido</span>
+{% elif dias <= dias_aviso %}<span class="text-amber-600 text-sm font-semibold">{{ fecha }} · vence en {{ dias }} día{{ '' if dias == 1 else 's' }}</span>
+{% else %}<span class="text-slate-600 text-sm">{{ fecha }}</span>{% endif %}
+{% endif %}
+{%- endmacro %}

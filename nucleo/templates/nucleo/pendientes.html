@@ -1,0 +1,42 @@
+{% extends _layout|default("base.html") %}
+{% block title %}Mis pendientes | ERP Atisa{% endblock %}
+{% block content %}
+<div class="p-10">
+    <header class="flex flex-wrap justify-between items-center gap-4 mb-8">
+        <div>
+            <h1 class="text-2xl font-bold text-[#1d1d1f]">Mis pendientes</h1>
+            <p class="text-slate-500 mt-1">Lo que te toca en cada módulo</p>
+        </div>
+        <a href="{{ url_for('nucleo.mi_pin') }}" class="flex items-center gap-2 h-11 px-4 rounded-xl border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50"><i class="ri-key-2-line"></i> Mi PIN</a>
+    </header>
+    {% if grupos %}
+    <div class="flex flex-col gap-6">
+        {% for m, lista in grupos %}
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200">
+            <h2 class="px-6 py-4 border-b border-slate-100 font-bold text-[#1d1d1f] flex items-center justify-between">
+                {{ m.nombre }} <span class="text-xs font-bold text-slate-500">{{ lista|length }}</span>
+            </h2>
+            <ul class="divide-y divide-slate-100">
+                {% for p in lista %}
+                <li>
+                    <a href="{{ p.url or '#' }}" class="flex items-center gap-3 px-6 py-3.5 hover:bg-slate-50">
+                        <span class="w-2.5 h-2.5 rounded-full shrink-0 {% if p.nivel == 'rojo' %}bg-rose-500{% elif p.nivel == 'amarillo' %}bg-amber-500{% else %}bg-[#0e6ba8]{% endif %}"></span>
+                        <span class="flex-1 text-sm text-[#1d1d1f]">{{ p.texto }}</span>
+                        {% if p.fecha %}<span class="text-xs text-slate-500">{{ p.fecha }}</span>{% endif %}
+                        <i class="ri-arrow-right-s-line text-slate-400"></i>
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+        </section>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-16 text-center">
+        <i class="ri-check-double-line text-5xl text-slate-300 block mb-3"></i>
+        <h3 class="text-lg font-bold text-[#1d1d1f]">No tienes pendientes</h3>
+        <p class="text-slate-500 mt-1">Aquí aparece lo que te toque firmar, revisar o atender.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

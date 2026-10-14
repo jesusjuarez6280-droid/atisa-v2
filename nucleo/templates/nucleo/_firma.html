@@ -1,0 +1,73 @@
+{#- Componente de firma con número de empleado + PIN (base común).
+
+    Uso, dentro de un <form method="POST">:
+        {% from 'nucleo/_firma.html' import campo_firma, firmado %}
+        {{ campo_firma('Verificó') }}                         ← en planta (número vacío)
+        {{ campo_firma('Liberó', numero=session.numero_empleado) }}   ← en oficina, prellenado
+    Envía: firma_significado, firma_numero y firma_pin. En la ruta:
+        firmas.firmar(conn, numero_empleado=request.form['firma_numero'],
+                      pin=request.form['firma_pin'], significado=request.form['firma_significado'], ...)
+    El PIN nunca se escribe en la bitácora (se omite todo campo con "pin" en el nombre).
+
+    firmado(f) pinta "Firmó: NOMBRE · hora" con una fila de la tabla firmas.
+-#}
+{% macro campo_firma(significado, numero=None, id='firma', titulo=None) -%}
+<div class="atisa-firma bg-slate-50 border border-slate-200 rounded-2xl p-5" data-firma="{{ id }}">
+    <input type="hidden" name="firma_significado" value="{{ significado }}">
+    <p class="text-xs font-bold text-slate-500 uppercase mb-3 flex items-center gap-2">
+        <i class="ri-quill-pen-line text-[#0e6ba8] text-base"></i> {{ titulo or ('Firma: ' ~ significado) }}
+    </p>
+    <div class="grid grid-cols-2 gap-3 mb-4">
+        <div>
+            <label for="{{ id }}-numero" class="text-xs font-bold text-slate-500 uppercase mb-1 block">No. empleado</label>
+            <input id="{{ id }}-numero" name="firma_numero" value="{{ numero or '' }}" required
+                   inputmode="numeric" autocomplete="off" data-firma-campo
+                   class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none text-lg font-bold tabular-nums">
+        </div>
+        <div>
+            <label for="{{ id }}-pin" class="text-xs font-bold text-slate-500 uppercase mb-1 block">PIN</label>
+            <input id="{{ id }}-pin" name="firma_pin" type="password" required minlength="4" maxlength="6"
+                   inputmode="numeric" autocomplete="off" pattern="[0-9]*" data-firma-campo
+                   class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:border-[#0e6ba8] outline-none text-lg font-bold tracking-widest">
+        </div>
+    </div>
+    <div class="grid grid-cols-3 gap-2 w-max mx-auto">
+        {% for t in ['1','2','3','4','5','6','7','8','9','borrar','0','ok'] %}
+        {% if t == 'borrar' %}
+        <button type="button" data-tecla="borrar" class="w-16 h-16 rounded-xl bg-white border border-slate-200 text-slate-500 text-xl hover:bg-slate-100" title="Borrar"><i class="ri-delete-back-2-line"></i></button>
+        {% elif t == 'ok' %}
+        <button type="button" data-tecla="siguiente" class="w-16 h-16 rounded-xl bg-white border border-slate-200 text-slate-500 text-xl hover:bg-slate-100" title="Siguiente campo"><i class="ri-arrow-right-line"></i></button>
+        {% else %}
+        <button type="button" data-tecla="{{ t }}" class="w-16 h-16 rounded-xl bg-white border border-slate-200 text-[#1d1d1f] text-2xl font-bold hover:bg-slate-100">{{ t }}</button>
+        {% endif %}
+        {% endfor %}
+    </div>
+</div>
+<script>
+(function () {
+    var caja = document.currentScript.previousElementSibling;
+    if (!caja || caja.dataset.listo) return;
+    caja.dataset.listo = '1';
+    var campos = caja.querySelectorAll('[data-firma-campo]');
+    var activo = campos[0].value ? campos[1] : campos[0];
+    campos.forEach(function (c) { c.addEventListener('focus', function () { activo = c; }); });
+    caja.querySelectorAll('[data-tecla]').forEach(function (b) {
+        b.addEventListener('click', function () {
+            var t = b.getAttribute('data-tecla');
+            if (t === 'borrar') { activo.value = activo.value.slice(0, -1); }
+            else if (t === 'siguiente') { activo = (activo === campos[0]) ? campos[1] : campos[0]; }
+            else if (!activo.maxLength || activo.maxLength < 0 || activo.value.length < activo.maxLength) { activo.value += t; }
+            activo.focus();
+        });
+    });
+})();
+</script>
+{%- endmacro %}
+
+{% macro firmado(f) -%}
+{% if f %}
+<span class="inline-flex items-center gap-1.5 text-sm text-emerald-700 font-semibold">
+    <i class="ri-quill-pen-line"></i> {{ f.significado }}: {{ f.nombre }} · {{ (f.ts or '')[11:16] }} <span class="text-slate-400 font-normal">{{ (f.ts or '')[:10] }}</span>
+</span>
+{% endif %}
+{%- endmacro %}

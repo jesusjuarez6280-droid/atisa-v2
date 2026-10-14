@@ -15,10 +15,21 @@ import math
 import calendar
 import time
 
-app = Flask(__name__)
+# === BASE COMÚN (nucleo/) ===
+# Los helpers que comparten todos los módulos viven en nucleo/ y se importan aquí con
+# el mismo nombre, así las rutas de siempre no cambian. nucleo/ nunca importa de erp.py.
+from nucleo.db import DB_PATH, get_db_connection, cerrar_conexiones_db
+from nucleo.vistas import render_page, hx_redirect, full_page
+from nucleo.auditoria import _auditar
+from nucleo.auth import (PERMISOS, ROLES, ROLES_INFO, FACULTADES, login_required, _denegar,
+                         requiere_rol, requiere_modulo, requiere_facultad, usuario_puede,
+                         tiene_facultad, usuario_actual, guardar_en_sesion, roles_sesion)
+from nucleo.menu import NAV_DEPARTAMENTOS, construir_nav, landing_endpoint
+from nucleo import registro as registro_modulos
+from nucleo.esquema import aplicar_migraciones
+from nucleo.archivos import carpeta_privada
 
-# Ruta de la base de datos (configurable para pruebas o para moverla de carpeta).
-DB_PATH = os.environ.get('ATISA_DB', 'base_planta.db')
+app = Flask(__name__)
 
 def _cargar_secret_key():
     """Llave de sesión. Prioridad: variable de entorno ATISA_SECRET_KEY; si no existe,
@@ -156,32 +167,7 @@ def _manejar_csrf(e):
     flash('Tu sesión expiró o la solicitud no es válida. Vuelve a intentarlo.', 'error')
     return hx_redirect(url_for('login'))
 
-# === HELPERS HTMX (sensación SPA sin reescribir en React/Vue) ===
-def render_page(template, **context):
-    """Renderiza la página completa, o solo el #content si la petición viene de HTMX."""
-    layout = '_partial.html' if request.headers.get('HX-Request') else 'base.html'
-    return render_template(template, _layout=layout, **context)
-
-def hx_redirect(url):
-    """Redirección compatible con HTMX (HX-Redirect) y con carga normal (302)."""
-    if request.headers.get('HX-Request'):
-        resp = make_response('')
-        resp.headers['HX-Redirect'] = url
-        return resp
-    return redirect(url)
-
-def full_page(template, **context):
-    """Páginas STANDALONE (documento HTML completo: login, responsiva, impresión,
-    ejecutar receta). Si llegan vía HTMX (un enlace boosteado por error), se fuerza
-    una navegación real para NO inyectar un <html> completo dentro de #content."""
-    if request.headers.get('HX-Request'):
-        destino = request.full_path
-        if destino.endswith('?'):
-            destino = destino[:-1]
-        resp = make_response('')
-        resp.headers['HX-Redirect'] = destino
-        return resp
-    return render_template(template, **context)
+# render_page, hx_redirect y full_page viven en nucleo/vistas.py (importados arriba).
 
 @cache.cached(timeout=600, key_prefix='empleados_activos')
 def get_empleados_activos():
@@ -197,107 +183,9 @@ def get_empleados_activos():
 EMPRESA_NOMBRE = 'ATISA, S.A. de C.V.'
 EMPRESA_CIUDAD = 'Tlaquepaque, Jalisco'
 
-# === RBAC — FUENTE ÚNICA DE VERDAD ===
-# Qué roles pueden ver/usar cada módulo. Alimenta los decoradores del backend
-# Y el render del menú lateral (botones que no aplican, desaparecen).
-PERMISOS = {
-    'dashboard':     ['admin', 'rh'],
-    'tablero':       ['admin', 'rh'],
-    'recetas':       ['admin', 'operador'],
-    'empleados':     ['admin', 'rh'],
-    'documentos':    ['admin', 'rh'],
-    'reportes':      ['admin', 'rh'],
-    'asistencias':   ['admin', 'rh'],
-    'expertise':     ['admin', 'rh'],
-    'perfiles':      ['admin', 'rh'],
-    'cardex':        ['admin', 'rh'],
-    'bpd':           ['admin', 'rh'],
-    'incidencias':   ['admin', 'rh'],
-    'capacitacion':  ['admin', 'rh'],
-    'cinco_s':       ['admin', 'rh'],
-    'limpiezas':     ['admin', 'rh'],
-    'produccion':    ['admin', 'rh'],
-    'avisos':        ['admin', 'rh'],
-    'organigrama':   ['admin', 'rh'],
-    'reclutamiento': ['admin', 'rh'],
-    'normativa':     ['admin', 'rh'],
-    'activos':       ['admin', 'rh'],
-    'gasolina':      ['admin', 'rh'],
-    'auditoria':     ['admin'],
-    'configuracion': ['admin'],
-}
-
-# --- Navegación por departamentos (organigrama ATISA) ---
-# El menú se agrupa en los 8 departamentos del organigrama. Cada módulo apunta a
-# una ruta que YA existe; 'match' resalta el módulo activo también en sus subrutas
-# (ej. /asistencias sigue resaltado dentro de /reporte_individual).
-# Los departamentos con 'modulos' vacío son el plan a futuro (hoja de ruta): solo
-# el admin los ve, marcados como "Próximamente", hasta que se construyan.
-# Para mover un módulo de departamento, basta con cambiarlo de lista aquí.
-NAV_DEPARTAMENTOS = [
-    {'key': 'general', 'nombre': 'General', 'icono': 'ri-home-5-line', 'modulos': [
-        ('/dashboard',   'Dashboard',        'ri-dashboard-3-line',    ''),
-        ('/tablero',     'Tablero Gerencial','ri-line-chart-line',     ''),
-        ('/organigrama', 'Organigrama',      'ri-organization-chart',  ''),
-        ('/avisos',      'Avisos',           'ri-megaphone-line',      ''),
-    ]},
-    {'key': 'rh', 'nombre': 'Recursos Humanos', 'icono': 'ri-group-line', 'modulos': [
-        ('/empleados',    'Empleados',        'ri-id-card-line',        ''),
-        ('/incidencias',  'Incidencias',      'ri-calendar-close-line', ''),
-        ('/asistencias',  'Asistencias',      'ri-time-line',           '/reporte_individual'),
-        ('/capacitacion', 'Capacitación',     'ri-graduation-cap-line', ''),
-        ('/expertise',    'Matriz Expertise', 'ri-medal-line',          ''),
-        ('/perfiles',     'Perfiles de Puesto','ri-profile-line',       ''),
-        ('/reclutamiento','Reclutamiento',    'ri-user-search-line',    ''),
-        ('/cardex',       'Cardex & Madurez', 'ri-profile-line',        ''),
-        ('/bpd',          'Desempeño BPD',    'ri-speed-up-line',       ''),
-        ('/reportes',     'Reportes',         'ri-bar-chart-2-line',    ''),
-    ]},
-    {'key': 'produccion', 'nombre': 'Producción', 'icono': 'ri-flask-line', 'modulos': [
-        ('/produccion', 'Producción', 'ri-medicine-bottle-line', ''),
-        ('/recetas',    'Procesos',   'ri-list-check-3',         ''),
-    ]},
-    {'key': 'calidad', 'nombre': 'Calidad', 'icono': 'ri-shield-check-line', 'modulos': [
-        ('/cinco_s',    'Auditorías 5S',      'ri-sparkling-2-line',  ''),
-        ('/limpiezas',  'Rol Limpiezas',      'ri-brush-line',        ''),
-        ('/documentos', 'Documentos BPM',     'ri-folder-open-line',  ''),
-        ('/normativa',  'Documentos Legales', 'ri-scales-3-line',     '/normativa/bpm'),
-        ('/activos',    'Activos y EPP',      'ri-shield-check-line', ''),
-    ]},
-    {'key': 'logistica', 'nombre': 'Logística', 'icono': 'ri-truck-line', 'modulos': [
-        ('/gasolina', 'Tarjeta Gasolina', 'ri-gas-station-fill', ''),
-    ]},
-    {'key': 'administracion', 'nombre': 'Administración', 'icono': 'ri-building-line', 'modulos': [
-        ('/auditoria',     'Auditoría y Catálogos', 'ri-file-shield-2-line', ''),
-        ('/configuracion', 'Configuración',         'ri-settings-4-line',    ''),
-    ]},
-    {'key': 'comercial',         'nombre': 'Comercial',                  'icono': 'ri-line-chart-line',   'modulos': []},
-    {'key': 'id',                'nombre': 'Investigación y Desarrollo', 'icono': 'ri-microscope-line',   'modulos': []},
-    {'key': 'farmacovigilancia', 'nombre': 'Farmacovigilancia',         'icono': 'ri-heart-pulse-line',  'modulos': []},
-]
-
-def construir_nav(rol):
-    """Arma el árbol de navegación visible para el rol en sesión.
-    Filtra cada módulo por PERMISOS y oculta departamentos sin módulos
-    accesibles (los departamentos 'a futuro' solo los ve el admin)."""
-    arbol = []
-    for d in NAV_DEPARTAMENTOS:
-        mods = [m for m in d['modulos'] if rol in PERMISOS.get(m[0][1:], [])]
-        es_roadmap = len(d['modulos']) == 0
-        if mods or (es_roadmap and rol == 'admin'):
-            arbol.append({**d, 'modulos_visibles': mods, 'es_roadmap': es_roadmap})
-    return arbol
-
-def landing_endpoint():
-    """Primer módulo al que el rol en sesión SÍ tiene acceso.
-    Evita el bucle de redirección: nunca devuelve un destino que luego deniegue."""
-    rol = session.get('rol')
-    prioridad = ['dashboard', 'recetas', 'empleados', 'documentos', 'reportes',
-                 'asistencias', 'activos', 'gasolina', 'configuracion']
-    for modulo in prioridad:
-        if rol in PERMISOS.get(modulo, []):
-            return modulo
-    return 'sin_acceso'   # rol sin ningún módulo: pantalla estática (no se atora)
+# PERMISOS, ROLES y FACULTADES viven en nucleo/auth.py; el menú (NAV_DEPARTAMENTOS,
+# construir_nav, landing_endpoint) en nucleo/menu.py. Los módulos de modulos/ suman
+# lo suyo al registrarse (ver nucleo/registro.py).
 
 @app.context_processor
 def inject_globals():
@@ -308,8 +196,13 @@ def inject_globals():
         'tailwind_estatico': os.path.exists(os.path.join(app.static_folder, 'css', 'tailwind.css')),
         # Matriz de permisos para ocultar botones del menú según el rol
         'permisos': PERMISOS,
-        # Árbol de navegación por departamentos, ya filtrado por el rol en sesión
-        'nav_visible': construir_nav(session.get('rol')),
+        # Árbol de navegación por departamentos, ya filtrado por los roles en sesión
+        'nav_visible': construir_nav(roles_sesion()),
+        # Base común: puede('almacen'), tiene_facultad('liberar_lotes'),
+        # enlace('ficha_lote', lote_id=3) -> URL o None si el módulo no está instalado
+        'puede': usuario_puede,
+        'tiene_facultad': tiene_facultad,
+        'enlace': registro_modulos.enlace,
     }
 
 # Carpetas para guardar archivos físicos
@@ -362,11 +255,35 @@ def respaldar_bd(destino=None):
             pass
     return destino
 
+def respaldar_privados():
+    """Copia a respaldos/privado/ los archivos adjuntos (certificados, evidencias) que
+    aún no estén ahí. Los archivos nunca se modifican (nombre aleatorio por archivo), así
+    que basta con copiar los nuevos."""
+    import shutil
+    origen = carpeta_privada()
+    if not os.path.isdir(origen):
+        return 0
+    destino_base = os.path.join(RESPALDOS_DIR, 'privado')
+    copiados = 0
+    for raiz, _dirs, archivos in os.walk(origen):
+        destino = os.path.join(destino_base, os.path.relpath(raiz, origen))
+        for nombre in archivos:
+            d = os.path.join(destino, nombre)
+            if not os.path.exists(d):
+                os.makedirs(destino, exist_ok=True)
+                shutil.copy2(os.path.join(raiz, nombre), d)
+                copiados += 1
+    return copiados
+
 def _respaldo_en_hilo():
     try:
         respaldar_bd()
     except Exception:
         app.logger.exception('Falló el respaldo automático de la base')
+    try:
+        respaldar_privados()
+    except Exception:
+        app.logger.exception('Falló el respaldo de la carpeta privado/')
 
 @app.before_request
 def _respaldo_diario():
@@ -382,50 +299,9 @@ def _respaldo_diario():
             threading.Thread(target=_respaldo_en_hilo, daemon=True).start()
 
 # --- 1. CONFIGURACIÓN DE LA BASE DE DATOS ---
-def get_db_connection():
-    conn = sqlite3.connect(DB_PATH, timeout=5.0)
-    conn.row_factory = sqlite3.Row
-    # PRAGMAs de rendimiento (por conexión, costo ~microsegundos)
-    conn.execute('PRAGMA synchronous = NORMAL;')   # rápido y seguro junto a WAL
-    conn.execute('PRAGMA temp_store = MEMORY;')     # tablas temporales en RAM
-    conn.execute('PRAGMA cache_size = -16000;')     # ~16 MB de page cache
-    conn.execute('PRAGMA foreign_keys = ON;')
-    conn.execute('PRAGMA busy_timeout = 5000;')     # espera en vez de "database is locked"
-    # Red de seguridad: registra la conexión para cerrarla al final del request
-    # aunque la ruta truene o el dev olvide conn.close(). Evita bloqueos en red (WAL).
-    if has_app_context():
-        g.setdefault('_db_conns', []).append(conn)
-    return conn
-
-@app.teardown_appcontext
-def _cerrar_conexiones_db(exc):
-    """Cierra TODA conexión abierta durante el request (idempotente con conn.close())."""
-    conns = g.pop('_db_conns', None)
-    if conns:
-        for c in conns:
-            try:
-                c.close()
-            except Exception:
-                pass
-
-# === M10 · AUDITORÍA: registro de trazabilidad (nunca debe romper el request) ===
-def _auditar(tipo, accion, ruta='', detalle='', usuario=None, rol=None):
-    """Inserta una línea en el registro de auditoría. A prueba de fallos:
-    si algo sale mal (BD ocupada, tabla vieja), se ignora en silencio."""
-    try:
-        conn = sqlite3.connect(DB_PATH, timeout=3.0)
-        try:
-            ip = request.remote_addr if request else None
-        except Exception:
-            ip = None
-        conn.execute(
-            "INSERT INTO auditoria (usuario, rol, tipo, accion, ruta, detalle, ip) VALUES (?,?,?,?,?,?,?)",
-            (usuario or session.get('nombre') or session.get('username'),
-             rol or session.get('rol'), tipo, accion, ruta, detalle, ip))
-        conn.commit()
-        conn.close()
-    except Exception:
-        app.logger.warning('No se pudo registrar en la bitácora: %s %s', tipo, ruta, exc_info=True)
+# get_db_connection y _auditar viven en nucleo/ (importados arriba).
+# Cierra TODA conexión abierta durante el request (idempotente con conn.close()).
+app.teardown_appcontext(cerrar_conexiones_db)
 
 # Rutas cuyo POST NO se registra como 'cambio' de datos:
 #  - /login ya se registra aparte como 'acceso' (evita el doble registro).
@@ -438,10 +314,11 @@ _AUDIT_CAMPOS_OCULTOS = {'csrf_token', 'password', 'passw', 'password_actual', '
 def _detalle_formulario(max_valor=60, max_total=400):
     """Resumen legible de lo que se envió ('campo=valor; ...') para la bitácora:
     qué registro y qué datos se tocaron (trazabilidad BPM). Omite contraseñas y el
-    token CSRF; de los archivos solo guarda el nombre."""
+    token CSRF y PIN de firma; de los archivos solo guarda el nombre."""
     partes = []
     for campo in request.form:
-        if campo in _AUDIT_CAMPOS_OCULTOS or 'password' in campo.lower():
+        # Ni contraseñas ni PIN de firma quedan escritos en la bitácora.
+        if campo in _AUDIT_CAMPOS_OCULTOS or 'password' in campo.lower() or 'pin' in campo.lower():
             continue
         valores = [v.strip() for v in request.form.getlist(campo) if v and v.strip()]
         if not valores:
@@ -1238,64 +1115,13 @@ def inicializar_bd():
         pass
 
     conn.commit()
+    # Base común y módulos nuevos: tablas compartidas y migraciones versionadas de cada
+    # módulo de modulos/ (corre solo las que falten; correrla dos veces no hace nada).
+    aplicar_migraciones(conn)
     conn.close()
 
 # --- 2. LOS CADENEROS ---
-def login_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
-            return hx_redirect(url_for('login'))
-        # Re-validar contra la BD en cada request: si al usuario lo dieron de baja
-        # o le cambiaron el rol mientras estaba dentro, se aplica al instante (no se
-        # queda con un rol "congelado" del login ni sigue navegando ya dado de baja).
-        conn = get_db_connection()
-        u = conn.execute(
-            'SELECT nombre_completo, rol, estatus, debe_cambiar_password FROM usuarios WHERE id = ?',
-            (session['user_id'],)
-        ).fetchone()
-        conn.close()
-        if not u or u['estatus'] != 1:
-            session.clear()
-            flash('Tu sesión ya no es válida. Inicia sesión de nuevo.', 'error')
-            return hx_redirect(url_for('login'))
-        session['rol'] = u['rol']
-        session['nombre'] = u['nombre_completo']
-        # Contraseña inicial / temporal: no se usa el sistema hasta cambiarla.
-        if u['debe_cambiar_password'] and request.endpoint != 'cambiar_password':
-            return hx_redirect(url_for('cambiar_password'))
-        return f(*args, **kwargs)
-    return decorated_function
-
-def _denegar():
-    """Acceso no autorizado: avisa con toast y manda a una pantalla válida (sin trabarse)."""
-    flash('No tienes permiso para acceder a esa sección.', 'error')
-    return hx_redirect(url_for(landing_endpoint()))
-
-def requiere_rol(rol_necesario):
-    def decorator(f):
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            if 'user_id' not in session:
-                return hx_redirect(url_for('login'))
-            if session.get('rol') != rol_necesario and session.get('rol') != 'admin':
-                return _denegar()
-            return f(*args, **kwargs)
-        return decorated_function
-    return decorator
-
-def requiere_modulo(modulo):
-    """Permite el acceso solo a los roles listados en PERMISOS[modulo]."""
-    def decorator(f):
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            if 'user_id' not in session:
-                return hx_redirect(url_for('login'))
-            if session.get('rol') not in PERMISOS.get(modulo, []):
-                return _denegar()
-            return f(*args, **kwargs)
-        return decorated_function
-    return decorator
+# login_required, requiere_rol, requiere_modulo y requiere_facultad viven en nucleo/auth.py.
 
 def _bloquea_quitar_admin(user_id, nuevo_rol=None, nuevo_estatus=0):
     """Devuelve un mensaje de error si la operación dejaría al sistema SIN ningún
@@ -1350,8 +1176,7 @@ def login():
             session.permanent = True          # activa la expiración de 8 h
             session['user_id'] = usuario['id']
             session['username'] = usuario['username']
-            session['nombre'] = usuario['nombre_completo']
-            session['rol'] = usuario['rol']
+            guardar_en_sesion(usuario)       # rol, áreas adicionales, facultades y número
             _auditar('acceso', 'Inicio de sesión', '/login',
                      usuario=usuario['nombre_completo'], rol=usuario['rol'])
             return hx_redirect(url_for(landing_endpoint()))
@@ -1421,8 +1246,10 @@ def dashboard():
         'recetas_total': conn.execute("SELECT COUNT(*) AS n FROM recetas").fetchone()['n'],
         'activos_asignados': conn.execute("SELECT COUNT(*) AS n FROM asignaciones_activos WHERE estatus = 'Activo'").fetchone()['n'],
     }
+    # Mis pendientes: lo que cada módulo dice que le toca a esta persona.
+    pendientes = registro_modulos.recolectar('pendientes', conn, usuario_actual())
     conn.close()
-    return render_page('dashboard.html', empleados=empleados, metricas=metricas)
+    return render_page('dashboard.html', empleados=empleados, metricas=metricas, pendientes=pendientes)
 
 @app.route('/empleados')
 @login_required
@@ -1471,7 +1298,7 @@ def crear_empleado():
         flash(err_pass, 'error')
         return hx_redirect(url_for('empleados'))
     # El rol debe ser uno válido; si no, el usuario quedaría sin acceso a nada.
-    if rol not in ('admin', 'rh', 'operador'):
+    if rol not in ROLES:
         flash('El rol seleccionado no es válido.', 'error')
         return hx_redirect(url_for('empleados'))
     # Blindaje anti-escalada: solo un admin puede crear cuentas admin
@@ -1519,7 +1346,7 @@ def editar_empleado():
     if not (nombre and rol):
         flash('Faltan datos obligatorios (nombre o rol).', 'error')
         return hx_redirect(url_for('empleados'))
-    if rol not in ('admin', 'rh', 'operador'):
+    if rol not in ROLES:
         flash('El rol seleccionado no es válido.', 'error')
         return hx_redirect(url_for('empleados'))
     passw = request.form.get('password')
@@ -2914,6 +2741,11 @@ def tablero():
                             'nombre': a['nombre_completo'] or num, 'area': a['area'] or '',
                             'detalle': f"Faltan {faltan} de {total_docs_req} documentos", 'ref': num})
 
+    # Alertas de los módulos nuevos (almacén, calidad, equipos…), con su propia 'url'.
+    alertas += registro_modulos.recolectar('alertas', conn)
+    # Indicadores de operación que aportan los módulos (sección "Operación").
+    kpis_operacion = registro_modulos.recolectar('kpis', conn)
+
     # Ordena: rojos primero, luego amarillos
     orden_nivel = {'rojo': 0, 'amarillo': 1, 'verde': 2}
     alertas.sort(key=lambda x: orden_nivel.get(x['nivel'], 3))
@@ -2924,7 +2756,7 @@ def tablero():
     }
     conn.close()
     return render_page('tablero.html', kpis=kpis, por_area=por_area, max_area=max_area,
-                       alertas=alertas, resumen_alertas=resumen_alertas,
+                       alertas=alertas, resumen_alertas=resumen_alertas, kpis_operacion=kpis_operacion,
                        mes_actual=hoy.strftime('%B %Y').capitalize(), anio=anio)
 
 
@@ -3143,14 +2975,7 @@ def normativa_bpm_agregar():
 # ============================================================
 # === M10 · AUDITORÍA Y CATÁLOGOS MAESTROS ===================
 # ============================================================
-ROLES_INFO = {
-    'admin':    {'nombre': 'Administrador del sistema', 'icono': 'ri-shield-star-line',
-                 'desc': 'Configuración total: usuarios, catálogos, auditoría y todos los módulos.'},
-    'rh':       {'nombre': 'Recursos Humanos',          'icono': 'ri-team-line',
-                 'desc': 'Expedientes, incidencias, capacitación, desempeño, reclutamiento y reportes.'},
-    'operador': {'nombre': 'Operador de Producción',    'icono': 'ri-user-line',
-                 'desc': 'Acceso a procesos de producción y recetas asignadas.'},
-}
+# ROLES_INFO vive en nucleo/auth.py (con los roles nuevos).
 
 @app.route('/auditoria')
 @login_required
@@ -4873,6 +4698,14 @@ def avisos_eliminar():
     finally:
         conn.close()
     return hx_redirect(url_for('avisos'))
+
+# === BASE COMÚN Y MÓDULOS NUEVOS =============================================
+# Pantallas de la base (/planta, /mi-pin, /pendientes, /archivo/<id>, Parámetros) y
+# los módulos de modulos/ (cada uno en su carpeta, se registran solos). Va al final,
+# con todas las rutas de siempre ya definidas. Cómo se agrega un módulo: nucleo/registro.py.
+from nucleo.rutas import bp as nucleo_bp  # noqa: E402
+app.register_blueprint(nucleo_bp)
+registro_modulos.cargar_modulos(app)
 
 if __name__ == '__main__':
     inicializar_bd()

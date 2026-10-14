@@ -44,6 +44,22 @@
         </div>
     </div>
 
+    {% if kpis_operacion %}
+    <!-- Operación: indicadores que aportan los módulos (almacén, calidad, equipos…) -->
+    <h2 class="text-xs font-bold text-slate-500 uppercase mb-3">Operación</h2>
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {% for k in kpis_operacion %}
+        <a href="{{ k.url or '#' }}" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 hover:border-[#0e6ba8] transition-colors">
+            <div class="flex items-center justify-between"><p class="text-xs font-bold text-slate-500 uppercase">{{ k.titulo }}</p>
+                {% if k.nivel %}<span class="w-2.5 h-2.5 rounded-full {{ 'bg-rose-500' if k.nivel == 'rojo' else ('bg-amber-500' if k.nivel == 'amarillo' else 'bg-emerald-500') }}"></span>{% endif %}
+            </div>
+            <p class="text-3xl font-bold text-[#1d1d1f] mt-2 leading-none">{{ k.valor }}</p>
+            {% if k.detalle %}<p class="text-xs text-slate-400 mt-2">{{ k.detalle }}</p>{% endif %}
+        </a>
+        {% endfor %}
+    </div>
+    {% endif %}
+
     <div class="grid grid-cols-1 xl:grid-cols-5 gap-6">
         <!-- Headcount por área -->
         <section class="xl:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
@@ -98,8 +114,9 @@
                         </div>
                         <p class="text-xs text-slate-500">{{ al.tipo }} — {{ al.detalle }}</p>
                     </div>
-                    {% if al.ref %}
-                    <a href="/expediente/{{ al.ref }}" hx-get="/expediente/{{ al.ref }}" hx-target="#content" hx-push-url="true"
+                    {% set destino = al.url or ('/expediente/' ~ al.ref if al.ref else '') %}
+                    {% if destino %}
+                    <a href="{{ destino }}" hx-get="{{ destino }}" hx-target="#content" hx-push-url="true"
                        class="shrink-0 text-xs font-bold text-[#0e6ba8] hover:underline flex items-center gap-1">Ver <i class="ri-arrow-right-line"></i></a>
                     {% endif %}
                 </div>

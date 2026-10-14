@@ -6,6 +6,9 @@ Sirven de red de seguridad cuando se agregan módulos nuevos:
 - sin sesión, nada (salvo login) responde;
 - toda ruta nueva declara su permiso con @requiere_modulo (o @requiere_rol);
 - todas las plantillas compilan.
+
+Los módulos de modulos/ entran solos: cada uno aporta, con su gancho datos_humo, un
+registro de ejemplo de cada cosa que sus pantallas con parámetro necesitan.
 """
 import os
 
@@ -14,7 +17,7 @@ import pytest
 import erp
 from conftest import crear_usuario, login
 
-ROLES = ['admin', 'rh', 'operador']
+ROLES = list(erp.ROLES)
 # Rutas que no llevan permiso de módulo, a propósito.
 PUBLICAS = {'/', '/login', '/logout'}
 SOLO_SESION = {'/sin_acceso', '/cambiar_password'}
@@ -63,8 +66,10 @@ def datos():
     crear_usuario(conn, 'humo_emp', 'clave-humo-1', rol='operador', numero='8001',
                   nombre_completo='Empleado Humo', puesto='Operador', area='Producción',
                   fecha_ingreso='2024-01-15')
+    # Con todas las facultades: la prueba recorre pantallas, no revisa quién firma.
     for rol in ROLES:
-        crear_usuario(conn, f'humo_{rol}', 'clave-humo-1', rol=rol, numero=f'80{ROLES.index(rol) + 10}')
+        crear_usuario(conn, f'humo_{rol}', 'clave-humo-1', rol=rol, numero=f'80{ROLES.index(rol) + 10}',
+                      facultades=','.join(erp.FACULTADES))
 
     os.makedirs(erp.app.config['UPLOAD_CONTRATOS'], exist_ok=True)
     os.makedirs(erp.UPLOAD_LEGALES, exist_ok=True)
@@ -97,12 +102,18 @@ def datos():
     cur.execute("INSERT INTO capacitacion_registro (numero_empleado, curso_id, estatus, fecha) "
                 "VALUES ('8001', ?, 'Tomado', '2026-02-01')", (curso_id,))
     conn.commit()
-    conn.close()
-    yield {
+    parametros = {
         'receta_id': receta_id, 'asignacion_id': asignacion_id, 'doc_id': doc_id,
         'vid': vacante_id, 'did': legal_id, 'pid': puesto_id, 'curso_id': curso_id,
         'numero_empleado': '8001', 'nombre_empleado': 'Empleado Humo',
     }
+    # Datos de ejemplo de cada módulo (modulos/<clave>/ganchos.py → datos_humo)
+    for m in erp.registro_modulos.modulos_activos():
+        if m.datos_humo:
+            parametros.update(m.datos_humo(conn) or {})
+            conn.commit()
+    conn.close()
+    yield parametros
     for ruta in (pdf_contrato, pdf_legal):
         os.remove(ruta)
 
