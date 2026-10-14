@@ -1,0 +1,86 @@
+{% extends _layout|default("base.html") %}
+{% from 'nucleo/_firma.html' import campo_firma %}
+{% from 'nucleo/_lote.html' import chip_estatus, caducidad with context %}
+{% block title %}Muestrear {{ lote.numero_lote }} | ERP Atisa{% endblock %}
+{% block content %}
+{% include 'calidad/_estilos.html' %}
+<div class="p-10 max-w-[960px]">
+    <header class="flex flex-wrap justify-between items-center gap-4 mb-6">
+        <div>
+            <p class="text-xs font-bold text-slate-500 uppercase">Muestreo</p>
+            <h1 class="text-2xl font-bold text-[#1d1d1f]">{{ lote.material_nombre }} · <span class="cc-mono">{{ lote.numero_lote }}</span></h1>
+            <p class="text-slate-500 mt-1"><span class="cc-mono">{{ lote.material_codigo }}</span> · existencia {{ lote.existencia }} {{ lote.unidad }} · {{ chip_estatus(lote) }}</p>
+        </div>
+        <a href="{{ url_for('calidad.bandeja') }}" class="cc-btn"><i class="ri-arrow-left-line"></i> Bandeja</a>
+    </header>
+
+    {% if granel %}
+    <div class="cc-aviso-ambar mb-4">Esta presentación sigue al granel <strong class="cc-mono">{{ granel.numero_lote }}</strong>: el análisis de liberación se hace al granel. Aquí solo se puede hacer un análisis especial.</div>
+    {% endif %}
+    {% if abierto %}
+    <div class="cc-aviso-ambar mb-4">El lote ya tiene el análisis <strong>{{ abierto.folio }}</strong> abierto: lo empezó {{ abierto.nombre or 'otra persona' }} el {{ abierto.creado_en[:16] }}.</div>
+    {% endif %}
+    {% if not esp %}
+    <div class="cc-aviso-rojo mb-4">{{ lote.material_codigo }} no tiene especificación vigente: no se puede muestrear. <a class="font-bold underline" href="{{ url_for('calidad.especificaciones', tab='sin') }}">Ir a especificaciones</a></div>
+    {% else %}
+    <div class="cc-tarjeta p-5 mb-4 text-sm">
+        <p><strong>Especificación:</strong> {{ esp.codigo_documento or 'Sin código' }} · versión {{ esp.version }}{% if esp.referencia %} · {{ esp.referencia }}{% endif %}</p>
+        {% if esp.cantidad_muestra %}<p><strong>Cantidad a muestrear:</strong> {{ esp.cantidad_muestra }} {{ lote.unidad }}</p>{% endif %}
+        {% if esp.plan_muestreo %}<p><strong>Plan de muestreo:</strong> {{ esp.plan_muestreo }}</p>{% endif %}
+        {% if esp.pide_retencion %}<p><strong>Retención:</strong> pide muestra de retención ({{ esp.cantidad_retencion or '' }} {{ lote.unidad }}).</p>{% endif %}
+    </div>
+
+    <form method="POST" action="{{ url_for('calidad.muestrear', lote_id=lote.id) }}" class="cc-tarjeta p-6 flex flex-col gap-4">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="cc-grid cc-g2">
+            <div>
+                <label class="cc-etiqueta" for="tipo">Tipo de análisis</label>
+                <select id="tipo" name="tipo" class="cc-campo">
+                    {% for t, n in [('LIBERACION', 'Liberación'), ('REANALISIS', 'Reanálisis'), ('ESPECIAL', 'Especial')] %}
+                    <option value="{{ t }}" {% if t == tipo %}selected{% endif %}>{{ n }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="cc-etiqueta" for="muestra_lote_id">De qué lote se toma la muestra</label>
+                <select id="muestra_lote_id" name="muestra_lote_id" class="cc-campo">
+                    <option value="{{ lote.id }}">{{ lote.numero_lote }} (el mismo)</option>
+                    {% for p in presentaciones %}
+                    <option value="{{ p.id }}">{{ p.numero_lote }} · {{ p.codigo }} ({{ p.existencia }} {{ p.unidad }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="cc-etiqueta" for="cantidad">Cantidad muestreada (0 = solo inspección)</label>
+                <div class="flex gap-2">
+                    <input id="cantidad" name="cantidad" type="number" step="any" min="0" value="{{ esp.cantidad_muestra or 0 }}" class="cc-campo">
+                    <select name="unidad_captura" class="cc-campo w-32">
+                        <option value="">{{ lote.unidad }}</option>
+                        {% if lote.unidad|lower == 'kg' %}<option value="g">g</option>{% endif %}
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label class="cc-etiqueta" for="contenedores">Contenedores muestreados</label>
+                <input id="contenedores" name="contenedores" placeholder="3 de 12" class="cc-campo">
+            </div>
+        </div>
+        <div>
+            <label class="cc-etiqueta" for="observaciones">Observaciones</label>
+            <textarea id="observaciones" name="observaciones" rows="2" class="cc-campo"></textarea>
+        </div>
+        <details class="cc-desplegable border border-slate-200 rounded-xl p-4" {% if esp.pide_retencion %}open{% endif %}>
+            <summary class="font-bold text-sm text-[#1d1d1f]"><i class="ri-archive-drawer-line"></i> Incluye muestra de retención</summary>
+            <div class="cc-grid cc-g3 mt-3">
+                <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="con_retencion" value="1" {% if esp.pide_retencion %}checked{% endif %}> Guardar retención</label>
+                <div><label class="cc-etiqueta">Envases</label><input name="ret_envases" type="number" min="1" value="1" class="cc-campo"></div>
+                <div><label class="cc-etiqueta">Cantidad</label><input name="ret_cantidad" type="number" step="any" min="0" value="{{ esp.cantidad_retencion or 0 }}" class="cc-campo"></div>
+                <div class="md:col-span-3"><label class="cc-etiqueta">Ubicación en la muestroteca</label><input name="ret_ubicacion" placeholder="Anaquel 2 · gaveta B" class="cc-campo"></div>
+            </div>
+        </details>
+        {{ campo_firma('Realizó', numero=session.numero_empleado, titulo='Firma de quien muestreó') }}
+        <div class="flex justify-end"><button type="submit" class="cc-btn cc-btn-primario"><i class="ri-test-tube-line"></i> Guardar muestreo</button></div>
+    </form>
+    {% endif %}
+</div>
+{% endblock %}

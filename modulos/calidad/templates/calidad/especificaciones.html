@@ -1,0 +1,104 @@
+{% extends _layout|default("base.html") %}
+{% from 'nucleo/_firma.html' import campo_firma %}
+{% block title %}Especificaciones | ERP Atisa{% endblock %}
+{% block content %}
+{% include 'calidad/_estilos.html' %}
+{% set est = {'BORRADOR': ('Borrador', 'cc-gris'), 'EN_REVISION': ('En revisión', 'cc-pend'), 'VIGENTE': ('Vigente', 'cc-ok'), 'OBSOLETA': ('Obsoleta', 'cc-gris')} %}
+<div class="p-10">
+    <header class="flex flex-wrap justify-between items-center gap-4 mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-[#1d1d1f]">Especificaciones</h1>
+            <p class="text-slate-500 mt-1">Qué se analiza a cada material, con qué método y con qué límites</p>
+        </div>
+        {% if puede_operar %}
+        <div class="flex flex-wrap gap-2">
+            <a href="{{ url_for('calidad.especificaciones_carga') }}" class="cc-btn"><i class="ri-file-excel-2-line"></i> Carga desde Excel</a>
+            <details class="cc-desplegable relative">
+                <summary class="cc-btn cc-btn-primario"><i class="ri-add-line"></i> Nueva especificación</summary>
+                <form method="POST" action="{{ url_for('calidad.especificacion_nueva') }}" class="cc-tarjeta p-4 flex flex-col gap-3 absolute right-0 z-20 mt-2 w-[360px]" style="width:360px">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div><label class="cc-etiqueta">Material</label>
+                        <select name="material_id" required class="cc-campo"><option value="">— Elige —</option>
+                            {% for m in materiales %}<option value="{{ m.id }}">{{ m.tipo }} · {{ m.codigo }} · {{ m.nombre }}</option>{% endfor %}</select></div>
+                    <div><label class="cc-etiqueta">Copiar de (opcional)</label>
+                        <select name="copiar_de" class="cc-campo"><option value="">— Empezar en blanco —</option>
+                            {% for e in vigentes %}<option value="{{ e.id }}">{{ e.codigo }} v{{ e.version }}</option>{% endfor %}</select></div>
+                    <button type="submit" class="cc-btn cc-btn-primario">Crear borrador</button>
+                </form>
+            </details>
+        </div>
+        {% endif %}
+    </header>
+
+    <nav class="cc-tabs">
+        <a href="{{ url_for('calidad.especificaciones') }}" class="cc-tab {% if tab == 'lista' %}activa{% endif %}">Especificaciones <span class="cc-cuenta">{{ filas|length }}</span></a>
+        <a href="{{ url_for('calidad.especificaciones', tab='sin') }}" class="cc-tab {% if tab == 'sin' %}activa{% endif %}">Sin especificación <span class="cc-cuenta">{{ sin|length }}</span></a>
+    </nav>
+
+    {% if tab == 'lista' %}
+    <form method="POST" action="{{ url_for('calidad.especificaciones_bloque') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <section class="cc-tarjeta overflow-hidden mb-4">
+            <table class="cc-tabla">
+                <thead><tr><th></th><th>Material</th><th>Tipo</th><th>Versión</th><th>Documento</th><th>Pruebas</th><th>Estatus</th><th>Vigente desde</th></tr></thead>
+                <tbody>
+                {% for e in filas %}{% set s = est.get(e.estatus) %}
+                <tr>
+                    <td>{% if e.estatus == 'EN_REVISION' and puede_operar %}<input type="checkbox" name="ids" value="{{ e.id }}">{% endif %}</td>
+                    <td><a href="{{ url_for('calidad.especificacion_editor', especificacion_id=e.id) }}" class="font-semibold text-[#0e6ba8]">{{ e.material_nombre }}</a><p class="text-xs text-slate-500 cc-mono">{{ e.material_codigo }}</p></td>
+                    <td>{{ e.material_tipo }}</td>
+                    <td>v{{ e.version }}</td>
+                    <td class="cc-mono text-xs">{{ e.codigo_documento or '—' }}</td>
+                    <td>{{ e.n_pruebas }}</td>
+                    <td><span class="cc-chip {{ s[1] }}">{{ s[0] }}</span>{% if e.estatus == 'EN_REVISION' %}<br><span class="text-xs text-slate-500">{{ 'Revisada: falta aprobar' if e.reviso_firma_id else 'Falta revisar' }}</span>{% endif %}</td>
+                    <td class="text-xs">{{ e.vigente_desde or '' }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="8" class="text-center text-slate-400 py-10">Aún no hay especificaciones.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </section>
+        {% if puede_operar and filas|selectattr('estatus', 'equalto', 'EN_REVISION')|list %}
+        <details class="cc-desplegable cc-tarjeta p-5 max-w-2xl">
+            <summary class="font-bold text-[#1d1d1f]">Revisar o aprobar las marcadas en bloque</summary>
+            <p class="text-sm text-slate-500 mt-2 mb-2">Se firma una vez y queda una firma por especificación.</p>
+            <div class="flex gap-4 text-sm mb-3">
+                <label><input type="radio" name="accion" value="revisar" checked> Revisar</label>
+                {% if tiene_facultad('aprobar_maestros') %}<label><input type="radio" name="accion" value="aprobar"> Aprobar</label>{% endif %}
+            </div>
+            {{ campo_firma('Revisó', numero=session.numero_empleado, id='firma-bloque', titulo='Firma') }}
+            <button type="submit" class="cc-btn cc-btn-primario mt-3">Firmar</button>
+        </details>
+        {% endif %}
+    </form>
+    {% else %}
+    <section class="cc-tarjeta overflow-hidden">
+        <table class="cc-tabla">
+            <thead><tr><th>Material</th><th>Tipo</th><th>Lotes esperando</th><th>En curso</th><th></th></tr></thead>
+            <tbody>
+            {% for m in sin %}
+            <tr>
+                <td><p class="font-semibold text-[#1d1d1f]">{{ m.nombre }}</p><p class="text-xs text-slate-500 cc-mono">{{ m.codigo }}</p></td>
+                <td>{{ m.tipo }}</td>
+                <td>{% if m.lotes_esperando %}<span class="cc-chip cc-pend">{{ m.lotes_esperando }}</span>{% else %}0{% endif %}</td>
+                <td class="text-xs">{{ {'BORRADOR': 'Borrador', 'EN_REVISION': 'En revisión'}.get(m.en_curso, '—') }}</td>
+                <td class="text-right">
+                    {% if puede_operar and not m.en_curso %}
+                    <form method="POST" action="{{ url_for('calidad.especificacion_nueva') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="material_id" value="{{ m.id }}">
+                        <button type="submit" class="cc-btn cc-btn-chico">Crear</button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="text-center text-slate-400 py-10">Todos los materiales que requieren análisis tienen especificación vigente.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </section>
+    {% endif %}
+</div>
+{% endblock %}

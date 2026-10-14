@@ -1,0 +1,35 @@
+{% extends 'nucleo/_impresion.html' %}
+{% set l = c.lote %}
+{% block hoja_titulo %}Certificado de análisis{% endblock %}
+{% block hoja_codigo %}{{ c.codigo_formato }}{% endblock %}
+{% block hoja_folio %}Lote {{ l.numero_lote }}{% endblock %}
+{% block hoja_cuerpo %}
+<table>
+    <tr><th style="width:24%">Producto / material</th><td colspan="3"><strong>{{ l.material_nombre }}</strong> ({{ l.material_codigo }})</td></tr>
+    <tr><th>Presentación</th><td>{{ l.material_codigo if l.material_tipo == 'PT' else '—' }}</td>
+        <th style="width:18%">Lote</th><td><strong>{{ l.numero_lote }}</strong>{% if c.granel %} · granel {{ c.granel.numero_lote }}{% endif %}</td></tr>
+    <tr><th>Fecha de fabricación</th><td>{{ l.fecha_fabricacion or (c.granel.fecha_fabricacion if c.granel else '') or '—' }}</td>
+        <th>Caducidad</th><td>{{ l.fecha_caducidad or '—' }}</td></tr>
+    <tr><th>Registro SENASICA</th><td>{{ l.registro_sanitario or '—' }}</td>
+        <th>Especificación</th><td>{{ c.especificacion.codigo_documento or '—' }} · versión {{ c.especificacion.version }}{% if c.especificacion.referencia %} · {{ c.especificacion.referencia }}{% endif %}</td></tr>
+    {% if l.lote_proveedor %}<tr><th>Lote del proveedor</th><td colspan="3">{{ l.lote_proveedor }}{% if l.proveedor_nombre %} · {{ l.proveedor_nombre }}{% endif %}</td></tr>{% endif %}
+    <tr><th>Análisis</th><td colspan="3">{{ c.analisis.folio }}</td></tr>
+</table>
+
+<table style="margin-top:14px">
+    <thead><tr><th style="width:28%">Prueba</th><th>Especificación</th><th style="width:22%">Resultado</th><th style="width:20%">Método</th></tr></thead>
+    <tbody>
+    {% for p in c.pruebas %}
+    <tr><td>{{ p.prueba }}</td><td>{{ p.texto_especificacion }}</td><td><strong>{{ p.resultado }}</strong></td><td>{{ p.metodo or '' }}</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+<p style="margin-top:14px;font-size:11pt"><strong>Dictamen:</strong> APROBADO{% if c.fecha_dictamen %} · {{ c.fecha_dictamen }}{% endif %}</p>
+<p style="font-size:9pt;color:#6e6e73">El lote cumple con la especificación vigente al momento de su análisis. Este certificado se generó en el ERP con los resultados firmados electrónicamente.</p>
+{% endblock %}
+{% block hoja_firmas %}
+<div>Analizó<br><strong>{{ c.analizo or '—' }}</strong></div>
+<div>Revisó<br><strong>{{ c.reviso or '—' }}</strong></div>
+<div>Liberó<br><strong>{{ c.libero or '—' }}</strong></div>
+{% endblock %}

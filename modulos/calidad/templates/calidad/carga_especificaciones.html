@@ -1,0 +1,30 @@
+{% extends _layout|default("base.html") %}
+{% block title %}Carga de especificaciones | ERP Atisa{% endblock %}
+{% block content %}
+{% include 'calidad/_estilos.html' %}
+<div class="p-10 max-w-[960px]">
+    <header class="flex flex-wrap justify-between items-center gap-4 mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-[#1d1d1f]">Carga de especificaciones desde Excel</h1>
+            <p class="text-slate-500 mt-1">Para arrancar: crea las especificaciones en borrador; después se revisan y aprueban en bloque.</p>
+        </div>
+        <a href="{{ url_for('calidad.especificaciones') }}" class="cc-btn"><i class="ri-arrow-left-line"></i> Especificaciones</a>
+    </header>
+    <div class="cc-tarjeta p-6 mb-6 flex flex-col gap-4">
+        <p class="text-sm">1. Descarga la plantilla, llena un renglón por prueba (los datos de la especificación van en el primer renglón de cada material).</p>
+        <a href="{{ url_for('calidad.especificaciones_plantilla') }}" hx-boost="false" class="cc-btn self-start"><i class="ri-download-2-line"></i> Descargar plantilla</a>
+        <p class="text-sm">2. Súbela. Los materiales con errores no se crean y se avisa por qué; los demás sí.</p>
+        <form method="POST" action="{{ url_for('calidad.especificaciones_carga') }}" enctype="multipart/form-data" class="flex flex-wrap gap-2 items-center">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="file" name="archivo" accept=".xlsx" required class="text-sm">
+            <button type="submit" class="cc-btn cc-btn-primario"><i class="ri-upload-2-line"></i> Cargar</button>
+        </form>
+    </div>
+    <section class="cc-tarjeta overflow-hidden">
+        <table class="cc-tabla">
+            <thead><tr><th>Columna</th><th>Qué va</th></tr></thead>
+            <tbody>{% for c, d in columnas %}<tr><td class="cc-mono">{{ c }}</td><td>{{ d }}</td></tr>{% endfor %}</tbody>
+        </table>
+    </section>
+</div>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends _layout|default("base.html") %}
+{% block title %}Reportes de calidad | ERP Atisa{% endblock %}
+{% block content %}
+{% include 'calidad/_estilos.html' %}
+<div class="p-10 max-w-[960px]">
+    <header class="flex flex-wrap justify-between items-center gap-4 mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-[#1d1d1f]">Reportes de calidad</h1>
+            <p class="text-slate-500 mt-1">Exportaciones a Excel</p>
+        </div>
+        <a href="{{ url_for('calidad.bandeja') }}" class="cc-btn"><i class="ri-arrow-left-line"></i> Bandeja</a>
+    </header>
+    <div class="flex flex-col gap-4">
+        {% for clave, titulo in reportes.items() %}
+        <form method="GET" action="{{ url_for('calidad.reporte_excel', tipo=clave) }}" hx-boost="false" class="cc-tarjeta p-5 flex flex-wrap items-end gap-3">
+            <p class="font-bold text-[#1d1d1f] w-full"><i class="ri-file-excel-2-line text-emerald-600"></i> {{ titulo }}</p>
+            <div><label class="cc-etiqueta">Desde</label><input type="date" name="desde" class="cc-campo"></div>
+            <div><label class="cc-etiqueta">Hasta</label><input type="date" name="hasta" class="cc-campo"></div>
+            {% if clave == 'tendencia' %}
+            <div><label class="cc-etiqueta">Material (código o nombre)</label><input name="material" class="cc-campo"></div>
+            <div><label class="cc-etiqueta">Prueba</label><input name="prueba" placeholder="Valoración" class="cc-campo"></div>
+            {% endif %}
+            <button type="submit" class="cc-btn"><i class="ri-download-2-line"></i> Descargar</button>
+        </form>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

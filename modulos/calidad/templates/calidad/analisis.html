@@ -1,0 +1,207 @@
+{% extends _layout|default("base.html") %}
+{% from 'nucleo/_firma.html' import campo_firma %}
+{% from 'nucleo/_lote.html' import chip_estatus %}
+{% block title %}{{ a.folio }} | ERP Atisa{% endblock %}
+{% block content %}
+{% include 'calidad/_estilos.html' %}
+{% set est = {'EN_ANALISIS': ('En análisis', 'cc-azul'), 'POR_REVISAR': ('Por revisar', 'cc-pend'),
+              'CONFORME': ('Conforme', 'cc-ok'), 'NO_CONFORME': ('No conforme', 'cc-no'), 'CANCELADO': ('Cancelado', 'cc-gris')} %}
+{% set abierto = a.estatus in ('EN_ANALISIS', 'POR_REVISAR') %}
+{% set e = est.get(a.estatus, (a.estatus, 'cc-gris')) %}
+<div class="p-10">
+    <header class="flex flex-wrap justify-between items-start gap-4 mb-6">
+        <div>
+            <p class="text-xs font-bold text-slate-500 uppercase">Análisis {{ a.tipo|lower }}</p>
+            <h1 class="text-2xl font-bold text-[#1d1d1f] flex items-center gap-3"><span class="cc-mono">{{ a.folio }}</span> <span class="cc-chip {{ e[1] }}">{{ e[0] }}</span></h1>
+            <p class="text-slate-500 mt-1">
+                {{ lote.material_nombre }} (<span class="cc-mono">{{ lote.material_codigo }}</span>) · lote
+                {% if ficha %}<a href="{{ ficha }}" class="text-[#0e6ba8] font-semibold cc-mono">{{ lote.numero_lote }}</a>{% else %}<span class="cc-mono font-semibold">{{ lote.numero_lote }}</span>{% endif %}
+                {{ chip_estatus(lote) }}
+            </p>
+            <p class="text-sm text-slate-500 mt-1">Especificación {{ d.esp.codigo_documento or '' }} v{{ d.esp.version }} · avance {{ d.avance[0] }} de {{ d.avance[1] }} pruebas</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+            <a href="{{ url_for('calidad.etiqueta_muestra', analisis_id=a.id) }}" hx-boost="false" target="_blank" class="cc-btn"><i class="ri-price-tag-3-line"></i> Etiqueta</a>
+            <a href="{{ url_for('calidad.hoja_trabajo', analisis_id=a.id) }}" hx-boost="false" target="_blank" class="cc-btn"><i class="ri-printer-line"></i> Hoja de trabajo</a>
+            <a href="{{ url_for('calidad.dictamen', lote_id=a.lote_id) }}" class="cc-btn"><i class="ri-scales-3-line"></i> Dictamen</a>
+            <a href="{{ url_for('calidad.bandeja') }}" class="cc-btn"><i class="ri-arrow-left-line"></i> Bandeja</a>
+        </div>
+    </header>
+
+    <div class="cc-grid cc-g3 mb-6">
+        <div class="cc-tarjeta p-5 text-sm">
+            <p class="cc-etiqueta">Muestreo</p>
+            <p>{{ a.muestreo_nombre }} · {{ a.creado_en[:16] }}</p>
+            <p>Cantidad: {{ a.cantidad_muestra }} {{ lote.unidad }}{% if d.muestra_lote %} del lote <span class="cc-mono">{{ d.muestra_lote.numero_lote }}</span>{% endif %}{% if a.contenedores %} · {{ a.contenedores }}{% endif %}</p>
+            {% if a.muestreo_obs %}<p class="text-slate-500">{{ a.muestreo_obs }}</p>{% endif %}
+        </div>
+        <div class="cc-tarjeta p-5 text-sm">
+            <p class="cc-etiqueta">Laboratorio externo</p>
+            {% if a.externo_enviado %}<p>{{ a.laboratorio }} · enviado {{ a.externo_enviado }}</p>{% else %}<p class="text-slate-400">No se ha enviado.</p>{% endif %}
+            {% if abierto and puede_operar %}
+            <details class="cc-desplegable mt-2">
+                <summary class="text-[#0e6ba8] font-semibold">Enviar a laboratorio externo</summary>
+                <form method="POST" action="{{ url_for('calidad.enviar_externo', analisis_id=a.id) }}" class="flex flex-col gap-2 mt-2">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <select name="laboratorio_id" class="cc-campo"><option value="">— Elige —</option>{% for l in laboratorios %}<option value="{{ l.id }}">{{ l.nombre }}</option>{% endfor %}</select>
+                    <input name="laboratorio_nuevo" placeholder="…o escribe uno nuevo" class="cc-campo">
+                    <input name="fecha" type="date" value="{{ hoy }}" class="cc-campo">
+                    <button class="cc-btn cc-btn-chico" type="submit">Guardar</button>
+                </form>
+            </details>
+            {% endif %}
+        </div>
+        <div class="cc-tarjeta p-5 text-sm">
+            <p class="cc-etiqueta">Revisión</p>
+            {% if a.reviso_nombre %}<p>Revisó {{ a.reviso_nombre }}</p>{% elif a.estatus == 'CANCELADO' %}<p>Canceló {{ a.cancelo_nombre }}: {{ a.motivo_cancelacion }}</p>{% elif not d.esp.requiere_revision %}<p class="text-slate-500">La especificación no pide revisión.</p>{% else %}<p class="text-slate-400">Pendiente.</p>{% endif %}
+            {% if a.observaciones %}<p class="text-slate-500">{{ a.observaciones }}</p>{% endif %}
+        </div>
+    </div>
+
+    {% if d.investigaciones %}
+    <div class="cc-tarjeta p-5 mb-6">
+        <p class="cc-etiqueta">Investigaciones de resultados fuera de especificación</p>
+        <ul class="text-sm">
+            {% for i in d.investigaciones %}
+            <li class="py-1"><a class="text-[#0e6ba8] font-semibold cc-mono" href="{{ url_for('calidad.oos', investigacion_id=i.id) }}">{{ i.folio }}</a> · {{ i.prueba }} ·
+                {% if i.estatus == 'ABIERTA' %}<span class="cc-chip cc-no">Abierta</span>{% else %}<span class="cc-chip cc-gris">{{ {'ERROR_LABORATORIO': 'Error del laboratorio', 'CONFIRMADO': 'Confirmado'}.get(i.conclusion, '') }}</span>{% endif %}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <section class="cc-tarjeta overflow-hidden mb-6">
+        <table class="cc-tabla">
+            <thead><tr><th>Prueba</th><th>Especificación</th><th>Método</th><th>Resultado</th><th>Cumple</th><th>Fuente / equipo</th><th>Quién y cuándo</th></tr></thead>
+            <tbody>
+            {% for fila in d.filas %}
+            {% set p = fila.prueba %}
+            {% for r in fila.resultados if not r.valido %}
+            <tr class="anulado">
+                <td>{{ p.prueba }}</td><td></td><td></td>
+                <td>{% if p.tipo == 'NUMERICA' %}{{ cc_num(r.valor_redondeado, p.decimales) }} {{ p.unidad or '' }}{% else %}{{ r.texto }}{% endif %}</td>
+                <td>{{ 'Sí' if r.cumple else 'No' }}</td>
+                <td colspan="2" class="text-xs" style="text-decoration:none">Anulado: {{ r.motivo_anulacion }}{% if r.anulo %} ({{ r.anulo }}){% endif %}</td>
+            </tr>
+            {% endfor %}
+            {% set r = fila.valido %}
+            <tr>
+                <td><p class="font-semibold text-[#1d1d1f]">{{ p.prueba }}</p>{% if not p.cada_lote %}<p class="text-xs text-slate-400">Periódica</p>{% endif %}</td>
+                <td class="text-sm">{{ p.texto_especificacion }}</td>
+                <td class="text-xs cc-mono">{{ p.metodo or '—' }}</td>
+                <td class="font-semibold">{% if r %}{% if p.tipo == 'NUMERICA' %}{{ cc_num(r.valor_redondeado, p.decimales) }} {{ p.unidad or '' }}{% if r.texto %}<p class="text-xs text-slate-500 font-normal">{{ r.texto }}</p>{% endif %}{% else %}{{ r.texto }}{% endif %}{% else %}<span class="text-slate-400 font-normal">—</span>{% endif %}</td>
+                <td>{% if r %}{% if r.cumple %}<span class="cc-chip cc-ok">Cumple</span>{% else %}<span class="cc-chip cc-no">No cumple</span>{% endif %}{% endif %}</td>
+                <td class="text-xs">{% if r %}{{ r.fuente }}{% if r.equipo_codigo %} · {{ r.equipo_codigo }}{% endif %}{% if r.informe_externo %} · informe {{ r.informe_externo }}{% endif %}{% endif %}</td>
+                <td class="text-xs">{% if r %}{{ r.realizo }}<br>{{ r.fecha_analisis }}{% endif %}</td>
+            </tr>
+            {% if abierto and puede_operar and not r %}
+            <tr><td colspan="7" style="border-top:none;padding-top:0">
+                <details class="cc-desplegable">
+                    <summary class="cc-btn cc-btn-chico cc-btn-primario w-max"><i class="ri-edit-2-line"></i> Capturar {{ p.prueba }}</summary>
+                    <form method="POST" action="{{ url_for('calidad.capturar', analisis_id=a.id, prueba_id=p.id) }}" enctype="multipart/form-data" class="cc-grid cc-g2 mt-3 bg-slate-50 rounded-xl p-4">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="flex flex-col gap-3">
+                            {% if p.tipo == 'NUMERICA' %}
+                            <div>
+                                <label class="cc-etiqueta">Resultado{% if p.unidad %} ({{ p.unidad }}){% endif %} · especificación {{ p.texto_especificacion }}</label>
+                                <input name="valor" type="text" inputmode="decimal" required class="cc-campo" placeholder="Se redondea a {{ p.decimales }} decimal{{ 'es' if p.decimales != 1 }}">
+                            </div>
+                            <div><label class="cc-etiqueta">Observaciones</label><input name="texto" class="cc-campo"></div>
+                            {% else %}
+                            <div><label class="cc-etiqueta">Lo observado · especificación: {{ p.texto_especificacion }}</label><input name="texto" required class="cc-campo"></div>
+                            <div><label class="cc-etiqueta">¿Cumple?</label>
+                                <select name="cumple" required class="cc-campo"><option value="">— Elige —</option><option value="1">Cumple</option><option value="0">No cumple</option></select></div>
+                            {% endif %}
+                            <div><label class="cc-etiqueta">Fuente</label>
+                                <select name="fuente" class="cc-campo">{% for f in fuentes %}<option {% if f == p.fuente_default %}selected{% endif %}>{{ f }}</option>{% endfor %}</select></div>
+                            <div><label class="cc-etiqueta">Equipo (interno){% if p.equipo_tipo %} · {{ p.equipo_tipo }}{% endif %}</label>
+                                <select name="equipo_id" class="cc-campo"><option value="">{{ '— Elige —' if p.equipo_tipo else 'Sin equipo' }}</option>
+                                    {% for eq in equipos.get(p.equipo_tipo, []) %}<option value="{{ eq.id }}">{{ eq.codigo }} · {{ eq.nombre }}</option>{% endfor %}</select>
+                                {% if p.equipo_tipo and not equipos.get(p.equipo_tipo) %}<p class="text-xs text-rose-600 mt-1">No hay equipos aptos de ese tipo.</p>{% endif %}</div>
+                            <div class="cc-grid cc-g2">
+                                <div><label class="cc-etiqueta">Laboratorio (externo)</label>
+                                    <select name="laboratorio_id" class="cc-campo"><option value="">{{ a.laboratorio or '—' }}</option>{% for l in laboratorios %}<option value="{{ l.id }}">{{ l.nombre }}</option>{% endfor %}</select></div>
+                                <div><label class="cc-etiqueta">No. de informe / certificado</label><input name="informe" class="cc-campo"></div>
+                            </div>
+                            <div><label class="cc-etiqueta">Informe externo (PDF)</label><input type="file" name="archivo" accept=".pdf,.jpg,.jpeg,.png" class="text-sm"></div>
+                            <div><label class="cc-etiqueta">Fecha del análisis</label><input type="date" name="fecha_analisis" value="{{ hoy }}" class="cc-campo"></div>
+                        </div>
+                        <div class="flex flex-col gap-3">
+                            {{ campo_firma('Realizó', numero=session.numero_empleado, id='firma-cap-' ~ p.id, titulo='Firma de quien capturó') }}
+                            <button type="submit" class="cc-btn cc-btn-primario self-start">Guardar resultado</button>
+                        </div>
+                    </form>
+                </details>
+            </td></tr>
+            {% elif abierto and puede_operar and r and r.cumple and not a.reviso_firma_id and r.realizo_numero == session.numero_empleado %}
+            <tr><td colspan="7" style="border-top:none;padding-top:0">
+                <details class="cc-desplegable">
+                    <summary class="text-xs text-[#0e6ba8] font-semibold">Corregir captura</summary>
+                    <form method="POST" action="{{ url_for('calidad.corregir', resultado_id=r.id) }}" class="cc-grid cc-g2 mt-3 bg-slate-50 rounded-xl p-4">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="flex flex-col gap-3">
+                            {% if p.tipo == 'NUMERICA' %}
+                            <div><label class="cc-etiqueta">Valor correcto{% if p.unidad %} ({{ p.unidad }}){% endif %}</label><input name="valor" inputmode="decimal" required class="cc-campo"></div>
+                            {% else %}
+                            <div><label class="cc-etiqueta">Lo observado</label><input name="texto" required class="cc-campo" value="{{ r.texto or '' }}"></div>
+                            <div><label class="cc-etiqueta">¿Cumple?</label><select name="cumple" class="cc-campo"><option value="1">Cumple</option><option value="0">No cumple</option></select></div>
+                            {% endif %}
+                            <div><label class="cc-etiqueta">Motivo de la corrección</label><input name="motivo" required class="cc-campo" placeholder="Error de dedo al transcribir"></div>
+                        </div>
+                        <div class="flex flex-col gap-3">
+                            {{ campo_firma('Anuló', numero=session.numero_empleado, id='firma-cor-' ~ r.id, titulo='Firma de quien capturó') }}
+                            <button type="submit" class="cc-btn self-start">Corregir</button>
+                        </div>
+                    </form>
+                </details>
+            </td></tr>
+            {% endif %}
+            {% endfor %}
+            </tbody>
+        </table>
+    </section>
+
+    <div class="cc-grid cc-g2">
+        <div class="cc-tarjeta p-5">
+            <p class="cc-etiqueta">Archivos del análisis</p>
+            <ul class="text-sm mb-3">
+                {% for f in d.archivos %}<li><a href="/archivo/{{ f.id }}" hx-boost="false" target="_blank" class="text-[#0e6ba8]"><i class="ri-file-line"></i> {{ f.descripcion or f.nombre_original }}</a></li>{% else %}<li class="text-slate-400">Sin archivos.</li>{% endfor %}
+                {% for f in d.archivos_lote %}<li><a href="/archivo/{{ f.id }}" hx-boost="false" target="_blank" class="text-[#0e6ba8]"><i class="ri-file-shield-2-line"></i> Del lote: {{ f.descripcion or f.nombre_original }}</a></li>{% endfor %}
+            </ul>
+            {% if puede_operar and a.estatus != 'CANCELADO' %}
+            <form method="POST" action="{{ url_for('calidad.analisis_archivo', analisis_id=a.id) }}" enctype="multipart/form-data" class="flex flex-wrap gap-2 items-center">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input name="descripcion" placeholder="Hoja de trabajo escaneada, impresión del equipo…" class="cc-campo">
+                <input type="file" name="archivo" accept=".pdf,.jpg,.jpeg,.png" required class="text-sm">
+                <button type="submit" class="cc-btn cc-btn-chico">Adjuntar</button>
+            </form>
+            {% endif %}
+        </div>
+        <div class="flex flex-col gap-4">
+            {% if a.estatus == 'POR_REVISAR' and puede_operar %}
+            <form method="POST" action="{{ url_for('calidad.revisar', analisis_id=a.id) }}" class="cc-tarjeta p-5 flex flex-col gap-3">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <p class="font-bold text-[#1d1d1f]">Revisar resultados</p>
+                {% if session.numero_empleado in d.capturistas %}
+                <p class="cc-aviso-ambar text-sm">Tú capturaste resultados de este análisis: lo debe revisar otra persona.</p>
+                {% endif %}
+                <textarea name="observaciones" rows="2" placeholder="Observaciones (opcional)" class="cc-campo"></textarea>
+                {{ campo_firma('Revisó', id='firma-revisar') }}
+                <button type="submit" class="cc-btn cc-btn-verde self-start"><i class="ri-check-double-line"></i> Revisar</button>
+            </form>
+            {% endif %}
+            {% if abierto and puede_operar %}
+            <details class="cc-desplegable cc-tarjeta p-5">
+                <summary class="font-bold text-rose-600">Cancelar el análisis</summary>
+                <form method="POST" action="{{ url_for('calidad.cancelar', analisis_id=a.id) }}" class="flex flex-col gap-3 mt-3">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input name="motivo" required placeholder="Motivo (por ejemplo, muestra mal tomada)" class="cc-campo">
+                    {{ campo_firma('Anuló', numero=session.numero_empleado, id='firma-cancelar') }}
+                    <button type="submit" class="cc-btn cc-btn-rojo self-start">Cancelar análisis</button>
+                </form>
+            </details>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,19 @@
+{% extends 'nucleo/_impresion.html' %}
+{% block hoja_titulo %}Hoja de trabajo de análisis{% endblock %}
+{% block hoja_codigo %}{{ codigo_formato }}{% endblock %}
+{% block hoja_folio %}{{ a.folio }}{% endblock %}
+{% block hoja_cuerpo %}
+<table>
+    <tr><th style="width:22%">Material</th><td>{{ lote.material_nombre }} ({{ lote.material_codigo }})</td><th style="width:14%">Lote</th><td>{{ lote.numero_lote }}</td></tr>
+    <tr><th>Especificación</th><td>{{ d.esp.codigo_documento or '—' }} · v{{ d.esp.version }}</td><th>Tipo</th><td>{{ a.tipo|capitalize }}</td></tr>
+    <tr><th>Muestreo</th><td colspan="3">{{ a.creado_en[:16] }} · {{ a.muestreo_nombre }} · {{ a.cantidad_muestra }} {{ lote.unidad }}{% if a.contenedores %} · {{ a.contenedores }}{% endif %}</td></tr>
+</table>
+{% for fila in d.filas %}{% set p = fila.prueba %}
+<table style="margin-top:10px;page-break-inside:avoid">
+    <tr><th style="width:22%">{{ loop.index }}. {{ p.prueba }}</th><td>Especificación: <strong>{{ p.texto_especificacion }}</strong>{% if p.metodo %} · Método: {{ p.metodo }}{% endif %}{% if p.equipo_tipo %} · Equipo: {{ p.equipo_tipo }} ________{% endif %}</td></tr>
+    <tr><td colspan="2" style="height:70px;vertical-align:top;color:#86868b">Datos crudos y cálculos:</td></tr>
+    <tr><td>Resultado: __________ {{ p.unidad or '' }}</td><td>Analista: ______________________ Fecha: ___________</td></tr>
+</table>
+{% endfor %}
+{% endblock %}
+{% block hoja_firmas %}<div>Analizó</div><div>Revisó</div>{% endblock %}

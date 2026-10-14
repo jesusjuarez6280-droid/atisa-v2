@@ -1,0 +1,30 @@
+{#- Sección "Calidad" en la ficha del lote (la pinta Almacén con el gancho secciones_lote). -#}
+<div class="text-sm">
+    {% if cc_granel %}
+    <p class="mb-2 text-slate-500">Sigue al granel <a href="/calidad/lote/{{ cc_granel.id }}/dictamen" class="text-[#0e6ba8] font-semibold">{{ cc_granel.numero_lote }}</a>{% if cc_analisis %} · <a href="/calidad/analisis/{{ cc_analisis[0].id }}" class="text-[#0e6ba8]">{{ cc_analisis[0].folio }}</a>{% endif %}</p>
+    {% endif %}
+    <p class="text-xs font-bold text-slate-500 uppercase mb-1">Análisis</p>
+    <ul class="mb-3">
+        {% for a in cc_analisis %}
+        <li><a href="/calidad/analisis/{{ a.id }}" class="text-[#0e6ba8] font-semibold">{{ a.folio }}</a> · {{ a.tipo|capitalize }} · {{ a.estatus|replace('_', ' ')|capitalize }} · {{ a.creado_en[:10] }}</li>
+        {% else %}
+        <li class="text-slate-400">Sin análisis.</li>
+        {% endfor %}
+    </ul>
+    {% if cc_dictamenes %}
+    <p class="text-xs font-bold text-slate-500 uppercase mb-1">Dictámenes</p>
+    <ul class="mb-3">
+        {% for d in cc_dictamenes %}<li>{{ d.ts[:10] }} · {{ d.decision|replace('_', ' ')|capitalize }} · {{ d.firmo }}{% if d.motivo %} · {{ d.motivo }}{% endif %}</li>{% endfor %}
+    </ul>
+    {% endif %}
+    {% if cc_muestras %}
+    <p class="text-xs font-bold text-slate-500 uppercase mb-1">Muestras de retención</p>
+    <ul class="mb-3">
+        {% for m in cc_muestras %}<li>{{ m.envases_actuales }} envase(s) · {{ m.ubicacion }} · {{ m.estatus|capitalize }} · destruir desde {{ m.destruir_desde }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+    <div class="flex gap-2">
+        <a href="/calidad/lote/{{ cc_lote.id }}/dictamen" class="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 font-bold text-xs">Dictamen</a>
+        {% if cc_lote.estatus == 'APROBADO' %}<a href="/calidad/lote/{{ cc_lote.id }}/certificado" hx-boost="false" target="_blank" class="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 font-bold text-xs">Certificado de análisis</a>{% endif %}
+    </div>
+</div>

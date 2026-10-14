@@ -1,0 +1,183 @@
+{% extends _layout|default("base.html") %}
+{% from 'nucleo/_lote.html' import chip_estatus, caducidad with context %}
+{% block title %}Análisis y liberación | ERP Atisa{% endblock %}
+{% block content %}
+{% include 'calidad/_estilos.html' %}
+{% set est = {'EN_ANALISIS': ('En análisis', 'cc-azul'), 'POR_REVISAR': ('Por revisar', 'cc-pend'),
+              'CONFORME': ('Conforme', 'cc-ok'), 'NO_CONFORME': ('No conforme', 'cc-no'), 'CANCELADO': ('Cancelado', 'cc-gris')} %}
+<div class="p-10">
+    <header class="flex flex-wrap justify-between items-center gap-4 mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-[#1d1d1f]">Análisis y liberación</h1>
+            <p class="text-slate-500 mt-1">Lotes en cuarentena, análisis, investigaciones y dictamen</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+            <a href="{{ url_for('calidad.especificaciones') }}" class="cc-btn"><i class="ri-file-list-3-line"></i> Especificaciones</a>
+            <a href="{{ url_for('calidad.retencion') }}" class="cc-btn"><i class="ri-archive-drawer-line"></i> Retención</a>
+            <a href="{{ url_for('calidad.reportes_inicio') }}" class="cc-btn"><i class="ri-file-excel-2-line"></i> Reportes</a>
+        </div>
+    </header>
+
+    <div class="cc-grid cc-g6 mb-6">
+        {% for clave, titulo, valor in [('muestrear', 'Por muestrear', k.por_muestrear), ('analisis', 'En análisis', k.en_analisis),
+                                          ('revisar', 'Por revisar', k.por_revisar), ('dictaminar', 'Por dictaminar', k.por_dictaminar),
+                                          ('analisis', 'Investigaciones abiertas', k.investigaciones),
+                                          ('terminados', 'Días promedio de liberación (mes)', k.dias_liberacion if k.dias_liberacion is not none else '—')] %}
+        <a href="{{ url_for('calidad.bandeja', tab=clave) }}" class="cc-kpi {% if tab == clave and loop.index != 5 %}activa{% endif %}">
+            <p class="text-2xl font-bold {% if loop.index == 5 and valor %}text-rose-600{% else %}text-[#1d1d1f]{% endif %}">{{ valor }}</p>
+            <p class="text-xs text-slate-500 font-medium mt-1">{{ titulo }}</p>
+        </a>
+        {% endfor %}
+    </div>
+
+    <nav class="cc-tabs">
+        {% for clave, titulo, n in [('muestrear', 'Por muestrear', b.por_muestrear|length), ('analisis', 'En análisis', b.en_analisis|length),
+                                     ('revisar', 'Por revisar', b.por_revisar|length), ('dictaminar', 'Por dictaminar', b.por_dictaminar|length),
+                                     ('retenidos', 'Retenidos', b.retenidos|length), ('reanalisis', 'Reanálisis', b.reanalisis|length),
+                                     ('terminados', 'Terminados', none)] %}
+        <a href="{{ url_for('calidad.bandeja', tab=clave) }}" class="cc-tab {% if tab == clave %}activa{% endif %}">{{ titulo }}{% if n is not none %} <span class="cc-cuenta">{{ n }}</span>{% endif %}</a>
+        {% endfor %}
+    </nav>
+
+    <section class="cc-tarjeta overflow-hidden">
+    {% if tab == 'muestrear' %}
+        <table class="cc-tabla">
+            <thead><tr><th>Material</th><th>Lote</th><th>Origen</th><th>Proveedor</th><th>En cuarentena</th><th>Lo necesita</th><th></th></tr></thead>
+            <tbody>
+            {% for l in b.por_muestrear %}
+            <tr>
+                <td><p class="font-semibold text-[#1d1d1f]">{{ l.material_nombre }}</p><p class="text-xs text-slate-500"><span class="cc-mono">{{ l.material_codigo }}</span> · {{ l.material_tipo }}</p></td>
+                <td><p class="font-semibold cc-mono">{{ l.numero_lote }}</p>{% if l.lote_proveedor %}<p class="text-xs text-slate-500">Prov.: {{ l.lote_proveedor }}</p>{% endif %}</td>
+                <td class="text-xs">{{ l.origen|capitalize }}{% if l.origen_folio %}<br><span class="cc-mono">{{ l.origen_folio }}</span>{% endif %}</td>
+                <td class="text-sm">{{ l.proveedor or '—' }}</td>
+                <td>{{ l.dias }} día{{ '' if l.dias == 1 else 's' }}</td>
+                <td class="text-xs">
+                    {% if l.demanda is mapping %}
+                    {% if l.demanda.url %}<a href="{{ l.demanda.url }}" class="text-[#0e6ba8] font-semibold">{% endif %}{{ l.demanda.folio or 'Orden' }}{% if l.demanda.fecha %} · {{ l.demanda.fecha }}{% endif %}{% if l.demanda.url %}</a>{% endif %}
+                    {% elif l.demanda %}{{ l.demanda }}{% else %}<span class="text-slate-400">—</span>{% endif %}
+                </td>
+                <td class="text-right">
+                    {% if not l.especificacion_id %}
+                    <a href="{{ url_for('calidad.especificaciones', tab='sin') }}" class="cc-chip cc-pend">Falta especificación</a>
+                    {% if tiene_facultad('liberar_lotes') %}<a href="{{ url_for('calidad.dictamen', lote_id=l.lote_id) }}" class="cc-btn cc-btn-chico mt-1">Dictaminar</a>{% endif %}
+                    {% elif puede_operar %}
+                    <a href="{{ url_for('calidad.muestrear', lote_id=l.lote_id) }}" class="cc-btn cc-btn-primario cc-btn-chico"><i class="ri-test-tube-line"></i> Muestrear</a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="7" class="text-center text-slate-400 py-10">No hay lotes esperando muestreo.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% elif tab in ('analisis', 'revisar') %}
+        {% set filas = b.en_analisis if tab == 'analisis' else b.por_revisar %}
+        <table class="cc-tabla">
+            <thead><tr><th>Folio</th><th>Material</th><th>Lote</th><th>Tipo</th><th>Avance</th><th>Laboratorio externo</th><th>Investigaciones</th><th></th></tr></thead>
+            <tbody>
+            {% for a in filas %}
+            <tr>
+                <td class="cc-mono font-semibold">{{ a.folio }}</td>
+                <td><p class="font-semibold text-[#1d1d1f]">{{ a.material_nombre }}</p><p class="text-xs text-slate-500 cc-mono">{{ a.material_codigo }}</p></td>
+                <td class="cc-mono">{{ a.numero_lote }}</td>
+                <td class="text-xs">{{ a.tipo|capitalize }}</td>
+                <td>{{ a.capturadas }} de {{ a.total_pruebas }}</td>
+                <td class="text-xs">{% if a.externo_enviado %}{{ a.laboratorio or 'Externo' }}<br>desde {{ a.externo_enviado }}{% else %}—{% endif %}</td>
+                <td>{% if a.inv_abiertas %}<span class="cc-chip cc-no">{{ a.inv_abiertas }} abierta{{ 's' if a.inv_abiertas > 1 }}</span>{% else %}—{% endif %}</td>
+                <td class="text-right"><a href="{{ url_for('calidad.analisis_ver', analisis_id=a.id) }}" class="cc-btn cc-btn-chico">Abrir</a></td>
+            </tr>
+            {% else %}
+            <tr><td colspan="8" class="text-center text-slate-400 py-10">Nada por aquí.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% elif tab == 'dictaminar' %}
+        <table class="cc-tabla">
+            <thead><tr><th>Material</th><th>Lote</th><th>Análisis</th><th>Lista de verificación</th><th></th></tr></thead>
+            <tbody>
+            {% for l in b.por_dictaminar %}
+            <tr>
+                <td><p class="font-semibold text-[#1d1d1f]">{{ l.material_nombre }}</p><p class="text-xs text-slate-500 cc-mono">{{ l.material_codigo }}</p></td>
+                <td class="cc-mono">{{ l.numero_lote }}</td>
+                <td>{% if l.analisis %}{% set e = est.get(l.analisis.estatus, (l.analisis.estatus, 'cc-gris')) %}<span class="cc-mono text-xs">{{ l.analisis.folio }}</span> <span class="cc-chip {{ e[1] }}">{{ e[0] }}</span>{% endif %}</td>
+                <td>{% if l.pendientes %}<span class="cc-chip cc-pend">{{ l.pendientes|length }} pendiente{{ 's' if l.pendientes|length > 1 }}</span>{% else %}<span class="cc-chip cc-ok">Listo para aprobar</span>{% endif %}</td>
+                <td class="text-right"><a href="{{ url_for('calidad.dictamen', lote_id=l.lote_id) }}" class="cc-btn cc-btn-primario cc-btn-chico">Dictamen</a></td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="text-center text-slate-400 py-10">No hay lotes por dictaminar.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% elif tab == 'retenidos' %}
+        <table class="cc-tabla">
+            <thead><tr><th>Material</th><th>Lote</th><th>Motivo</th><th>Folio</th><th></th></tr></thead>
+            <tbody>
+            {% for l in b.retenidos %}
+            <tr>
+                <td><p class="font-semibold text-[#1d1d1f]">{{ l.material_nombre }}</p><p class="text-xs text-slate-500 cc-mono">{{ l.material_codigo }}</p></td>
+                <td class="cc-mono">{{ l.numero_lote }}</td>
+                <td class="text-sm">{{ l.motivo }}</td>
+                <td class="cc-mono text-xs">{{ l.folio_retencion or '—' }}</td>
+                <td class="text-right"><a href="{{ url_for('calidad.dictamen', lote_id=l.lote_id) }}" class="cc-btn cc-btn-chico">Dictamen</a></td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="text-center text-slate-400 py-10">No hay lotes retenidos.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% elif tab == 'reanalisis' %}
+        <table class="cc-tabla">
+            <thead><tr><th>Material</th><th>Lote</th><th>Reanálisis</th><th>Caducidad</th><th>Análisis</th><th></th></tr></thead>
+            <tbody>
+            {% for l in b.reanalisis %}
+            <tr>
+                <td><p class="font-semibold text-[#1d1d1f]">{{ l.material_nombre }}</p><p class="text-xs text-slate-500 cc-mono">{{ l.material_codigo }}</p></td>
+                <td class="cc-mono">{{ l.numero_lote }}</td>
+                <td>{% if l.vencido %}<span class="cc-chip cc-no">Vencido {{ l.fecha_reanalisis }}</span>{% else %}<span class="cc-chip cc-pend">{{ l.fecha_reanalisis }}</span>{% endif %}</td>
+                <td>{{ caducidad(l.fecha_caducidad) }}</td>
+                <td>{% if l.reanalisis %}{% set e = est.get(l.reanalisis.estatus, (l.reanalisis.estatus, 'cc-gris')) %}<a class="cc-mono text-xs text-[#0e6ba8]" href="{{ url_for('calidad.analisis_ver', analisis_id=l.reanalisis.id) }}">{{ l.reanalisis.folio }}</a> <span class="cc-chip {{ e[1] }}">{{ e[0] }}</span>{% else %}—{% endif %}</td>
+                <td class="text-right whitespace-nowrap">
+                    {% if puede_operar and (not l.reanalisis or l.reanalisis.estatus not in ('EN_ANALISIS', 'POR_REVISAR')) %}
+                    <a href="{{ url_for('calidad.muestrear', lote_id=l.lote_id, tipo='REANALISIS') }}" class="cc-btn cc-btn-chico">Muestrear</a>
+                    {% endif %}
+                    <a href="{{ url_for('calidad.dictamen', lote_id=l.lote_id) }}" class="cc-btn cc-btn-chico">Dictamen</a>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="text-center text-slate-400 py-10">No hay reanálisis por vencer.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <form method="GET" action="{{ url_for('calidad.bandeja') }}" class="flex gap-2 p-4 border-b border-slate-100">
+            <input type="hidden" name="tab" value="terminados">
+            <input name="q" value="{{ q }}" placeholder="Buscar por lote, material o folio" class="cc-campo">
+            <button class="cc-btn" type="submit"><i class="ri-search-line"></i> Buscar</button>
+        </form>
+        <table class="cc-tabla">
+            <thead><tr><th>Folio</th><th>Material</th><th>Lote</th><th>Tipo</th><th>Resultado</th><th>Lote hoy</th><th>Terminado</th><th></th></tr></thead>
+            <tbody>
+            {% for a in b.terminados %}
+            {% set e = est.get(a.estatus, (a.estatus, 'cc-gris')) %}
+            <tr>
+                <td class="cc-mono font-semibold">{{ a.folio }}</td>
+                <td><p class="font-semibold text-[#1d1d1f]">{{ a.material_nombre }}</p><p class="text-xs text-slate-500 cc-mono">{{ a.material_codigo }}</p></td>
+                <td class="cc-mono">{{ a.numero_lote }}</td>
+                <td class="text-xs">{{ a.tipo|capitalize }}</td>
+                <td><span class="cc-chip {{ e[1] }}">{{ e[0] }}</span></td>
+                <td>{{ chip_estatus(a.lote_estatus) }}</td>
+                <td class="text-xs">{{ (a.terminado_en or '')[:10] }}</td>
+                <td class="text-right whitespace-nowrap">
+                    <a href="{{ url_for('calidad.analisis_ver', analisis_id=a.id) }}" class="cc-btn cc-btn-chico">Abrir</a>
+                    {% if a.lote_estatus == 'APROBADO' %}<a href="{{ url_for('calidad.certificado', lote_id=a.lote_id) }}" hx-boost="false" target="_blank" class="cc-btn cc-btn-chico" title="Certificado de análisis"><i class="ri-award-line"></i></a>{% endif %}
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="8" class="text-center text-slate-400 py-10">Sin resultados.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+    </section>
+</div>
+{% endblock %}

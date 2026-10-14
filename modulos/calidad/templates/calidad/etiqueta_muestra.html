@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Etiqueta {{ a.folio }} | ERP Atisa</title>
+    <style>
+        @page { size: 100mm 60mm; margin: 3mm; }
+        body { font-family: Inter, Arial, sans-serif; margin: 0; background: #f5f5f7; color: #1d1d1f; }
+        .etiqueta { width: 94mm; height: 54mm; margin: 12px auto; background: #fff; border: 2px solid #b45309; border-radius: 3mm;
+                    padding: 3mm 4mm; box-sizing: border-box; font-size: 9pt; line-height: 1.35; }
+        .banda { background: #b45309; color: #fff; font-weight: 700; text-align: center; font-size: 11pt; margin: -3mm -4mm 2mm; padding: 1.5mm; letter-spacing: .08em; }
+        .folio { font-size: 14pt; font-weight: 800; font-family: ui-monospace, Menlo, monospace; }
+        .no-imprimir { text-align: center; margin: 12px; }
+        @media print { body { background: #fff; } .etiqueta { margin: 0; } .no-imprimir { display: none; } }
+    </style>
+</head>
+<body>
+    <div class="no-imprimir"><button type="button" onclick="window.print()">Imprimir</button></div>
+    <div class="etiqueta">
+        <div class="banda">MUESTRA · CONTROL DE CALIDAD</div>
+        <div class="folio">{{ a.folio }}</div>
+        <div><strong>{{ lote.material_nombre }}</strong> ({{ lote.material_codigo }})</div>
+        <div>Lote: <strong>{{ d.muestra_lote.numero_lote if d.muestra_lote else lote.numero_lote }}</strong>{% if d.muestra_lote %} · granel {{ lote.numero_lote }}{% endif %}</div>
+        <div>Cantidad: {{ a.cantidad_muestra }} {{ lote.unidad }}{% if a.contenedores %} · {{ a.contenedores }}{% endif %}</div>
+        <div>Muestreó: {{ a.muestreo_nombre }} · {{ a.creado_en[:16] }}</div>
+        <div>Tipo: {{ a.tipo|capitalize }}</div>
+    </div>
+    <script>
+        if (new URLSearchParams(location.search).get('imprimir') === '1') { window.addEventListener('load', function () { window.print(); }); }
+    </script>
+</body>
+</html>
