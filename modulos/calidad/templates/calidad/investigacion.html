@@ -1,0 +1,117 @@
+{% extends _layout|default("base.html") %}
+{% from 'nucleo/_firma.html' import campo_firma %}
+{% from 'nucleo/_lote.html' import chip_estatus %}
+{% block title %}{{ i.folio }} | ERP Atisa{% endblock %}
+{% block content %}
+{% include 'calidad/_estilos.html' %}
+{% set r = d.r %}
+{% set editable = i.estatus == 'ABIERTA' and not i.realizo_firma_id and puede_operar %}
+<div class="p-10 max-w-[960px]">
+    <header class="flex flex-wrap justify-between items-start gap-4 mb-6">
+        <div>
+            <p class="text-xs font-bold text-slate-500 uppercase">Investigación de resultado fuera de especificación</p>
+            <h1 class="text-2xl font-bold text-[#1d1d1f] flex items-center gap-3"><span class="cc-mono">{{ i.folio }}</span>
+                {% if i.estatus == 'ABIERTA' %}<span class="cc-chip cc-no">Abierta</span>{% else %}<span class="cc-chip cc-gris">Cerrada</span>{% endif %}</h1>
+            <p class="text-slate-500 mt-1">{{ d.lote.material_nombre }} · lote <span class="cc-mono">{{ d.lote.numero_lote }}</span> {{ chip_estatus(d.lote) }} · análisis <a class="text-[#0e6ba8] cc-mono" href="{{ url_for('calidad.analisis_ver', analisis_id=d.a.id) }}">{{ d.a.folio }}</a></p>
+        </div>
+        <a href="{{ url_for('calidad.analisis_ver', analisis_id=d.a.id) }}" class="cc-btn"><i class="ri-arrow-left-line"></i> Análisis</a>
+    </header>
+
+    {% if d.aprobado_sin_retener %}
+    <div class="cc-aviso-rojo mb-4 flex flex-wrap items-center justify-between gap-3">
+        <p><strong>El lote {{ d.lote.numero_lote }} está APROBADO</strong> y tiene un resultado fuera de especificación. Retenlo mientras se investiga.</p>
+        {% if tiene_facultad('liberar_lotes') %}
+        <details class="cc-desplegable w-full">
+            <summary class="cc-btn cc-btn-rojo w-max"><i class="ri-lock-line"></i> Retener lote</summary>
+            <form method="POST" action="{{ url_for('calidad.retener', lote_id=d.lote.id) }}" class="flex flex-col gap-3 mt-3">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="folio" value="{{ i.folio }}">
+                <input type="hidden" name="volver" value="{{ url_for('calidad.oos', investigacion_id=i.id) }}">
+                <input name="motivo" required value="{{ i.folio }}: {{ r.prueba }} fuera de especificación" class="cc-campo">
+                {{ campo_firma('Retuvo', numero=session.numero_empleado, id='firma-retener') }}
+                <button type="submit" class="cc-btn cc-btn-rojo self-start">Retener</button>
+            </form>
+        </details>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="cc-tarjeta p-5 mb-4 text-sm">
+        <p class="cc-etiqueta">Resultado</p>
+        <p class="text-lg font-bold text-rose-600">{{ r.prueba }}: {% if r.prueba_tipo == 'NUMERICA' %}{{ cc_num(r.valor_redondeado, r.decimales) }} {{ r.unidad or '' }}{% else %}{{ r.texto }}{% endif %}
+            <span class="text-sm font-normal text-slate-500">· especificación {{ r.texto_especificacion }}</span></p>
+        <p class="text-slate-500">Capturó {{ r.realizo }} el {{ r.fecha_analisis }} · {{ r.fuente }}{% if r.equipo_codigo %} · {{ r.equipo_codigo }}{% endif %}{% if not r.valido %} · <span class="cc-chip cc-gris">Anulado: {{ r.motivo_anulacion }}</span>{% endif %}</p>
+    </div>
+
+    <form method="POST" hx-boost="false" action="{{ url_for('calidad.oos_guardar', investigacion_id=i.id) }}" class="cc-tarjeta p-6 flex flex-col gap-4">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <p class="font-bold text-[#1d1d1f]">Revisión del laboratorio</p>
+        <table class="cc-tabla">
+            <thead><tr><th>Punto</th><th>Correcto</th><th>Se encontró un error</th></tr></thead>
+            <tbody>
+            {% for campo, nombre in d.revision %}
+            <tr>
+                <td>{{ nombre }}</td>
+                <td><input type="radio" name="{{ campo }}" value="1" {% if i[campo] == 1 %}checked{% endif %} {% if not editable %}disabled{% endif %}></td>
+                <td><input type="radio" name="{{ campo }}" value="0" {% if i[campo] == 0 %}checked{% endif %} {% if not editable %}disabled{% endif %}></td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        <div>
+            <label class="cc-etiqueta" for="hallazgos">Hallazgos</label>
+            <textarea id="hallazgos" name="hallazgos" rows="4" class="cc-campo" {% if not editable %}readonly{% endif %}>{{ i.hallazgos or '' }}</textarea>
+        </div>
+        {% if editable %}
+        <div class="flex gap-2"><button type="submit" formnovalidate formaction="{{ url_for('calidad.oos_guardar', investigacion_id=i.id) }}" class="cc-btn">Guardar avance</button></div>
+        <div class="border-t border-slate-100 pt-4 flex flex-col gap-3">
+            <p class="font-bold text-[#1d1d1f]">Conclusión</p>
+            <label class="flex items-center gap-2 text-sm"><input type="radio" name="conclusion" value="ERROR_LABORATORIO"> <strong>Error del laboratorio</strong>: el resultado se anula y la prueba se vuelve a capturar.</label>
+            <label class="flex items-center gap-2 text-sm"><input type="radio" name="conclusion" value="CONFIRMADO"> <strong>Confirmado</strong>: el resultado queda válido y el análisis no conforme.</label>
+            {{ campo_firma('Realizó', numero=session.numero_empleado, id='firma-concluir', titulo='Firma de quien investigó') }}
+            <button type="submit" formaction="{{ url_for('calidad.oos_concluir', investigacion_id=i.id) }}" class="cc-btn cc-btn-primario self-start">Concluir</button>
+        </div>
+        {% elif i.conclusion %}
+        <div class="border-t border-slate-100 pt-4 text-sm">
+            <p><strong>Conclusión:</strong> {{ d.conclusiones[i.conclusion] }}</p>
+            <p class="text-slate-500">Investigó {{ i.realizo or '—' }}{% if i.aprobo %} · aprobó {{ i.aprobo }} el {{ (i.cerrada_en or '')[:16] }}{% endif %}</p>
+        </div>
+        {% endif %}
+    </form>
+
+    {% if i.estatus == 'ABIERTA' and i.realizo_firma_id and puede_operar %}
+    <div class="cc-grid cc-g2 mt-4">
+        {% if tiene_facultad('gestionar_desviaciones') %}
+        <form method="POST" action="{{ url_for('calidad.oos_aprobar', investigacion_id=i.id) }}" class="cc-tarjeta p-5 flex flex-col gap-3">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <p class="font-bold text-[#1d1d1f]">Aprobar la conclusión</p>
+            {{ campo_firma('Aprobó', numero=session.numero_empleado, id='firma-aprobar-oos') }}
+            <button type="submit" class="cc-btn cc-btn-verde self-start">Aprobar y cerrar</button>
+        </form>
+        {% else %}
+        <p class="cc-aviso-ambar text-sm">La aprueba quien tenga la facultad «gestionar desviaciones».</p>
+        {% endif %}
+        <form method="POST" action="{{ url_for('calidad.oos_regresar', investigacion_id=i.id) }}" class="cc-tarjeta p-5 flex flex-col gap-3">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <p class="font-bold text-[#1d1d1f]">¿No está de acuerdo?</p>
+            <p class="text-sm text-slate-500">Regresa la investigación para que se revise otra vez.</p>
+            <button type="submit" class="cc-btn self-start">Regresar</button>
+        </form>
+    </div>
+    {% endif %}
+
+    {% if i.conclusion == 'CONFIRMADO' or desviaciones %}
+    <div class="cc-tarjeta p-5 mt-4 text-sm">
+        <p class="cc-etiqueta">Desviación</p>
+        {% for dv in desviaciones %}
+        <p><a href="{{ dv.url }}" class="text-[#0e6ba8] font-semibold cc-mono">{{ dv.folio }}</a> · {{ dv.estatus }}{% if dv.clasificacion %} · {{ dv.clasificacion }}{% endif %}</p>
+        {% endfor %}
+        {% if reportar and not desviaciones %}
+        <a href="{{ reportar }}" class="cc-btn cc-btn-chico mt-2"><i class="ri-alarm-warning-line"></i> Reportar desviación</a>
+        {% elif not reportar and not desviaciones %}
+        <p class="text-slate-500">La causa raíz y las acciones se siguen en el módulo de Desviaciones (cuando esté instalado).</p>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

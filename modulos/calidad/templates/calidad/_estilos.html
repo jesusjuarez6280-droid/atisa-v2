@@ -1,0 +1,49 @@
+{#- Estilos propios de las pantallas de Calidad (lo que el Tailwind precompilado no trae). -#}
+<style>
+    .cc-tabs{display:flex;flex-wrap:wrap;gap:.25rem;border-bottom:1px solid #e2e8f0;margin-bottom:1rem}
+    .cc-tab{padding:.6rem 1rem;font-size:.875rem;font-weight:600;color:#64748b;border-bottom:2px solid transparent;margin-bottom:-1px;display:inline-flex;align-items:center;gap:.4rem}
+    .cc-tab:hover{color:#1d1d1f}
+    .cc-tab.activa{color:#0e6ba8;border-bottom-color:#0e6ba8}
+    .cc-cuenta{font-size:.7rem;font-weight:700;background:#f1f5f9;color:#475569;border-radius:999px;padding:.05rem .45rem}
+    .cc-tabla{width:100%;font-size:.875rem;border-collapse:collapse}
+    .cc-tabla th{text-align:left;padding:.65rem 1rem;font-size:.7rem;text-transform:uppercase;color:#64748b;background:#f8fafc;font-weight:700}
+    .cc-tabla td{padding:.65rem 1rem;border-top:1px solid #f1f5f9;vertical-align:top}
+    .cc-tabla tr.anulado td{color:#94a3b8;text-decoration:line-through}
+    .cc-chip{display:inline-block;padding:.15rem .55rem;border-radius:.4rem;font-size:.72rem;font-weight:700;border:1px solid transparent;white-space:nowrap}
+    .cc-ok{background:#ecfdf5;color:#047857;border-color:#a7f3d0}
+    .cc-no{background:#fff1f2;color:#be123c;border-color:#fecdd3}
+    .cc-pend{background:#fffbeb;color:#b45309;border-color:#fde68a}
+    .cc-azul{background:#eff6ff;color:#0e6ba8;border-color:#bfdbfe}
+    .cc-gris{background:#f1f5f9;color:#475569;border-color:#e2e8f0}
+    .cc-violeta{background:#f5f3ff;color:#6d28d9;border-color:#ddd6fe}
+    .cc-btn{display:inline-flex;align-items:center;gap:.4rem;height:2.5rem;padding:0 1rem;border-radius:.75rem;font-size:.875rem;font-weight:700;border:1px solid #e2e8f0;color:#475569;background:#fff;cursor:pointer}
+    .cc-btn:hover{background:#f8fafc}
+    .cc-btn-primario{background:#0e6ba8;color:#fff;border-color:#0e6ba8}
+    .cc-btn-primario:hover{background:#1d1d1f;border-color:#1d1d1f}
+    .cc-btn-verde{background:#059669;color:#fff;border-color:#059669}
+    .cc-btn-verde:hover{background:#047857}
+    .cc-btn-rojo{background:#fff;color:#be123c;border-color:#fecdd3}
+    .cc-btn-rojo:hover{background:#fff1f2}
+    .cc-btn-chico{height:2rem;padding:0 .7rem;font-size:.8rem;border-radius:.6rem}
+    .cc-btn[disabled]{opacity:.5;cursor:not-allowed}
+    .cc-campo{width:100%;padding:.55rem .8rem;background:#f8fafc;border:1px solid #e2e8f0;border-radius:.75rem;font-size:.875rem;outline:none}
+    .cc-campo:focus{border-color:#0e6ba8;background:#fff}
+    .cc-etiqueta{display:block;font-size:.7rem;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:.25rem}
+    .cc-tarjeta{background:#fff;border:1px solid #e2e8f0;border-radius:1rem;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+    .cc-kpi{display:block;background:#fff;border:1px solid #e2e8f0;border-radius:1rem;padding:1rem 1.1rem}
+    .cc-kpi:hover{border-color:#0e6ba8}
+    .cc-kpi.activa{border-color:#0e6ba8;box-shadow:0 0 0 1px #0e6ba8}
+    .cc-grid{display:grid;gap:1rem}
+    .cc-g2{grid-template-columns:repeat(1,minmax(0,1fr))}
+    .cc-g3{grid-template-columns:repeat(1,minmax(0,1fr))}
+    .cc-g6{grid-template-columns:repeat(2,minmax(0,1fr))}
+    @media (min-width:768px){.cc-g2{grid-template-columns:repeat(2,minmax(0,1fr))}.cc-g3{grid-template-columns:repeat(3,minmax(0,1fr))}.cc-g6{grid-template-columns:repeat(3,minmax(0,1fr))}}
+    @media (min-width:1280px){.cc-g6{grid-template-columns:repeat(6,minmax(0,1fr))}}
+    .cc-desplegable>summary{cursor:pointer;list-style:none}
+    .cc-desplegable>summary::-webkit-details-marker{display:none}
+    .cc-aviso-rojo{background:#fff1f2;border:1px solid #fecdd3;color:#9f1239;border-radius:1rem;padding:1rem 1.25rem}
+    .cc-aviso-ambar{background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:1rem;padding:1rem 1.25rem}
+    .cc-aviso-verde{background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46;border-radius:1rem;padding:1rem 1.25rem}
+    .cc-mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+    .cc-tachado{text-decoration:line-through;color:#94a3b8}
+</style>

@@ -1,0 +1,97 @@
+{% extends _layout|default("base.html") %}
+{% from 'nucleo/_firma.html' import campo_firma %}
+{% block title %}Muestras de retención | ERP Atisa{% endblock %}
+{% block content %}
+{% include 'calidad/_estilos.html' %}
+{% set est = {'GUARDADA': ('Guardada', 'cc-ok'), 'AGOTADA': ('Agotada', 'cc-gris'), 'DESTRUIDA': ('Destruida', 'cc-gris')} %}
+<div class="p-10">
+    <header class="flex flex-wrap justify-between items-center gap-4 mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-[#1d1d1f]">Muestras de retención</h1>
+            <p class="text-slate-500 mt-1">Muestroteca: dónde está cada muestra y desde cuándo se puede destruir</p>
+        </div>
+        {% if puede_operar %}
+        <details class="cc-desplegable relative">
+            <summary class="cc-btn cc-btn-primario"><i class="ri-add-line"></i> Guardar muestra</summary>
+            <form method="POST" action="{{ url_for('calidad.retencion_guardar') }}" class="cc-tarjeta p-4 flex flex-col gap-3 absolute right-0 z-20 mt-2" style="width:420px">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div><label class="cc-etiqueta">Lote</label>
+                    <select name="lote_id" required class="cc-campo"><option value="">— Elige —</option>
+                        {% for l in sin %}<option value="{{ l.id }}">⚠ {{ l.numero_lote }} (falta retención)</option>{% endfor %}
+                        {% for l in lotes %}<option value="{{ l.id }}">{{ l.numero_lote }} · {{ l.codigo }} ({{ l.existencia }} {{ l.unidad }})</option>{% endfor %}</select></div>
+                <div class="cc-grid cc-g2">
+                    <div><label class="cc-etiqueta">Envases</label><input name="envases" type="number" min="1" value="1" required class="cc-campo"></div>
+                    <div><label class="cc-etiqueta">Cantidad</label><div class="flex gap-1"><input name="cantidad" type="number" step="any" min="0" value="0" class="cc-campo"><select name="unidad_captura" class="cc-campo" style="width:80px"><option value="">unidad</option><option value="g">g</option></select></div></div>
+                </div>
+                <div><label class="cc-etiqueta">Ubicación</label><input name="ubicacion" required placeholder="Anaquel 2 · gaveta B" class="cc-campo"></div>
+                {{ campo_firma('Realizó', numero=session.numero_empleado, id='firma-guardar') }}
+                <button type="submit" class="cc-btn cc-btn-primario">Guardar</button>
+            </form>
+        </details>
+        {% endif %}
+    </header>
+
+    {% if sin %}
+    <div class="cc-aviso-ambar mb-4 text-sm">Falta guardar la muestra de retención de {{ sin|length }} lote{{ 's' if sin|length != 1 }}: {{ sin|map(attribute='numero_lote')|join(', ') }}.</div>
+    {% endif %}
+
+    <form method="GET" action="{{ url_for('calidad.retencion') }}" class="flex flex-wrap gap-2 mb-4">
+        <select name="filtro" class="cc-campo" style="max-width:220px">
+            <option value="">Todas</option>
+            <option value="guardadas" {% if filtro == 'guardadas' %}selected{% endif %}>Guardadas</option>
+            <option value="por_destruir" {% if filtro == 'por_destruir' %}selected{% endif %}>Por destruir</option>
+        </select>
+        <input name="material" value="{{ material }}" placeholder="Material o lote" class="cc-campo" style="max-width:280px">
+        <button type="submit" class="cc-btn"><i class="ri-filter-3-line"></i> Filtrar</button>
+    </form>
+
+    <section class="cc-tarjeta overflow-hidden">
+        <table class="cc-tabla">
+            <thead><tr><th>Lote</th><th>Material</th><th>Envases</th><th>Cantidad</th><th>Ubicación</th><th>Guardada</th><th>Destruir desde</th><th>Estatus</th><th></th></tr></thead>
+            <tbody>
+            {% for m in filas %}{% set s = est.get(m.estatus) %}
+            <tr>
+                <td class="cc-mono font-semibold">{{ m.numero_lote }}</td>
+                <td><p class="font-semibold text-[#1d1d1f]">{{ m.material_nombre }}</p><p class="text-xs text-slate-500 cc-mono">{{ m.material_codigo }}</p></td>
+                <td>{{ m.envases_actuales }} de {{ m.envases }}</td>
+                <td>{{ m.cantidad }} {{ m.unidad }}</td>
+                <td>{{ m.ubicacion }}</td>
+                <td class="text-xs">{{ m.fecha_guardado }}</td>
+                <td>{% if m.por_destruir %}<span class="cc-chip cc-pend">{{ m.destruir_desde }}</span>{% else %}<span class="text-xs">{{ m.destruir_desde }}</span>{% endif %}</td>
+                <td><span class="cc-chip {{ s[1] }}">{{ s[0] }}</span></td>
+                <td class="text-right">
+                    {% if puede_operar and m.estatus != 'DESTRUIDA' %}
+                    <details class="cc-desplegable">
+                        <summary class="cc-btn cc-btn-chico">Acciones</summary>
+                        <div class="flex flex-col gap-3 mt-2 text-left" style="min-width:320px">
+                            {% if m.estatus == 'GUARDADA' %}
+                            <form method="POST" action="{{ url_for('calidad.retencion_usar', muestra_id=m.id) }}" class="flex flex-col gap-2 bg-slate-50 rounded-xl p-3">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <p class="font-bold text-sm">Usar</p>
+                                <div class="flex gap-2"><input name="envases" type="number" min="1" max="{{ m.envases_actuales }}" value="1" class="cc-campo" style="width:80px"><input name="folio" placeholder="Folio (DES-…, OOS-…)" class="cc-campo"></div>
+                                <input name="motivo" required placeholder="Queja, investigación, reanálisis…" class="cc-campo">
+                                {{ campo_firma('Realizó', numero=session.numero_empleado, id='firma-usar-' ~ m.id) }}
+                                <button type="submit" class="cc-btn cc-btn-chico self-start">Registrar uso</button>
+                            </form>
+                            {% endif %}
+                            {% if m.por_destruir %}
+                            <form method="POST" action="{{ url_for('calidad.retencion_destruir', muestra_id=m.id) }}" class="flex flex-col gap-2 bg-slate-50 rounded-xl p-3">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <p class="font-bold text-sm text-rose-600">Destruir</p>
+                                {{ campo_firma('Realizó', numero=session.numero_empleado, id='firma-destruir-' ~ m.id) }}
+                                <button type="submit" class="cc-btn cc-btn-chico cc-btn-rojo self-start">Destruir</button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </details>
+                    {% endif %}
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="9" class="text-center text-slate-400 py-10">No hay muestras de retención.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </section>
+</div>
+{% endblock %}

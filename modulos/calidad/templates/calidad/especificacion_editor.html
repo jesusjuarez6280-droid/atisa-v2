@@ -1,0 +1,154 @@
+{% extends _layout|default("base.html") %}
+{% from 'nucleo/_firma.html' import campo_firma, firmado %}
+{% block title %}Especificación {{ e.material_codigo }} v{{ e.version }} | ERP Atisa{% endblock %}
+{% block content %}
+{% include 'calidad/_estilos.html' %}
+{% set est = {'BORRADOR': ('Borrador', 'cc-gris'), 'EN_REVISION': ('En revisión', 'cc-pend'), 'VIGENTE': ('Vigente', 'cc-ok'), 'OBSOLETA': ('Obsoleta', 'cc-gris')} %}
+{% set editable = e.estatus == 'BORRADOR' and puede_operar %}
+{% set s = est.get(e.estatus) %}
+<div class="p-10">
+    <header class="flex flex-wrap justify-between items-start gap-4 mb-6">
+        <div>
+            <p class="text-xs font-bold text-slate-500 uppercase">Especificación</p>
+            <h1 class="text-2xl font-bold text-[#1d1d1f] flex items-center gap-3">{{ e.material_nombre }} · v{{ e.version }} <span class="cc-chip {{ s[1] }}">{{ s[0] }}</span></h1>
+            <p class="text-slate-500 mt-1"><span class="cc-mono">{{ e.material_codigo }}</span> · {{ e.material_tipo }} · unidad {{ e.unidad }} · elaboró {{ e.elaboro or '—' }}</p>
+            <p class="text-sm mt-1">{% if revisor %}{{ firmado(revisor) }}{% endif %} {% if aprobador %}{{ firmado(aprobador) }}{% endif %}</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+            {% for v in versiones %}<a href="{{ url_for('calidad.especificacion_editor', especificacion_id=v.id) }}" class="cc-btn cc-btn-chico {% if v.id == e.id %}cc-btn-primario{% endif %}">v{{ v.version }}</a>{% endfor %}
+            <a href="{{ url_for('calidad.especificaciones') }}" class="cc-btn"><i class="ri-arrow-left-line"></i> Especificaciones</a>
+        </div>
+    </header>
+
+    <form method="POST" action="{{ url_for('calidad.especificacion_editor', especificacion_id=e.id) }}" class="flex flex-col gap-6" id="form-esp">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <fieldset {% if not editable %}disabled{% endif %} class="contents">
+        <section class="cc-tarjeta p-6">
+            <p class="font-bold text-[#1d1d1f] mb-4">Datos</p>
+            <div class="cc-grid cc-g3">
+                <div><label class="cc-etiqueta">Código del documento</label><input name="codigo_documento" value="{{ e.codigo_documento or '' }}" placeholder="ESP-MP-012" class="cc-campo"></div>
+                <div><label class="cc-etiqueta">Referencia</label><input name="referencia" value="{{ e.referencia or '' }}" placeholder="FEUM, USP, proveedor, interna" class="cc-campo"></div>
+                <div><label class="cc-etiqueta">Documento en Documentos Legales</label>
+                    <select name="documento_id" class="cc-campo"><option value="">— Ninguno —</option>{% for d in documentos %}<option value="{{ d.id }}" {% if d.id == e.documento_id %}selected{% endif %}>{{ d.codigo }} · {{ d.nombre }}</option>{% endfor %}</select></div>
+                <div><label class="cc-etiqueta">Cantidad a muestrear ({{ e.unidad }})</label><input name="cantidad_muestra" type="number" step="any" min="0" value="{{ e.cantidad_muestra if e.cantidad_muestra is not none else '' }}" class="cc-campo"></div>
+                <div class="md:col-span-2"><label class="cc-etiqueta">Plan de muestreo</label><input name="plan_muestreo" value="{{ e.plan_muestreo or '' }}" placeholder="raíz de N + 1 contenedores" class="cc-campo"></div>
+                <div><label class="cc-etiqueta">¿Pide muestra de retención?</label>
+                    <select name="pide_retencion" class="cc-campo"><option value="0">No</option><option value="1" {% if e.pide_retencion %}selected{% endif %}>Sí</option></select></div>
+                <div><label class="cc-etiqueta">Cantidad de retención ({{ e.unidad }})</label><input name="cantidad_retencion" type="number" step="any" min="0" value="{{ e.cantidad_retencion if e.cantidad_retencion is not none else '' }}" class="cc-campo"></div>
+                <div><label class="cc-etiqueta">Meses de reanálisis</label><input name="meses_reanalisis" type="number" min="0" value="{{ e.meses_reanalisis or '' }}" placeholder="Materias primas" class="cc-campo"></div>
+                <div><label class="cc-etiqueta">¿Pide revisión de una segunda persona?</label>
+                    <select name="requiere_revision" class="cc-campo"><option value="1">Sí</option><option value="0" {% if not e.requiere_revision %}selected{% endif %}>No (solo envase y empaque)</option></select></div>
+                <div class="md:col-span-2"><label class="cc-etiqueta">Qué cambió respecto a la versión anterior</label><input name="cambios" value="{{ e.cambios or '' }}" class="cc-campo"></div>
+            </div>
+        </section>
+
+        <section class="cc-tarjeta overflow-hidden">
+            <div class="flex items-center justify-between p-5"><p class="font-bold text-[#1d1d1f]">Pruebas</p>
+                {% if editable %}<button type="button" class="cc-btn cc-btn-chico" onclick="ccAgregarPrueba()"><i class="ri-add-line"></i> Agregar prueba</button>{% endif %}</div>
+            <div style="overflow-x:auto">
+            <table class="cc-tabla" id="tabla-pruebas" style="min-width:1200px">
+                <thead><tr><th>Prueba</th><th>Tipo</th><th>Mín.</th><th>Máx.</th><th>Unidad</th><th>Dec.</th><th>En el certificado se lee</th><th>Método</th><th>Dónde</th><th>Tipo de equipo</th><th>Cada lote</th><th>En certificado</th><th></th></tr></thead>
+                <tbody>
+                {% for p in (pruebas or [none]) %}
+                <tr>
+                    <td><input name="p_prueba" value="{{ p.prueba if p else '' }}" class="cc-campo" placeholder="Valoración"></td>
+                    <td><select name="p_tipo" class="cc-campo"><option value="NUMERICA">Numérica</option><option value="CUALITATIVA" {% if p and p.tipo == 'CUALITATIVA' %}selected{% endif %}>Cualitativa</option></select></td>
+                    <td><input name="p_limite_min" value="{{ p.limite_min if p and p.limite_min is not none else '' }}" class="cc-campo" style="width:80px"></td>
+                    <td><input name="p_limite_max" value="{{ p.limite_max if p and p.limite_max is not none else '' }}" class="cc-campo" style="width:80px"></td>
+                    <td><input name="p_unidad" value="{{ p.unidad or '' if p else '' }}" class="cc-campo" style="width:70px"></td>
+                    <td><input name="p_decimales" type="number" min="0" max="6" value="{{ p.decimales if p else 1 }}" class="cc-campo" style="width:60px"></td>
+                    <td><input name="p_texto_especificacion" value="{{ p.texto_especificacion if p else '' }}" class="cc-campo" placeholder="Se arma solo si es numérica"></td>
+                    <td><input name="p_metodo" value="{{ p.metodo or '' if p else '' }}" class="cc-campo" style="width:110px"></td>
+                    <td><select name="p_fuente_default" class="cc-campo">{% for f in fuentes %}<option {% if p and p.fuente_default == f %}selected{% endif %}>{{ f }}</option>{% endfor %}</select></td>
+                    <td><input name="p_equipo_tipo" value="{{ p.equipo_tipo or '' if p else '' }}" list="tipos-equipo" class="cc-campo" style="width:140px"></td>
+                    <td><select name="p_cada_lote" class="cc-campo"><option value="1">Sí</option><option value="0" {% if p and not p.cada_lote %}selected{% endif %}>Periódica</option></select></td>
+                    <td><select name="p_en_certificado" class="cc-campo"><option value="1">Sí</option><option value="0" {% if p and not p.en_certificado %}selected{% endif %}>No</option></select></td>
+                    <td>{% if editable %}<button type="button" class="cc-btn cc-btn-chico cc-btn-rojo" onclick="ccQuitarPrueba(this)" title="Quitar"><i class="ri-delete-bin-line"></i></button>{% endif %}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            </div>
+            <datalist id="tipos-equipo">{% for t in tipos_equipo %}<option value="{{ t }}">{% endfor %}</datalist>
+        </section>
+        </fieldset>
+        {% if editable %}<div><button type="submit" class="cc-btn cc-btn-primario"><i class="ri-save-line"></i> Guardar borrador</button></div>{% endif %}
+    </form>
+
+    {% if e.es_impreso %}
+    <section class="cc-tarjeta p-5 mt-6">
+        <p class="cc-etiqueta">Arte aprobado (material impreso)</p>
+        <ul class="text-sm mb-3">{% for f in archivos %}<li><a href="/archivo/{{ f.id }}" hx-boost="false" target="_blank" class="text-[#0e6ba8]"><i class="ri-image-line"></i> {{ f.descripcion or f.nombre_original }}</a></li>{% else %}<li class="text-slate-400">Sin arte adjunto.</li>{% endfor %}</ul>
+        {% if puede_operar %}
+        <form method="POST" action="{{ url_for('calidad.especificacion_accion', especificacion_id=e.id, accion='arte') }}" enctype="multipart/form-data" class="flex flex-wrap gap-2 items-center">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input name="descripcion" value="Arte aprobado" class="cc-campo" style="max-width:240px">
+            <input type="file" name="archivo" accept=".pdf,.jpg,.jpeg,.png" required class="text-sm">
+            <button type="submit" class="cc-btn cc-btn-chico">Adjuntar</button>
+        </form>
+        {% endif %}
+    </section>
+    {% endif %}
+
+    {% if puede_operar %}
+    <div class="cc-grid cc-g3 mt-6">
+        {% if e.estatus == 'BORRADOR' %}
+        <form method="POST" action="{{ url_for('calidad.especificacion_accion', especificacion_id=e.id, accion='enviar') }}" class="cc-tarjeta p-5 flex flex-col gap-3">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <p class="font-bold text-[#1d1d1f]">Enviar a revisión</p>
+            <p class="text-sm text-slate-500">Guarda primero el borrador.</p>
+            <button type="submit" class="cc-btn cc-btn-primario self-start">Enviar a revisión</button>
+        </form>
+        {% elif e.estatus == 'EN_REVISION' %}
+        {% if not e.reviso_firma_id %}
+        <form method="POST" action="{{ url_for('calidad.especificacion_accion', especificacion_id=e.id, accion='revisar') }}" class="cc-tarjeta p-5 flex flex-col gap-3">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <p class="font-bold text-[#1d1d1f]">Revisar</p>
+            {{ campo_firma('Revisó', numero=session.numero_empleado, id='firma-esp-revisar') }}
+            <button type="submit" class="cc-btn cc-btn-verde self-start">Revisar</button>
+        </form>
+        {% elif tiene_facultad('aprobar_maestros') %}
+        <form method="POST" action="{{ url_for('calidad.especificacion_accion', especificacion_id=e.id, accion='aprobar') }}" class="cc-tarjeta p-5 flex flex-col gap-3">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <p class="font-bold text-[#1d1d1f]">Aprobar (queda vigente)</p>
+            <p class="text-xs text-slate-500">Debe ser una persona distinta de quien revisó.</p>
+            {{ campo_firma('Aprobó', numero=session.numero_empleado, id='firma-esp-aprobar') }}
+            <button type="submit" class="cc-btn cc-btn-verde self-start">Aprobar</button>
+        </form>
+        {% else %}
+        <p class="cc-aviso-ambar text-sm">Revisada. La aprueba quien tiene la facultad «aprobar maestros».</p>
+        {% endif %}
+        <form method="POST" action="{{ url_for('calidad.especificacion_accion', especificacion_id=e.id, accion='regresar') }}" class="cc-tarjeta p-5 flex flex-col gap-3">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <p class="font-bold text-[#1d1d1f]">Regresar a borrador</p>
+            <p class="text-sm text-slate-500">Para corregirla; la revisión se vuelve a firmar.</p>
+            <button type="submit" class="cc-btn self-start">Regresar</button>
+        </form>
+        {% else %}
+        <form method="POST" action="{{ url_for('calidad.especificacion_accion', especificacion_id=e.id, accion='nueva-version') }}" class="cc-tarjeta p-5 flex flex-col gap-3">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <p class="font-bold text-[#1d1d1f]">Nueva versión</p>
+            <p class="text-sm text-slate-500">Copia esta versión a un borrador. Al aprobarse, esta queda obsoleta; los análisis abiertos conservan su versión.</p>
+            <button type="submit" class="cc-btn cc-btn-primario self-start">Crear versión nueva</button>
+        </form>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% if editable %}
+<script>
+function ccAgregarPrueba() {
+    var tbody = document.querySelector('#tabla-pruebas tbody');
+    var fila = tbody.rows[tbody.rows.length - 1].cloneNode(true);
+    fila.querySelectorAll('input').forEach(function (i) { i.value = i.name === 'p_decimales' ? '1' : ''; });
+    fila.querySelectorAll('select').forEach(function (s) { s.selectedIndex = 0; });
+    tbody.appendChild(fila);
+}
+function ccQuitarPrueba(btn) {
+    var tbody = document.querySelector('#tabla-pruebas tbody');
+    if (tbody.rows.length > 1) { btn.closest('tr').remove(); }
+    else { btn.closest('tr').querySelectorAll('input').forEach(function (i) { i.value = ''; }); }
+}
+</script>
+{% endif %}
+{% endblock %}

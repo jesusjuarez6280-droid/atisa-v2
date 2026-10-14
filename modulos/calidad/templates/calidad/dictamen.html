@@ -1,0 +1,140 @@
+{% extends _layout|default("base.html") %}
+{% from 'nucleo/_firma.html' import campo_firma %}
+{% from 'nucleo/_lote.html' import chip_estatus, caducidad with context %}
+{% block title %}Dictamen {{ lote.numero_lote }} | ERP Atisa{% endblock %}
+{% block content %}
+{% include 'calidad/_estilos.html' %}
+{% set puede_dictaminar = tiene_facultad('liberar_lotes') %}
+{% set decisiones = {'APROBADO': ('Aprobado', 'cc-ok'), 'RECHAZADO': ('Rechazado', 'cc-no'), 'RETENIDO': ('Retenido', 'cc-violeta'), 'REANALISIS_EXTENDIDO': ('Reanálisis extendido', 'cc-azul')} %}
+<div class="p-10">
+    <header class="flex flex-wrap justify-between items-start gap-4 mb-6">
+        <div>
+            <p class="text-xs font-bold text-slate-500 uppercase">Dictamen del lote</p>
+            <h1 class="text-2xl font-bold text-[#1d1d1f]">{{ lote.material_nombre }} · <span class="cc-mono">{{ lote.numero_lote }}</span> {{ chip_estatus(lote) }}</h1>
+            <p class="text-slate-500 mt-1"><span class="cc-mono">{{ lote.material_codigo }}</span> · {{ lote.material_tipo }} · existencia {{ lote.existencia }} {{ lote.unidad }}
+                {% if lote.proveedor_nombre %} · {{ lote.proveedor_nombre }}{% endif %}{% if lote.lote_proveedor %} (lote prov. {{ lote.lote_proveedor }}){% endif %}</p>
+            <p class="text-sm text-slate-500">Entrada {{ lote.fecha_entrada }}{% if lote.fecha_fabricacion %} · fabricación {{ lote.fecha_fabricacion }}{% endif %} · caducidad {{ caducidad(lote.fecha_caducidad) }}{% if lote.fecha_reanalisis %} · reanálisis {{ lote.fecha_reanalisis }}{% endif %}</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+            {% if ficha %}<a href="{{ ficha }}" class="cc-btn"><i class="ri-archive-2-line"></i> Ficha del lote</a>{% endif %}
+            {% if lote.estatus == 'APROBADO' %}<a href="{{ url_for('calidad.certificado', lote_id=lote.id) }}" hx-boost="false" target="_blank" class="cc-btn"><i class="ri-award-line"></i> Certificado</a>{% endif %}
+            <a href="{{ url_for('calidad.bandeja', tab='dictaminar') }}" class="cc-btn"><i class="ri-arrow-left-line"></i> Bandeja</a>
+        </div>
+    </header>
+
+    <div class="cc-grid cc-g2 mb-6">
+        <section class="cc-tarjeta p-5">
+            <p class="cc-etiqueta">Lista de verificación</p>
+            <ul class="flex flex-col gap-2 text-sm">
+                {% for item in v.calidad %}
+                <li class="flex gap-2 items-start">
+                    {% if item.ok %}<i class="ri-checkbox-circle-fill text-emerald-600 text-lg"></i>{% else %}<i class="ri-close-circle-fill text-rose-600 text-lg"></i>{% endif %}
+                    <span><strong>{{ item.texto }}</strong><br><span class="text-slate-500">{{ item.detalle }}</span></span>
+                </li>
+                {% endfor %}
+                {% for m in v.modulos %}
+                <li class="flex gap-2 items-start"><i class="ri-close-circle-fill text-rose-600 text-lg"></i><span>{{ m }}</span></li>
+                {% endfor %}
+            </ul>
+            {% if v.completa %}<p class="cc-aviso-verde mt-4 text-sm font-bold">Lista completa: listo para aprobar.</p>
+            {% else %}<p class="cc-aviso-ambar mt-4 text-sm">Faltan {{ v.motivos|length }} punto{{ 's' if v.motivos|length != 1 }} para poder aprobar. Rechazar y retener sí se pueden.</p>{% endif %}
+        </section>
+
+        <section class="cc-tarjeta p-5 text-sm">
+            <p class="cc-etiqueta">Resumen del análisis</p>
+            {% if detalle %}
+            <p class="mb-2"><a href="{{ url_for('calidad.analisis_ver', analisis_id=detalle.a.id) }}" class="text-[#0e6ba8] font-semibold cc-mono">{{ detalle.a.folio }}</a>
+                · especificación v{{ detalle.esp.version }} · analizó {{ detalle.filas|map(attribute='valido')|select|map(attribute='realizo')|unique|join(', ') or '—' }}
+                · revisó {{ detalle.a.reviso_nombre or '—' }}</p>
+            <table class="cc-tabla">
+                <thead><tr><th>Prueba</th><th>Especificación</th><th>Resultado</th></tr></thead>
+                <tbody>
+                {% for fila in detalle.filas %}{% set r = fila.valido %}
+                <tr><td>{{ fila.prueba.prueba }}</td><td>{{ fila.prueba.texto_especificacion }}</td>
+                    <td>{% if r %}<span class="cc-chip {{ 'cc-ok' if r.cumple else 'cc-no' }}">{% if fila.prueba.tipo == 'NUMERICA' %}{{ cc_num(r.valor_redondeado, fila.prueba.decimales) }} {{ fila.prueba.unidad or '' }}{% else %}{{ r.texto }}{% endif %}</span>{% else %}—{% endif %}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="text-slate-400">Este lote no tiene análisis de liberación.</p>
+            {% endif %}
+            {% if presentaciones %}
+            <p class="cc-etiqueta mt-4">Presentaciones que cambian junto con el granel</p>
+            <ul>{% for p in presentaciones %}<li><span class="cc-mono">{{ p.numero_lote }}</span> · {{ p.material_codigo }} {{ p.material_nombre }}</li>{% endfor %}</ul>
+            {% endif %}
+        </section>
+    </div>
+
+    {% for s in secciones %}
+    <section class="cc-tarjeta p-5 mb-4">
+        <p class="cc-etiqueta">{{ s.titulo }}</p>
+        {{ s.html }}
+    </section>
+    {% endfor %}
+
+    {% if puede_dictaminar and lote.estatus != 'RECHAZADO' %}
+    <div class="cc-grid cc-g3 mb-6">
+        {% if lote.estatus in ('CUARENTENA', 'RETENIDO') %}
+        <form method="POST" action="{{ url_for('calidad.aprobar', lote_id=lote.id) }}" class="cc-tarjeta p-5 flex flex-col gap-3">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <p class="font-bold text-emerald-700"><i class="ri-checkbox-circle-line"></i> Aprobar</p>
+            {% if propuesta_reanalisis %}
+            <div><label class="cc-etiqueta">Fecha de reanálisis</label><input type="date" name="fecha_reanalisis" value="{{ propuesta_reanalisis }}" class="cc-campo"></div>
+            {% endif %}
+            <input name="motivo" placeholder="Comentario (opcional)" class="cc-campo">
+            {{ campo_firma('Liberó', numero=session.numero_empleado, id='firma-aprobar') }}
+            <button type="submit" class="cc-btn cc-btn-verde self-start" {% if not v.completa %}disabled title="Falta completar la lista de verificación"{% endif %}>Aprobar</button>
+        </form>
+        {% endif %}
+        <form method="POST" action="{{ url_for('calidad.rechazar', lote_id=lote.id) }}" class="cc-tarjeta p-5 flex flex-col gap-3">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <p class="font-bold text-rose-600"><i class="ri-close-circle-line"></i> Rechazar</p>
+            <textarea name="motivo" rows="2" required placeholder="Motivo del rechazo" class="cc-campo"></textarea>
+            {{ campo_firma('Rechazó', numero=session.numero_empleado, id='firma-rechazar') }}
+            <button type="submit" class="cc-btn cc-btn-rojo self-start">Rechazar</button>
+        </form>
+        {% if lote.estatus in ('CUARENTENA', 'APROBADO') %}
+        <form method="POST" action="{{ url_for('calidad.retener', lote_id=lote.id) }}" class="cc-tarjeta p-5 flex flex-col gap-3">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <p class="font-bold text-violet-700"><i class="ri-lock-line"></i> Retener</p>
+            <textarea name="motivo" rows="2" required placeholder="Motivo de la retención" class="cc-campo"></textarea>
+            {{ campo_firma('Retuvo', numero=session.numero_empleado, id='firma-retener') }}
+            <button type="submit" class="cc-btn self-start">Retener</button>
+        </form>
+        {% endif %}
+        {% if lote.estatus == 'APROBADO' and lote.fecha_reanalisis %}
+        <form method="POST" action="{{ url_for('calidad.extender', lote_id=lote.id) }}" class="cc-tarjeta p-5 flex flex-col gap-3">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <p class="font-bold text-[#0e6ba8]"><i class="ri-calendar-check-line"></i> Extender el reanálisis</p>
+            <p class="text-xs text-slate-500">Necesita un reanálisis conforme{% if reanalisis %} (último: {{ reanalisis.folio }}, {{ reanalisis.estatus|lower }}){% endif %}. No puede pasar de la caducidad.</p>
+            <input type="date" name="nueva_fecha" required class="cc-campo" {% if lote.fecha_caducidad %}max="{{ lote.fecha_caducidad }}"{% endif %}>
+            {{ campo_firma('Liberó', numero=session.numero_empleado, id='firma-extender') }}
+            <button type="submit" class="cc-btn self-start">Extender</button>
+        </form>
+        {% endif %}
+    </div>
+    {% elif not puede_dictaminar %}
+    <p class="cc-aviso-ambar text-sm mb-6">El dictamen lo firma quien tiene la facultad «liberar lotes».</p>
+    {% endif %}
+
+    {% if historial %}
+    <section class="cc-tarjeta overflow-hidden">
+        <table class="cc-tabla">
+            <thead><tr><th>Fecha</th><th>Decisión</th><th>Antes</th><th>Motivo</th><th>Firmó</th><th>Presentaciones</th></tr></thead>
+            <tbody>
+            {% for h in historial %}{% set dd = decisiones.get(h.decision, (h.decision, 'cc-gris')) %}
+            <tr>
+                <td class="text-xs">{{ h.ts[:16] }}</td>
+                <td><span class="cc-chip {{ dd[1] }}">{{ dd[0] }}</span>{% if h.nueva_fecha_reanalisis %}<br><span class="text-xs">Reanálisis: {{ h.nueva_fecha_reanalisis }}</span>{% endif %}</td>
+                <td class="text-xs">{{ h.estatus_anterior }}</td>
+                <td class="text-sm">{{ h.motivo or '' }}</td>
+                <td class="text-sm">{{ h.firmo }}</td>
+                <td class="text-xs cc-mono">{{ h.lotes_cascada|join(', ') }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </section>
+    {% endif %}
+</div>
+{% endblock %}
