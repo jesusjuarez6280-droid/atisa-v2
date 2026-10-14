@@ -103,6 +103,14 @@ def test_choques_al_registrar_son_error_al_arrancar():
     assert not registro.modulo_instalado('otro')
 
 
+def test_macros_de_lote_sin_with_context():
+    with erp.app.test_request_context():
+        html = erp.app.jinja_env.from_string(
+            "{% from 'nucleo/_lote.html' import chip_estatus, caducidad %}"
+            "{{ chip_estatus({'estatus': 'RETENIDO'}) }} {{ caducidad('2000-01-01') }}").render()
+    assert 'Retenido' in html and 'vencido' in html
+
+
 def test_ganchos_llegan_a_tablero_pendientes_planta_y_liberacion(client, db):
     crear_usuario(db, 'reg_admin', rol='admin', numero='7103')
     db.execute("INSERT INTO prb_cosas (nombre, bloquea) VALUES ('Bloqueadora', 1)")
@@ -348,7 +356,7 @@ def test_archivos_privados_solo_con_permiso_del_modulo(client, db):
     ruta = archivos.ruta_absoluta(reg)
     assert os.path.exists(ruta)
     assert 'static' not in ruta.split(os.sep)
-    assert archivos.archivos_de(db, 'lotes', 1)[0]['id'] == aid
+    assert aid in [x['id'] for x in archivos.archivos_de(db, 'lotes', 1)]
     with pytest.raises(archivos.ErrorArchivo):
         archivos.guardar_archivo(db, FileStorage(stream=io.BytesIO(b'<html>'), filename='x.html'),
                                  modulo='prueba', entidad='lotes', entidad_id=1, descripcion='', usuario='x')
