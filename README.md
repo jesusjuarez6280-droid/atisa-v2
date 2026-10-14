@@ -51,6 +51,19 @@ python erp.py
 
 Abre **http://localhost:5001**. La base de demostración ya trae usuarios de prueba para explorar los módulos.
 
+## 🧪 Pruebas
+
+```bash
+pip install -r requirements.txt -r requirements-dev.txt
+python -m pytest tests
+```
+
+Las pruebas usan una base temporal (nunca tocan `base_planta.db`) y corren solas en GitHub Actions en cada PR, en Windows y Linux. Las de humo (`tests/test_humo.py`) abren **todas las pantallas con cada rol**, así que al agregar un módulo nuevo:
+
+- protege cada ruta con `@login_required` y `@requiere_modulo('<modulo>')`, y agrega el módulo a `PERMISOS`;
+- si la ruta lleva un parámetro nuevo (ej. `<int:lote_id>`), agrega un registro de ejemplo en el fixture `datos` de `tests/test_humo.py`;
+- en plantillas usa solo clases que ya existan en `static/css/tailwind.css` (está precompilado).
+
 ---
 
 *Proyecto desarrollado por Jesús Armando Juárez Cabrera.*
