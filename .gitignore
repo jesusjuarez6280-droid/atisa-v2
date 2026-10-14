@@ -18,3 +18,11 @@ Thumbs.db
 
 # Archivos subidos en runtime (responsivas firmadas, etc.)
 static/contratos/
+static/documentos_legales/
+static/img_recetas/
+
+# --- Seguridad: llave de sesión generada en el primer arranque (NUNCA se versiona) ---
+.secret_key
+
+# --- Respaldos automáticos diarios de la base ---
+respaldos/

@@ -86,30 +86,48 @@ Se aplicaron **6 medidas** de endurecimiento pensando en un despliegue real:
 
 ## 5. Checklist de producción
 
-Para tu portafolio o uso local **no necesitas cambiar nada** — funciona tal cual. Para publicarlo
-en un servidor real de internet, define estas variables de entorno:
+**Seguro por defecto (oct 2026):** arrancar con `INICIAR_ERP.bat` / `python erp.py` ya es seguro
+sin configurar nada:
+
+- **Llave de sesión:** si no defines `ATISA_SECRET_KEY`, el ERP genera una llave aleatoria en el
+  primer arranque y la guarda en `.secret_key` junto a la base (archivo ignorado por git). Ya no
+  existe una llave fija en el código que cualquiera pueda leer en el repo público.
+- **Modo debug apagado:** el depurador de Werkzeug solo se enciende con `ATISA_DEBUG=true`
+  (úsalo solo en tu PC de desarrollo, nunca en el servidor de planta).
+- **Contraseña inicial:** quien entre con la contraseña de fábrica del admin (`admin123`) queda
+  obligado a cambiarla antes de usar el sistema (`/cambiar_password`).
+- **Archivos privados:** expedientes, contratos y documentos legales ya no se pueden abrir por
+  `/static/...`; solo por las rutas que piden sesión y permiso.
+- **Excel de Reportes:** exporta solo datos laborales (nunca contraseñas, CURP, RFC, NSS, salario
+  ni CLABE).
+- **Respaldo automático diario:** la primera petición de cada día copia la base a `respaldos/`
+  (se conservan 30 días). Para tener copia fuera del sitio, sincroniza esa carpeta a USB/NAS/nube.
+
+Variables opcionales:
 
 ```bash
-# Una clave larga y aleatoria (NO la compartas). Ejemplo para generarla:
-#   python -c "import secrets; print(secrets.token_hex(32))"
-export ATISA_SECRET_KEY="pon-aqui-una-clave-larga-aleatoria"
-
-# Activa la cookie 'Secure' (solo si sirves por HTTPS)
-export ATISA_HTTPS=true
-
-# Apaga el modo debug en producción
-export ATISA_DEBUG=false
+export ATISA_SECRET_KEY="..."   # llave propia (si no, se usa la de .secret_key)
+export ATISA_HTTPS=true         # cookie 'Secure' (solo si sirves por HTTPS)
+export ATISA_DEBUG=true         # SOLO en desarrollo
+export ATISA_DB=ruta/base.db    # otra ubicación de la base
+export ATISA_RESPALDOS=ruta     # otra carpeta de respaldos
 ```
 
 En Windows (PowerShell) sería `$env:ATISA_SECRET_KEY = "..."`, etc.
 
-> 💡 Al cambiar `ATISA_SECRET_KEY` (o la primera vez que corras tras este blindaje) **se cierran
-> las sesiones anteriores**: hay que volver a iniciar sesión una vez. Es normal.
+> 💡 La primera vez que corras esta versión **se cierran las sesiones anteriores** (cambia la
+> llave): hay que volver a iniciar sesión una vez. Es normal.
+
+**Con Gunicorn:** `gunicorn -w 1 --threads 8 -b 0.0.0.0:5001 wsgi:app` (`wsgi.py` crea las tablas
+al arrancar). Un solo worker con hilos, porque el anti-fuerza-bruta y la caché viven en memoria.
+
+**Pruebas automáticas:** `pip install pytest` y luego `python -m pytest tests` (usan una base
+temporal, nunca tocan `base_planta.db`).
 
 **Recomendaciones adicionales para producción** (fuera del código de la app):
-- Servir detrás de un proxy con **HTTPS** (Nginx/Caddy) y usar **Gunicorn** como servidor (ver `requirements.txt`).
-- **Respaldo diario** del archivo `base_planta.db` (y una copia semanal fuera del sitio).
+- Servir detrás de un proxy con **HTTPS** (Nginx/Caddy).
 - Restringir el acceso a la red local o VPN de la empresa.
+- No subir nunca a GitHub una `base_planta.db` con datos reales (el repo es público).
 
 ---
 
